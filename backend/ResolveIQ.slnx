@@ -1,0 +1,7 @@
+<Solution>
+  <Project Path="ResolveIQ.API/ResolveIQ.API.csproj" />
+  <Project Path="ResolveIQ.Application/ResolveIQ.Application.csproj" />
+  <Project Path="ResolveIQ.Domain/ResolveIQ.Domain.csproj" />
+  <Project Path="ResolveIQ.Infrastructure/ResolveIQ.Infrastructure.csproj" />
+  <Project Path="ResolveIQ.Tests/ResolveIQ.Tests.csproj" />
+</Solution>
