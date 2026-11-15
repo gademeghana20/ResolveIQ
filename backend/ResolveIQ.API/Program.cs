@@ -4,6 +4,8 @@ using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
+using ResolveIQ.Application.Abstractions;
+using ResolveIQ.Infrastructure.Authentication;
 using ResolveIQ.Infrastructure.Data;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -29,6 +31,9 @@ builder.Services
 var jwtKey = builder.Configuration["Jwt:Key"]
     ?? throw new InvalidOperationException("Jwt:Key is not configured. Set it with dotnet user-secrets.");
 
+builder.Services.Configure<JwtSettings>(builder.Configuration.GetSection(JwtSettings.SectionName));
+builder.Services.AddScoped<IJwtTokenService, JwtTokenService>();
+
 builder.Services
     .AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
     .AddJwtBearer(options =>
@@ -41,6 +46,8 @@ builder.Services
             ValidAudience = builder.Configuration["Jwt:Audience"],
             ValidateIssuerSigningKey = true,
             IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(jwtKey)),
+            NameClaimType = "sub",
+            RoleClaimType = "role",
             ValidateLifetime = true,
             ClockSkew = TimeSpan.FromMinutes(1)
         };
@@ -57,6 +64,21 @@ using (var scope = app.Services.CreateScope())
 {
     var roleManager = scope.ServiceProvider.GetRequiredService<RoleManager<IdentityRole>>();
     await IdentitySeeder.SeedRolesAsync(roleManager);
+
+    // Demo users exist only in Development, with a password from user secrets.
+    if (app.Environment.IsDevelopment())
+    {
+        var demoPassword = app.Configuration["Seed:DemoPassword"];
+        if (string.IsNullOrWhiteSpace(demoPassword))
+        {
+            app.Logger.LogWarning("Seed:DemoPassword is not set; demo users were not created.");
+        }
+        else
+        {
+            var userManager = scope.ServiceProvider.GetRequiredService<UserManager<IdentityUser>>();
+            await IdentitySeeder.SeedDemoUsersAsync(userManager, demoPassword);
+        }
+    }
 }
 
 // Configure the HTTP request pipeline.
