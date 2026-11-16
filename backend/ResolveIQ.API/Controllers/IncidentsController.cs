@@ -3,6 +3,7 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using ResolveIQ.Application.Abstractions;
 using ResolveIQ.Application.DTOs.Incidents;
+using ResolveIQ.Domain.Constants;
 
 namespace ResolveIQ.API.Controllers
 {
@@ -73,6 +74,67 @@ namespace ResolveIQ.API.Controllers
             }
 
             return CreatedAtAction(nameof(GetIncident), new { id = created.Id }, created);
+        }
+
+        [HttpPut("{id:guid}/assign")]
+        [Authorize(Roles = RoleNames.AdminOrManager)]
+        [ProducesResponseType(StatusCodes.Status200OK)]
+        [ProducesResponseType(StatusCodes.Status400BadRequest)]
+        [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+        [ProducesResponseType(StatusCodes.Status403Forbidden)]
+        [ProducesResponseType(StatusCodes.Status404NotFound)]
+        [ProducesResponseType(StatusCodes.Status409Conflict)]
+        public async Task<ActionResult<IncidentDetailResponse>> AssignIncident(
+            Guid id,
+            AssignIncidentRequest request,
+            CancellationToken cancellationToken)
+        {
+            if (!TryGetCurrentUser(out var userId, out _))
+            {
+                return Unauthorized();
+            }
+
+            var result = await _incidentService.AssignIncidentAsync(
+                id, request.AssigneeUserId, userId, cancellationToken);
+
+            switch (result.Outcome)
+            {
+                case AssignOutcome.IncidentNotFound:
+                    return NotFound();
+
+                case AssignOutcome.AssigneeNotFound:
+                    ModelState.AddModelError(
+                        nameof(request.AssigneeUserId),
+                        "No user exists with that id.");
+                    return ValidationProblem(ModelState);
+
+                case AssignOutcome.Conflict:
+                    return Conflict(new ProblemDetails
+                    {
+                        Title = "The incident was changed by someone else. Reload it and try again.",
+                        Status = StatusCodes.Status409Conflict
+                    });
+
+                default:
+                    return Ok(result.Incident);
+            }
+        }
+
+        [HttpGet("{id:guid}/history")]
+        [ProducesResponseType(StatusCodes.Status200OK)]
+        [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+        [ProducesResponseType(StatusCodes.Status404NotFound)]
+        public async Task<ActionResult<IReadOnlyList<IncidentHistoryResponse>>> GetHistory(
+            Guid id,
+            CancellationToken cancellationToken)
+        {
+            if (!TryGetCurrentUser(out var userId, out var roles))
+            {
+                return Unauthorized();
+            }
+
+            var history = await _incidentService.GetHistoryAsync(id, userId, roles, cancellationToken);
+            return history is null ? NotFound() : Ok(history);
         }
 
         private bool TryGetCurrentUser(out string userId, out IReadOnlyCollection<string> roles)

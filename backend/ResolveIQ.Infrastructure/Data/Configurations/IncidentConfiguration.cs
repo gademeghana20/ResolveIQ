@@ -28,6 +28,9 @@ namespace ResolveIQ.Infrastructure.Data.Configurations
             builder.Property(i => i.AssignedToUserId)
                 .HasMaxLength(450);
 
+            builder.Property(i => i.RowVersion)
+                .IsRowVersion();
+
             builder.HasOne(i => i.Category)
                 .WithMany()
                 .HasForeignKey(i => i.CategoryId)

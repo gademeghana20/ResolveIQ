@@ -30,5 +30,11 @@ namespace ResolveIQ.Domain.Entities
         public DateTime? UpdatedAtUtc { get; set; }
 
         public DateTime? ResolvedAtUtc { get; set; }
+
+        /// <summary>
+        /// Changes automatically on every update. Lets the database detect two people
+        /// editing the same incident at the same time.
+        /// </summary>
+        public byte[] RowVersion { get; set; } = Array.Empty<byte>();
     }
 }

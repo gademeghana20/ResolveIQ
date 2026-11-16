@@ -6,6 +6,9 @@ namespace ResolveIQ.Domain.Constants
         public const string Manager = "Manager";
         public const string Employee = "Employee";
 
+        // For [Authorize(Roles = ...)]: a comma means "any one of these roles".
+        public const string AdminOrManager = Admin + "," + Manager;
+
         public static readonly string[] All = { Admin, Manager, Employee };
     }
 }

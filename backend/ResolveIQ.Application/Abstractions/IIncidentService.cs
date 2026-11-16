@@ -30,5 +30,25 @@ namespace ResolveIQ.Application.Abstractions
             string reportedByUserId,
             CreateIncidentRequest request,
             CancellationToken cancellationToken = default);
+
+        /// <summary>
+        /// Assigns an incident to a user and records the change in the incident's history.
+        /// The caller must already have checked that the acting user is allowed to assign.
+        /// </summary>
+        Task<AssignIncidentResult> AssignIncidentAsync(
+            Guid id,
+            string assigneeUserId,
+            string actingUserId,
+            CancellationToken cancellationToken = default);
+
+        /// <summary>
+        /// Returns an incident's change history, oldest first, or null if the incident
+        /// does not exist or the user is not allowed to see it.
+        /// </summary>
+        Task<IReadOnlyList<IncidentHistoryResponse>?> GetHistoryAsync(
+            Guid id,
+            string userId,
+            IReadOnlyCollection<string> roles,
+            CancellationToken cancellationToken = default);
     }
 }

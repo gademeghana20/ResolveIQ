@@ -1,0 +1,42 @@
+using Microsoft.AspNetCore.Identity;
+using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Metadata.Builders;
+using ResolveIQ.Domain.Entities;
+
+namespace ResolveIQ.Infrastructure.Data.Configurations
+{
+    public class IncidentHistoryConfiguration : IEntityTypeConfiguration<IncidentHistory>
+    {
+        public void Configure(EntityTypeBuilder<IncidentHistory> builder)
+        {
+            builder.Property(h => h.ChangedByUserId)
+                .IsRequired()
+                .HasMaxLength(450);
+
+            builder.Property(h => h.FieldChanged)
+                .IsRequired()
+                .HasMaxLength(100);
+
+            builder.Property(h => h.OldValue)
+                .HasMaxLength(500);
+
+            builder.Property(h => h.NewValue)
+                .HasMaxLength(500);
+
+            // History belongs to its incident, so deleting an incident deletes its history.
+            builder.HasOne<Incident>()
+                .WithMany()
+                .HasForeignKey(h => h.IncidentId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            // The person who made a change must stay known, so users with history cannot be deleted.
+            builder.HasOne<IdentityUser>()
+                .WithMany()
+                .HasForeignKey(h => h.ChangedByUserId)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            // History is always read for one incident, oldest to newest.
+            builder.HasIndex(h => new { h.IncidentId, h.ChangedAtUtc });
+        }
+    }
+}

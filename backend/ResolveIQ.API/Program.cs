@@ -60,6 +60,7 @@ builder.Services
     });
 
 builder.Services.AddScoped<IIncidentService, IncidentService>();
+builder.Services.AddScoped<IUserService, UserService>();
 
 // Show enums as readable text ("High") instead of numbers (3) in API responses.
 // The OpenAPI/Swagger document reads the first setting; the controllers read the second.

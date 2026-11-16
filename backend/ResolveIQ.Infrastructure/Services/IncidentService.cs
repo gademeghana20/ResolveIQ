@@ -116,6 +116,100 @@ namespace ResolveIQ.Infrastructure.Services
                 .SingleAsync(cancellationToken);
         }
 
+        public async Task<AssignIncidentResult> AssignIncidentAsync(
+            Guid id,
+            string assigneeUserId,
+            string actingUserId,
+            CancellationToken cancellationToken = default)
+        {
+            var incident = await _db.Incidents.FirstOrDefaultAsync(i => i.Id == id, cancellationToken);
+            if (incident is null)
+            {
+                return new AssignIncidentResult(AssignOutcome.IncidentNotFound);
+            }
+
+            var assignee = await _db.Users.AsNoTracking()
+                .Where(u => u.Id == assigneeUserId)
+                .Select(u => new { u.Id, u.Email })
+                .FirstOrDefaultAsync(cancellationToken);
+            if (assignee is null)
+            {
+                return new AssignIncidentResult(AssignOutcome.AssigneeNotFound);
+            }
+
+            // Assigning to the person who already has it changes nothing, so write no history.
+            if (incident.AssignedToUserId != assignee.Id)
+            {
+                // History shows emails (readable) rather than ids.
+                string? previousAssignee = incident.AssignedToUserId is null
+                    ? null
+                    : await _db.Users.AsNoTracking()
+                        .Where(u => u.Id == incident.AssignedToUserId)
+                        .Select(u => u.Email)
+                        .FirstOrDefaultAsync(cancellationToken);
+
+                incident.AssignedToUserId = assignee.Id;
+                incident.UpdatedAtUtc = DateTime.UtcNow;
+
+                _db.IncidentHistory.Add(new IncidentHistory
+                {
+                    IncidentId = incident.Id,
+                    ChangedByUserId = actingUserId,
+                    FieldChanged = "AssignedTo",
+                    OldValue = previousAssignee,
+                    NewValue = assignee.Email,
+                    ChangedAtUtc = DateTime.UtcNow
+                });
+
+                try
+                {
+                    // One SaveChanges = one transaction: the change and its history are saved together or not at all.
+                    await _db.SaveChangesAsync(cancellationToken);
+                }
+                catch (DbUpdateConcurrencyException)
+                {
+                    return new AssignIncidentResult(AssignOutcome.Conflict);
+                }
+            }
+
+            var detail = await _db.Incidents.AsNoTracking()
+                .Where(i => i.Id == id)
+                .Select(ToDetail)
+                .SingleAsync(cancellationToken);
+
+            return new AssignIncidentResult(AssignOutcome.Assigned, detail);
+        }
+
+        public async Task<IReadOnlyList<IncidentHistoryResponse>?> GetHistoryAsync(
+            Guid id,
+            string userId,
+            IReadOnlyCollection<string> roles,
+            CancellationToken cancellationToken = default)
+        {
+            var canSee = await ApplyVisibility(_db.Incidents.AsNoTracking(), userId, roles)
+                .AnyAsync(i => i.Id == id, cancellationToken);
+            if (!canSee)
+            {
+                return null;
+            }
+
+            return await _db.IncidentHistory.AsNoTracking()
+                .Where(h => h.IncidentId == id)
+                .OrderBy(h => h.ChangedAtUtc)
+                .Select(h => new IncidentHistoryResponse
+                {
+                    FieldChanged = h.FieldChanged,
+                    OldValue = h.OldValue,
+                    NewValue = h.NewValue,
+                    ChangedBy = _db.Users
+                        .Where(u => u.Id == h.ChangedByUserId)
+                        .Select(u => u.Email)
+                        .FirstOrDefault(),
+                    ChangedAtUtc = h.ChangedAtUtc
+                })
+                .ToListAsync(cancellationToken);
+        }
+
         // The visibility rule lives in one place so list and single-item reads always agree.
         private static IQueryable<Incident> ApplyVisibility(
             IQueryable<Incident> query,

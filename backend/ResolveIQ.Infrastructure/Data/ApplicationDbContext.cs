@@ -19,6 +19,8 @@ namespace ResolveIQ.Infrastructure.Data
 
         public DbSet<Category> Categories { get; set; } = null!;
 
+        public DbSet<IncidentHistory> IncidentHistory { get; set; } = null!;
+
         protected override void ConfigureConventions(ModelConfigurationBuilder configurationBuilder)
         {
             base.ConfigureConventions(configurationBuilder);
