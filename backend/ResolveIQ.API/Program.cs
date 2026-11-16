@@ -62,6 +62,10 @@ builder.Services
 builder.Services.AddScoped<IIncidentService, IncidentService>();
 
 // Show enums as readable text ("High") instead of numbers (3) in API responses.
+// The OpenAPI/Swagger document reads the first setting; the controllers read the second.
+builder.Services.ConfigureHttpJsonOptions(options =>
+    options.SerializerOptions.Converters.Add(new JsonStringEnumConverter()));
+
 builder.Services.AddControllers()
     .AddJsonOptions(options =>
         options.JsonSerializerOptions.Converters.Add(new JsonStringEnumConverter()));
@@ -100,6 +104,10 @@ using (var scope = app.Services.CreateScope())
 {
     var roleManager = scope.ServiceProvider.GetRequiredService<RoleManager<IdentityRole>>();
     await IdentitySeeder.SeedRolesAsync(roleManager);
+
+    // Reference data every environment needs (incident categories).
+    var db = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
+    await ReferenceDataSeeder.SeedCategoriesAsync(db);
 
     // Demo users exist only in Development, with a password from user secrets.
     if (app.Environment.IsDevelopment())
