@@ -43,5 +43,22 @@ namespace ResolveIQ.Application.DTOs.Incidents
 
         /// <summary>The SLA deadline. Empty while not started, paused, or without a target.</summary>
         public DateTime? SlaDueAtUtc { get; set; }
+
+        /// <summary>What the person asking may do with this incident right now.</summary>
+        public IncidentActionsResponse Actions { get; set; } = new();
+    }
+
+    /// <summary>
+    /// What the current user may do with one incident. Worked out on the server from the same rules
+    /// the change endpoints enforce, so a screen can offer exactly the actions that will be accepted.
+    /// </summary>
+    public class IncidentActionsResponse
+    {
+        public bool CanAssign { get; set; }
+
+        public bool CanChangePriority { get; set; }
+
+        /// <summary>The statuses this user may move the incident to from its current one.</summary>
+        public IList<IncidentStatus> AllowedStatusChanges { get; set; } = new List<IncidentStatus>();
     }
 }

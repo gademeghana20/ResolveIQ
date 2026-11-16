@@ -20,6 +20,22 @@ export function statusTone(status: IncidentStatus): BadgeTone {
   }
 }
 
+/** The button text for moving an incident from one status to another. */
+export function statusActionLabel(from: IncidentStatus, to: IncidentStatus): string {
+  switch (to) {
+    case 'InProgress':
+      return from === 'Open' ? 'Start work' : from === 'OnHold' ? 'Resume work' : 'Reopen';
+    case 'OnHold':
+      return 'Put on hold…'; // the dots mean "this asks you something first"
+    case 'Resolved':
+      return 'Mark resolved';
+    case 'Closed':
+      return 'Close incident…';
+    default:
+      return statusLabel(to);
+  }
+}
+
 export function priorityLabel(priority: IncidentPriority | null): string {
   return priority ?? 'Not set'; // a manager sets it when assigning
 }

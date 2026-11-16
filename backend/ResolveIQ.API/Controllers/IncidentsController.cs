@@ -51,7 +51,7 @@ namespace ResolveIQ.API.Controllers
 
             // Not found and not allowed look the same, so nobody can probe for incident ids.
             var incident = await _incidentService.GetIncidentByIdAsync(id, userId, roles, cancellationToken);
-            return incident is null ? NotFound() : Ok(incident);
+            return incident is null ? NotFound() : Ok(WithActions(incident));
         }
 
         [HttpPost]
@@ -76,7 +76,7 @@ namespace ResolveIQ.API.Controllers
                 return ValidationProblem(ModelState);
             }
 
-            return CreatedAtAction(nameof(GetIncident), new { id = created.Id }, created);
+            return CreatedAtAction(nameof(GetIncident), new { id = created.Id }, WithActions(created));
         }
 
         [HttpPut("{id:guid}")]
@@ -204,8 +204,16 @@ namespace ResolveIQ.API.Controllers
                     });
 
                 default:
-                    return Ok(result.Incident);
+                    return Ok(WithActions(result.Incident!));
             }
+        }
+
+        // Adds "what may this user do now" to an incident before it leaves the API.
+        private IncidentDetailResponse WithActions(IncidentDetailResponse incident)
+        {
+            TryGetCurrentUser(out var userId, out var roles);
+            incident.Actions = IncidentPermissions.For(incident, userId, roles);
+            return incident;
         }
 
         private bool TryGetCurrentUser(out string userId, out IReadOnlyCollection<string> roles)

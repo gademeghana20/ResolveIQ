@@ -8,9 +8,12 @@ import {
   HistoryEntry,
   IncidentComment,
   IncidentDetail,
+  IncidentPriority,
   IncidentQuery,
+  IncidentStatus,
   IncidentSummary,
   PagedResult,
+  UserSummary,
 } from './incident.models';
 
 /** Talks to the incident endpoints of the API. */
@@ -32,6 +35,23 @@ export class IncidentService {
 
   getComments(id: string): Observable<IncidentComment[]> {
     return this.http.get<IncidentComment[]>(`${API_URL}/incidents/${id}/comments`);
+  }
+
+  changeStatus(id: string, status: IncidentStatus, reason?: string): Observable<IncidentDetail> {
+    return this.http.put<IncidentDetail>(`${API_URL}/incidents/${id}/status`, { status, reason });
+  }
+
+  assign(id: string, assigneeUserId: string, priority?: IncidentPriority): Observable<IncidentDetail> {
+    return this.http.put<IncidentDetail>(`${API_URL}/incidents/${id}/assign`, { assigneeUserId, priority });
+  }
+
+  changePriority(id: string, priority: IncidentPriority): Observable<IncidentDetail> {
+    return this.http.put<IncidentDetail>(`${API_URL}/incidents/${id}/priority`, { priority });
+  }
+
+  /** Everyone, for the assignee picker. Only Managers and Admins may call this. */
+  getUsers(): Observable<UserSummary[]> {
+    return this.http.get<UserSummary[]>(`${API_URL}/users`);
   }
 
   addComment(id: string, text: string): Observable<IncidentComment> {

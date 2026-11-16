@@ -29,6 +29,7 @@ function detail(overrides: Partial<IncidentDetailModel> = {}): IncidentDetailMod
     slaState: 'AtRisk',
     slaStartedAtUtc: '2026-11-16T18:30:00Z',
     slaDueAtUtc: '2026-11-17T02:30:00Z',
+    actions: { canAssign: false, canChangePriority: false, allowedStatusChanges: [] },
     ...overrides,
   };
 }
@@ -167,6 +168,48 @@ describe('IncidentDetail', () => {
 
     expect((fixture.nativeElement as HTMLElement).querySelector('textarea')).toBeNull();
     expect(text()).toContain('Comments are closed on a closed incident.');
+  });
+
+  it('after an action works, shows the updated incident and fetches the new history line', async () => {
+    answerDetail(detail({ status: 'Open', actions: { canAssign: false, canChangePriority: false, allowedStatusChanges: ['InProgress'] } }));
+    answerHistory([]);
+    answerComments([]);
+    await settle();
+
+    const start = Array.from((fixture.nativeElement as HTMLElement).querySelectorAll('button')).find((b) => b.textContent!.trim() === 'Start work')!;
+    start.click();
+    await settle();
+
+    http.expectOne(`${API_URL}/incidents/${ID}/status`).flush(
+      detail({ status: 'InProgress', actions: { canAssign: false, canChangePriority: false, allowedStatusChanges: ['OnHold', 'Resolved'] } }),
+    );
+    await settle();
+
+    // The history is fetched again, because the change added a line to it.
+    answerHistory(history);
+    await settle();
+
+    expect(text()).toContain('In progress');
+    expect(text()).toContain('Mark resolved'); // the buttons now match the new state
+    expect(text()).not.toContain('Start work');
+    expect(text()).toContain('Status changed from Open to In progress');
+  });
+
+  it('reloads the whole page when an action finds it out of date', async () => {
+    answerDetail(detail({ actions: { canAssign: false, canChangePriority: false, allowedStatusChanges: ['Resolved'] } }));
+    answerHistory([]);
+    answerComments([]);
+    await settle();
+
+    const resolve = Array.from((fixture.nativeElement as HTMLElement).querySelectorAll('button')).find((b) => b.textContent!.trim() === 'Mark resolved')!;
+    resolve.click();
+    http.expectOne(`${API_URL}/incidents/${ID}/status`).flush({}, { status: 409, statusText: 'Conflict' });
+    await settle();
+
+    // A fresh set of requests proves the page reloaded.
+    answerDetail(detail({ status: 'Resolved' }));
+    answerHistory([]);
+    answerComments([]);
   });
 
   it('says so when there are no comments or history yet', async () => {

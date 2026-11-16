@@ -1,0 +1,13 @@
+.actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 20px;
+}
+
+/* Only the first (usual next) step is filled in; the rest are outlined. */
+.secondary:not(:disabled) {
+  --mat-button-filled-container-color: transparent;
+  --mat-button-filled-label-text-color: var(--mat-sys-primary);
+  border: 1px solid var(--mat-sys-outline);
+}

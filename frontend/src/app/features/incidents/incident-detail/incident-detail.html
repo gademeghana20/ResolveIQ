@@ -30,6 +30,12 @@
         </div>
       </header>
 
+      <app-incident-actions
+        [incident]="incident"
+        (changed)="onIncidentChanged($event)"
+        (stale)="reload()"
+      />
+
       <div class="layout">
         <div class="main">
           <mat-card>

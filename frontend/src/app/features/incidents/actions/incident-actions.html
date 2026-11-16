@@ -1,0 +1,25 @@
+@if (hasAnyAction()) {
+  <div class="actions" role="group" aria-label="Incident actions">
+    @for (target of incident().actions.allowedStatusChanges; track target; let first = $first) {
+      <button
+        mat-flat-button
+        type="button"
+        [class.secondary]="!first"
+        [disabled]="busy()"
+        (click)="moveTo(target)"
+      >
+        {{ statusLabel(target) }}
+      </button>
+    }
+
+    @if (incident().actions.canAssign) {
+      <button mat-stroked-button type="button" [disabled]="busy()" (click)="assign()">
+        {{ incident().assignedToUserId ? 'Reassign…' : 'Assign…' }}
+      </button>
+    }
+
+    @if (incident().actions.canChangePriority) {
+      <button mat-stroked-button type="button" [disabled]="busy()" (click)="changePriority()">Change priority…</button>
+    }
+  </div>
+}

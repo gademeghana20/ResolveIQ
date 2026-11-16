@@ -48,6 +48,22 @@ export interface IncidentDetail {
   slaState: SlaState;
   slaStartedAtUtc: string | null;
   slaDueAtUtc: string | null;
+  actions: IncidentActions;
+}
+
+/** What the signed-in person may do with this incident right now. The API decides; the screen just follows. */
+export interface IncidentActions {
+  canAssign: boolean;
+  canChangePriority: boolean;
+  allowedStatusChanges: IncidentStatus[];
+}
+
+/** A person who can be picked as an assignee. */
+export interface UserSummary {
+  id: string;
+  email: string | null;
+  roles: string[];
+  isActive: boolean;
 }
 
 /** One line of an incident's audit trail: who changed what, and when. */

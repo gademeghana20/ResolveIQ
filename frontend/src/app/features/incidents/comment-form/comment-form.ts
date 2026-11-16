@@ -1,27 +1,16 @@
 import { HttpErrorResponse } from '@angular/common/http';
 import { Component, inject, input, output, signal, viewChild } from '@angular/core';
-import {
-  AbstractControl,
-  FormGroupDirective,
-  NonNullableFormBuilder,
-  ReactiveFormsModule,
-  ValidationErrors,
-  Validators,
-} from '@angular/forms';
+import { FormGroupDirective, NonNullableFormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { MatButtonModule } from '@angular/material/button';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatInputModule } from '@angular/material/input';
 
+import { notBlank } from '../../../core/validators';
 import { IncidentComment } from '../incident.models';
 import { IncidentService } from '../incident.service';
 
 /** Matches the API's limit, so the screen warns before the server has to. */
 export const MAX_COMMENT_LENGTH = 2000;
-
-// "   " is not a comment. Angular's own "required" would accept it.
-function notBlank(control: AbstractControl<string>): ValidationErrors | null {
-  return control.value.trim().length > 0 ? null : { required: true };
-}
 
 @Component({
   selector: 'app-comment-form',

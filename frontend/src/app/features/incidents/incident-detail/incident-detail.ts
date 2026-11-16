@@ -1,5 +1,5 @@
 import { HttpErrorResponse } from '@angular/common/http';
-import { Component, computed, inject, input, signal } from '@angular/core';
+import { Component, DestroyRef, computed, inject, input, signal } from '@angular/core';
 import { takeUntilDestroyed, toObservable } from '@angular/core/rxjs-interop';
 import { DatePipe } from '@angular/common';
 import { MatButtonModule } from '@angular/material/button';
@@ -9,6 +9,7 @@ import { RouterLink } from '@angular/router';
 import { EMPTY, catchError, forkJoin, of, switchMap, tap } from 'rxjs';
 
 import { Badge } from '../../../shared/badge/badge';
+import { IncidentActions } from '../actions/incident-actions';
 import { CommentForm } from '../comment-form/comment-form';
 import {
   describeChange,
@@ -26,12 +27,13 @@ type LoadState = 'loading' | 'ready' | 'notFound' | 'failed';
 
 @Component({
   selector: 'app-incident-detail',
-  imports: [DatePipe, RouterLink, MatButtonModule, MatCardModule, MatProgressBarModule, Badge, CommentForm],
+  imports: [DatePipe, RouterLink, MatButtonModule, MatCardModule, MatProgressBarModule, Badge, CommentForm, IncidentActions],
   templateUrl: './incident-detail.html',
   styleUrl: './incident-detail.css',
 })
 export class IncidentDetail {
   private readonly incidents = inject(IncidentService);
+  private readonly destroyRef = inject(DestroyRef);
 
   /** The incident id from the address (/incidents/:id), handed in by the router. */
   readonly id = input.required<string>();
@@ -86,6 +88,19 @@ export class IncidentDetail {
 
   protected reload(): void {
     this.reloadCount.update((n) => n + 1);
+  }
+
+  /** An action worked: show the updated incident, and fetch the history, which has a new line. */
+  protected onIncidentChanged(updated: IncidentDetailModel): void {
+    this.detail.set(updated);
+
+    this.incidents
+      .getHistory(updated.id)
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe({
+        next: (entries) => this.history.set(entries),
+        error: () => this.history.set(null),
+      });
   }
 
   /** A comment was saved: show it straight away, without reloading the whole page. */
