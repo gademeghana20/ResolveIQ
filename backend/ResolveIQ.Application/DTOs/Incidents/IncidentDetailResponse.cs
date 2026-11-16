@@ -25,6 +25,12 @@ namespace ResolveIQ.Application.DTOs.Incidents
 
         public string? AssignedToUserId { get; set; }
 
+        /// <summary>The reporter's email, so screens can show a name instead of an id.</summary>
+        public string? ReportedByEmail { get; set; }
+
+        /// <summary>The assignee's email. Empty while the incident is unassigned.</summary>
+        public string? AssignedToEmail { get; set; }
+
         public DateTime CreatedAtUtc { get; set; }
 
         public DateTime? UpdatedAtUtc { get; set; }

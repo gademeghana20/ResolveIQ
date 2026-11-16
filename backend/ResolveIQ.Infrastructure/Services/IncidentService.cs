@@ -56,9 +56,12 @@ namespace ResolveIQ.Infrastructure.Services
                     .Where(s => s.SlaState == wantedState)
                     .ToList();
 
+                var matchingPage = matches.Skip((query.Page - 1) * query.PageSize).Take(query.PageSize).ToList();
+                await AddEmailsAsync(matchingPage, cancellationToken);
+
                 return new PagedResult<IncidentSummaryResponse>
                 {
-                    Items = matches.Skip((query.Page - 1) * query.PageSize).Take(query.PageSize).ToList(),
+                    Items = matchingPage,
                     Page = query.Page,
                     PageSize = query.PageSize,
                     TotalCount = matches.Count
@@ -74,9 +77,12 @@ namespace ResolveIQ.Infrastructure.Services
                 .Take(query.PageSize)
                 .ToListAsync(cancellationToken);
 
+            var items = page.Select(i => ToSummary(i, targets, now)).ToList();
+            await AddEmailsAsync(items, cancellationToken);
+
             return new PagedResult<IncidentSummaryResponse>
             {
-                Items = page.Select(i => ToSummary(i, targets, now)).ToList(),
+                Items = items,
                 Page = query.Page,
                 PageSize = query.PageSize,
                 TotalCount = totalCount
@@ -93,7 +99,14 @@ namespace ResolveIQ.Infrastructure.Services
                     _db.Incidents.AsNoTracking().Include(i => i.Category), userId, roles)
                 .FirstOrDefaultAsync(i => i.Id == id, cancellationToken);
 
-            return incident is null ? null : ToDetail(incident, await LoadTargetHoursAsync(cancellationToken), Now());
+            if (incident is null)
+            {
+                return null;
+            }
+
+            var detail = ToDetail(incident, await LoadTargetHoursAsync(cancellationToken), Now());
+            await AddEmailsAsync(detail, cancellationToken);
+            return detail;
         }
 
         public async Task<IReadOnlyList<IncidentHistoryResponse>?> GetHistoryAsync(
@@ -601,8 +614,52 @@ namespace ResolveIQ.Infrastructure.Services
                 .Include(i => i.Category)
                 .SingleAsync(i => i.Id == id, cancellationToken);
 
-            return ToDetail(incident, await LoadTargetHoursAsync(cancellationToken), Now());
+            var detail = ToDetail(incident, await LoadTargetHoursAsync(cancellationToken), Now());
+            await AddEmailsAsync(detail, cancellationToken);
+            return detail;
         }
+
+        // ---- people's emails ----
+        // Incidents store user ids. Screens want a readable name, so one extra query fetches the
+        // emails of just the people who appear in what is being returned.
+
+        private async Task AddEmailsAsync(IReadOnlyCollection<IncidentSummaryResponse> items, CancellationToken cancellationToken)
+        {
+            var emails = await LoadEmailsAsync(
+                items.SelectMany(i => new[] { i.ReportedByUserId, i.AssignedToUserId }), cancellationToken);
+
+            foreach (var item in items)
+            {
+                item.ReportedByEmail = EmailOf(emails, item.ReportedByUserId);
+                item.AssignedToEmail = EmailOf(emails, item.AssignedToUserId);
+            }
+        }
+
+        private async Task AddEmailsAsync(IncidentDetailResponse detail, CancellationToken cancellationToken)
+        {
+            var emails = await LoadEmailsAsync(new[] { detail.ReportedByUserId, detail.AssignedToUserId }, cancellationToken);
+
+            detail.ReportedByEmail = EmailOf(emails, detail.ReportedByUserId);
+            detail.AssignedToEmail = EmailOf(emails, detail.AssignedToUserId);
+        }
+
+        private async Task<Dictionary<string, string?>> LoadEmailsAsync(
+            IEnumerable<string?> userIds,
+            CancellationToken cancellationToken)
+        {
+            var ids = userIds.OfType<string>().Distinct().ToList();
+            if (ids.Count == 0)
+            {
+                return new Dictionary<string, string?>();
+            }
+
+            return await _db.Users.AsNoTracking()
+                .Where(u => ids.Contains(u.Id))
+                .ToDictionaryAsync(u => u.Id, u => u.Email, cancellationToken);
+        }
+
+        private static string? EmailOf(IReadOnlyDictionary<string, string?> emails, string? userId) =>
+            userId is not null && emails.TryGetValue(userId, out var email) ? email : null;
 
         private static IncidentChangeResult Invalid(string field, string message) =>
             new(ChangeOutcome.Invalid, Field: field, Message: message);

@@ -21,6 +21,8 @@ export interface IncidentSummary {
   categoryName: string | null;
   reportedByUserId: string;
   assignedToUserId: string | null;
+  reportedByEmail: string | null;
+  assignedToEmail: string | null;
   createdAtUtc: string; // ISO date text, e.g. "2026-11-16T18:00:00Z"
   slaState: SlaState;
   slaDueAtUtc: string | null;

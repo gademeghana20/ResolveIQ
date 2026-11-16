@@ -21,6 +21,8 @@ function incident(overrides: Partial<IncidentSummary> = {}): IncidentSummary {
     categoryName: 'Hardware',
     reportedByUserId: 'u1',
     assignedToUserId: null,
+    reportedByEmail: 'reporter@example.com',
+    assignedToEmail: null,
     createdAtUtc: '2026-11-16T18:00:00Z',
     slaState: 'NotStarted',
     slaDueAtUtc: null,
@@ -92,7 +94,7 @@ describe('IncidentList', () => {
   it('shows each incident as a row, with friendly labels', async () => {
     await load([
       incident(),
-      incident({ id: 'id-2', incidentNumber: 'INC-000002', title: 'VPN down', priority: null, status: 'InProgress', assignedToUserId: 'u2' }),
+      incident({ id: 'id-2', incidentNumber: 'INC-000002', title: 'VPN down', priority: null, status: 'InProgress', assignedToUserId: 'u2', assignedToEmail: 'dana@example.com' }),
     ]);
 
     const rows = fixture.nativeElement.querySelectorAll('tr[mat-row]');
@@ -100,6 +102,7 @@ describe('IncidentList', () => {
     expect(text()).toContain('INC-000001');
     expect(text()).toContain('Printer broken');
     expect(text()).toContain('Unassigned');
+    expect(text()).toContain('dana@example.com'); // the assignee is named, not just "Assigned"
     expect(text()).toContain('In progress');
     expect(text()).toContain('Not set'); // no priority yet
   });
