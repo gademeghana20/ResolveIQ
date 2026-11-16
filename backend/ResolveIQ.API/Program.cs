@@ -6,6 +6,8 @@ using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi;
+using ResolveIQ.API.Authentication;
+using ResolveIQ.API.ErrorHandling;
 using ResolveIQ.Application.Abstractions;
 using ResolveIQ.Infrastructure.Authentication;
 using ResolveIQ.Infrastructure.Data;
@@ -44,6 +46,12 @@ builder.Services
         // Keep claim names exactly as written in the token ("sub", "role") instead of renaming them.
         options.MapInboundClaims = false;
 
+        // After the signature and expiry pass, also check the user is still active and unchanged.
+        options.Events = new JwtBearerEvents
+        {
+            OnTokenValidated = TokenUserValidator.ValidateAsync
+        };
+
         options.TokenValidationParameters = new TokenValidationParameters
         {
             ValidateIssuer = true,
@@ -62,11 +70,15 @@ builder.Services
 builder.Services.AddScoped<IIncidentService, IncidentService>();
 builder.Services.AddScoped<ICommentService, CommentService>();
 builder.Services.AddScoped<IDashboardService, DashboardService>();
+builder.Services.AddScoped<ICategoryService, CategoryService>();
 builder.Services.AddScoped<IUserService, UserService>();
 builder.Services.AddScoped<ISlaPolicyService, SlaPolicyService>();
 
 // The clock the app reads "now" from. Tests can swap in a fake one.
 builder.Services.AddSingleton(TimeProvider.System);
+
+// Clean, consistent error responses (no stack traces leaking to clients).
+builder.Services.AddGlobalErrorHandling();
 
 // Show enums as readable text ("High") instead of numbers (3) in API responses.
 // The OpenAPI/Swagger document reads the first setting; the controllers read the second.
@@ -134,6 +146,10 @@ using (var scope = app.Services.CreateScope())
 }
 
 // Configure the HTTP request pipeline.
+
+// First, so it can catch a crash from anything that runs after it.
+app.UseGlobalErrorHandling();
+
 if (app.Environment.IsDevelopment())
 {
     app.MapOpenApi();

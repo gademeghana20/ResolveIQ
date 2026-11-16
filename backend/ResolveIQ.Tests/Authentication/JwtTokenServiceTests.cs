@@ -31,7 +31,19 @@ namespace ResolveIQ.Tests.Authentication
 
         private static string CreateToken(params string[] roles) =>
             new JwtTokenService(Options.Create(Settings))
-                .CreateToken("user-123", "jane@example.com", roles);
+                .CreateToken("user-123", "jane@example.com", roles, "stamp-abc");
+
+        [Fact]
+        public async Task CreateToken_CarriesTheSecurityStamp()
+        {
+            var token = CreateToken("Employee");
+
+            var result = await new JsonWebTokenHandler()
+                .ValidateTokenAsync(token, ValidationParameters(Settings.Key));
+
+            Assert.True(result.IsValid);
+            Assert.True(result.ClaimsIdentity.HasClaim(JwtTokenService.StampClaim, "stamp-abc"));
+        }
 
         [Fact]
         public async Task CreateToken_ProducesTokenThatValidatesWithUserIdEmailAndRoles()

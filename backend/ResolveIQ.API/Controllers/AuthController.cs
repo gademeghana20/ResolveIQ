@@ -78,7 +78,7 @@ namespace ResolveIQ.API.Controllers
 
             return new AuthResponse
             {
-                Token = _tokenService.CreateToken(user.Id, user.Email!, roles),
+                Token = _tokenService.CreateToken(user.Id, user.Email!, roles, user.SecurityStamp ?? string.Empty),
                 Email = user.Email!,
                 Roles = roles
             };

@@ -191,11 +191,17 @@ namespace ResolveIQ.Infrastructure.Services
 
             var assignee = await _db.Users.AsNoTracking()
                 .Where(u => u.Id == assigneeUserId)
-                .Select(u => new { u.Id, u.Email })
+                .Select(u => new { u.Id, u.Email, u.LockoutEnd })
                 .FirstOrDefaultAsync(cancellationToken);
             if (assignee is null)
             {
                 return Invalid("AssigneeUserId", "No user exists with that id.");
+            }
+
+            // A deactivated user cannot log in, so giving them work would leave it stuck.
+            if (assignee.LockoutEnd > _time.GetUtcNow())
+            {
+                return Invalid("AssigneeUserId", "That user is inactive and cannot be assigned incidents.");
             }
 
             var now = Now();

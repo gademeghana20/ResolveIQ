@@ -16,13 +16,17 @@ namespace ResolveIQ.Infrastructure.Authentication
             _settings = options.Value;
         }
 
-        public string CreateToken(string userId, string email, IEnumerable<string> roles)
+        /// <summary>The claim that carries the user's security stamp.</summary>
+        public const string StampClaim = "stamp";
+
+        public string CreateToken(string userId, string email, IEnumerable<string> roles, string securityStamp)
         {
             var claims = new List<Claim>
             {
                 new(JwtRegisteredClaimNames.Sub, userId),
                 new(JwtRegisteredClaimNames.Email, email),
-                new(JwtRegisteredClaimNames.Jti, Guid.NewGuid().ToString())
+                new(JwtRegisteredClaimNames.Jti, Guid.NewGuid().ToString()),
+                new(StampClaim, securityStamp)
             };
 
             foreach (var role in roles)
