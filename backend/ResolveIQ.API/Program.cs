@@ -78,6 +78,21 @@ builder.Services.AddScoped<ISlaPolicyService, SlaPolicyService>();
 // The clock the app reads "now" from. Tests can swap in a fake one.
 builder.Services.AddSingleton(TimeProvider.System);
 
+// CORS: lets the Angular app (a different origin) call this API from the browser.
+// Only the exact origins listed in settings are allowed, never "any origin".
+// In production set them with environment variables, e.g. Cors__AllowedOrigins__0=https://your-site.
+var allowedOrigins = builder.Configuration.GetSection("Cors:AllowedOrigins").Get<string[]>() ?? [];
+builder.Services.AddCors(options =>
+{
+    if (allowedOrigins.Length > 0)
+    {
+        options.AddDefaultPolicy(policy => policy
+            .WithOrigins(allowedOrigins)
+            .AllowAnyHeader()      // Authorization (the token) and Content-Type
+            .AllowAnyMethod());    // GET, POST, PUT
+    }
+});
+
 // Clean, consistent error responses (no stack traces leaking to clients).
 builder.Services.AddGlobalErrorHandling();
 
@@ -194,6 +209,10 @@ if (app.Environment.IsDevelopment())
         options.RoutePrefix = "swagger";
     });
 }
+
+// Before the HTTPS redirect: the browser's "preflight" check must be answered directly, not redirected.
+// Before authentication: even a 401 reply must carry the CORS headers so Angular can read it.
+app.UseCors();
 
 app.UseHttpsRedirection();
 
