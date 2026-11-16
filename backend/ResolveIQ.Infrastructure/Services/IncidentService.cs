@@ -420,16 +420,12 @@ namespace ResolveIQ.Infrastructure.Services
         private static long SecondsBetween(DateTime from, DateTime to) =>
             Math.Max(0, (long)(to - from).TotalSeconds);
 
-        // The visibility rule lives in one place so list, single-item reads and changes always agree.
+        // The visibility rule lives in IncidentAccess, shared with the other incident services.
         private static IQueryable<Incident> ApplyVisibility(
             IQueryable<Incident> query,
             string userId,
-            IReadOnlyCollection<string> roles)
-        {
-            return IsManagerOrAdmin(roles)
-                ? query
-                : query.Where(i => i.ReportedByUserId == userId || i.AssignedToUserId == userId);
-        }
+            IReadOnlyCollection<string> roles) =>
+            IncidentAccess.ApplyVisibility(query, userId, roles);
 
         private static IQueryable<Incident> ApplyFilters(IQueryable<Incident> incidents, IncidentQuery query, string userId)
         {
@@ -510,7 +506,7 @@ namespace ResolveIQ.Infrastructure.Services
         }
 
         private static bool IsManagerOrAdmin(IReadOnlyCollection<string> roles) =>
-            roles.Contains(RoleNames.Admin) || roles.Contains(RoleNames.Manager);
+            IncidentAccess.IsManagerOrAdmin(roles);
 
         // Loads the incident for editing (tracked by EF), but only if this user may see it.
         private Task<Incident?> FindVisibleTrackedAsync(

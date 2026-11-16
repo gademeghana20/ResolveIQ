@@ -60,6 +60,7 @@ builder.Services
     });
 
 builder.Services.AddScoped<IIncidentService, IncidentService>();
+builder.Services.AddScoped<ICommentService, CommentService>();
 builder.Services.AddScoped<IUserService, UserService>();
 builder.Services.AddScoped<ISlaPolicyService, SlaPolicyService>();
 

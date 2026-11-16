@@ -23,6 +23,8 @@ namespace ResolveIQ.Infrastructure.Data
 
         public DbSet<SlaPolicy> SlaPolicies { get; set; } = null!;
 
+        public DbSet<IncidentComment> IncidentComments { get; set; } = null!;
+
         protected override void ConfigureConventions(ModelConfigurationBuilder configurationBuilder)
         {
             base.ConfigureConventions(configurationBuilder);

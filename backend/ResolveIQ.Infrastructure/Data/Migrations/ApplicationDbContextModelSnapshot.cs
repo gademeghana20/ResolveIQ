@@ -329,6 +329,37 @@ namespace ResolveIQ.Infrastructure.Data.Migrations
                     b.ToTable("Incidents");
                 });
 
+            modelBuilder.Entity("ResolveIQ.Domain.Entities.IncidentComment", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<string>("AuthorUserId")
+                        .IsRequired()
+                        .HasMaxLength(450)
+                        .HasColumnType("nvarchar(450)");
+
+                    b.Property<DateTime>("CreatedAtUtc")
+                        .HasColumnType("datetime2");
+
+                    b.Property<Guid>("IncidentId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<string>("Text")
+                        .IsRequired()
+                        .HasMaxLength(2000)
+                        .HasColumnType("nvarchar(2000)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("AuthorUserId");
+
+                    b.HasIndex("IncidentId", "CreatedAtUtc");
+
+                    b.ToTable("IncidentComments");
+                });
+
             modelBuilder.Entity("ResolveIQ.Domain.Entities.IncidentHistory", b =>
                 {
                     b.Property<Guid>("Id")
@@ -464,6 +495,21 @@ namespace ResolveIQ.Infrastructure.Data.Migrations
                         .IsRequired();
 
                     b.Navigation("Category");
+                });
+
+            modelBuilder.Entity("ResolveIQ.Domain.Entities.IncidentComment", b =>
+                {
+                    b.HasOne("Microsoft.AspNetCore.Identity.IdentityUser", null)
+                        .WithMany()
+                        .HasForeignKey("AuthorUserId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("ResolveIQ.Domain.Entities.Incident", null)
+                        .WithMany()
+                        .HasForeignKey("IncidentId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
                 });
 
             modelBuilder.Entity("ResolveIQ.Domain.Entities.IncidentHistory", b =>
