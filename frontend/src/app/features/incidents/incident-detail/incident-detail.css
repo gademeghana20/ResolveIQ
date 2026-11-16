@@ -57,6 +57,10 @@ mat-card-content {
   font: var(--mat-sys-body-small);
 }
 
+.closed-note {
+  margin-top: 16px;
+}
+
 .comment .meta {
   margin-bottom: 4px;
 }

@@ -9,6 +9,7 @@ import { RouterLink } from '@angular/router';
 import { EMPTY, catchError, forkJoin, of, switchMap, tap } from 'rxjs';
 
 import { Badge } from '../../../shared/badge/badge';
+import { CommentForm } from '../comment-form/comment-form';
 import {
   describeChange,
   priorityLabel,
@@ -25,7 +26,7 @@ type LoadState = 'loading' | 'ready' | 'notFound' | 'failed';
 
 @Component({
   selector: 'app-incident-detail',
-  imports: [DatePipe, RouterLink, MatButtonModule, MatCardModule, MatProgressBarModule, Badge],
+  imports: [DatePipe, RouterLink, MatButtonModule, MatCardModule, MatProgressBarModule, Badge, CommentForm],
   templateUrl: './incident-detail.html',
   styleUrl: './incident-detail.css',
 })
@@ -85,5 +86,15 @@ export class IncidentDetail {
 
   protected reload(): void {
     this.reloadCount.update((n) => n + 1);
+  }
+
+  /** A comment was saved: show it straight away, without reloading the whole page. */
+  protected onCommentAdded(comment: IncidentComment): void {
+    const current = this.comments();
+    if (current) {
+      this.comments.set([...current, comment]); // the list is oldest first, so the newest goes last
+    } else {
+      this.reload(); // the list had failed to load; fetch it fresh instead of showing one lonely comment
+    }
   }
 }

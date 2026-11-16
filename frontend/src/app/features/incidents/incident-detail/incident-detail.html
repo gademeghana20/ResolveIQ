@@ -57,6 +57,12 @@
               } @else {
                 <p class="error">Comments could not be loaded.</p>
               }
+
+              @if (incident.status === 'Closed') {
+                <p class="muted closed-note">Comments are closed on a closed incident.</p>
+              } @else {
+                <app-comment-form [incidentId]="incident.id" (added)="onCommentAdded($event)" />
+              }
             </mat-card-content>
           </mat-card>
         </div>

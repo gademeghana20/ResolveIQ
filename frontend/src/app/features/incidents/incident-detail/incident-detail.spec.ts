@@ -134,6 +134,41 @@ describe('IncidentDetail', () => {
     expect(text()).toContain('dana@example.com');
   });
 
+  it('shows a comment straight away after it is posted, below the older ones', async () => {
+    answerDetail(detail());
+    answerHistory([]);
+    answerComments(comments);
+    await settle();
+
+    const box = (fixture.nativeElement as HTMLElement).querySelector('textarea')!;
+    box.value = 'Fixed it';
+    box.dispatchEvent(new Event('input'));
+    (fixture.nativeElement as HTMLElement).querySelector('form')!.dispatchEvent(new Event('submit'));
+    await settle();
+
+    http.expectOne(`${API_URL}/incidents/${ID}/comments`).flush({
+      id: 'k2',
+      text: 'Fixed it',
+      authorUserId: 'u1',
+      authorEmail: 'manager@example.com',
+      createdAtUtc: '2026-11-16T20:00:00Z',
+    });
+    await settle();
+
+    const shown = Array.from((fixture.nativeElement as HTMLElement).querySelectorAll('.comment .text')).map((e) => e.textContent);
+    expect(shown).toEqual(['Looking into it', 'Fixed it']);
+  });
+
+  it('offers no comment form on a closed incident, and explains why', async () => {
+    answerDetail(detail({ status: 'Closed' }));
+    answerHistory([]);
+    answerComments(comments);
+    await settle();
+
+    expect((fixture.nativeElement as HTMLElement).querySelector('textarea')).toBeNull();
+    expect(text()).toContain('Comments are closed on a closed incident.');
+  });
+
   it('says so when there are no comments or history yet', async () => {
     answerDetail(detail({ assignedToUserId: null, assignedToEmail: null, priority: null }));
     answerHistory([]);

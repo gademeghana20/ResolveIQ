@@ -34,6 +34,10 @@ export class IncidentService {
     return this.http.get<IncidentComment[]>(`${API_URL}/incidents/${id}/comments`);
   }
 
+  addComment(id: string, text: string): Observable<IncidentComment> {
+    return this.http.post<IncidentComment>(`${API_URL}/incidents/${id}/comments`, { text });
+  }
+
   getCategories(): Observable<Category[]> {
     return this.http.get<Category[]>(`${API_URL}/categories`);
   }
