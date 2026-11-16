@@ -1,4 +1,4 @@
-import { priorityLabel, priorityTone, slaLabel, slaTone, statusLabel, statusTone } from './incident-display';
+import { describeChange, priorityLabel, priorityTone, slaLabel, slaTone, statusLabel, statusTone } from './incident-display';
 
 describe('incident display helpers', () => {
   it('writes statuses the way people read them', () => {
@@ -31,6 +31,49 @@ describe('incident display helpers', () => {
     expect(slaLabel('AtRisk')).toBe('At risk');
     expect(slaLabel('None')).toBe('No SLA');
     expect(slaLabel('Breached')).toBe('Breached');
+  });
+
+  describe('describeChange', () => {
+    const row = (fieldChanged: string, oldValue: string | null, newValue: string | null) => ({
+      fieldChanged,
+      oldValue,
+      newValue,
+      changedBy: 'someone@example.com',
+      changedAtUtc: '2026-11-16T18:00:00Z',
+    });
+
+    it('describes a status change with friendly status names', () => {
+      expect(describeChange(row('Status', 'InProgress', 'OnHold'))).toBe('Status changed from In progress to On hold');
+    });
+
+    it('describes setting and changing a priority', () => {
+      expect(describeChange(row('Priority', null, 'High'))).toBe('Priority changed from Not set to High');
+      expect(describeChange(row('Priority', 'High', 'Critical'))).toBe('Priority changed from High to Critical');
+    });
+
+    it('distinguishes a first assignment from a reassignment', () => {
+      expect(describeChange(row('AssignedTo', null, 'a@example.com'))).toBe('Assigned to a@example.com');
+      expect(describeChange(row('AssignedTo', 'a@example.com', 'b@example.com'))).toBe(
+        'Reassigned from a@example.com to b@example.com',
+      );
+    });
+
+    it('describes the SLA clock starting and restarting', () => {
+      expect(describeChange(row('SlaClock', null, 'Started'))).toBe('SLA clock started');
+      expect(describeChange(row('SlaClock', 'AtRisk', 'Restarted'))).toBe('SLA clock restarted (it was at risk)');
+    });
+
+    it('shows the reason for putting an incident on hold', () => {
+      expect(describeChange(row('OnHoldReason', null, 'Waiting for parts'))).toBe('Put on hold: Waiting for parts');
+    });
+
+    it('does not dump a whole edited description into the timeline', () => {
+      expect(describeChange(row('Description', 'long old text', 'long new text'))).toBe('Description edited');
+    });
+
+    it('copes with a field it does not know about', () => {
+      expect(describeChange(row('Something', 'a', 'b'))).toBe('Something changed');
+    });
   });
 
   it('colours statuses', () => {

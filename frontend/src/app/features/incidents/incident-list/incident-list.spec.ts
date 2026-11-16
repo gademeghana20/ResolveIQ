@@ -3,6 +3,7 @@ import { HttpTestingController, provideHttpClientTesting, TestRequest } from '@a
 import { DebugElement } from '@angular/core';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { By } from '@angular/platform-browser';
+import { Router, provideRouter } from '@angular/router';
 import { MatPaginator } from '@angular/material/paginator';
 import { MatSort } from '@angular/material/sort';
 import { MatSelect } from '@angular/material/select';
@@ -60,7 +61,7 @@ describe('IncidentList', () => {
     localStorage.clear();
     await TestBed.configureTestingModule({
       imports: [IncidentList],
-      providers: [provideHttpClient(), provideHttpClientTesting()],
+      providers: [provideRouter([]), provideHttpClient(), provideHttpClientTesting()],
     }).compileComponents();
 
     http = TestBed.inject(HttpTestingController);
@@ -105,6 +106,15 @@ describe('IncidentList', () => {
     expect(text()).toContain('dana@example.com'); // the assignee is named, not just "Assigned"
     expect(text()).toContain('In progress');
     expect(text()).toContain('Not set'); // no priority yet
+  });
+
+  it('opens an incident when its row is clicked', async () => {
+    await load([incident({ id: 'abc' })]);
+    const navigate = vi.spyOn(TestBed.inject(Router), 'navigate').mockResolvedValue(true);
+
+    (fixture.nativeElement as HTMLElement).querySelector<HTMLElement>('tr[mat-row]')!.click();
+
+    expect(navigate).toHaveBeenCalledWith(['/incidents', 'abc']);
   });
 
   it('says so when there are no incidents at all', async () => {

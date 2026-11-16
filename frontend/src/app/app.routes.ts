@@ -19,6 +19,11 @@ export const routes: Routes = [
         loadComponent: () =>
           import('./features/incidents/incident-list/incident-list').then((m) => m.IncidentList),
       },
+      {
+        path: 'incidents/:id',
+        loadComponent: () =>
+          import('./features/incidents/incident-detail/incident-detail').then((m) => m.IncidentDetail),
+      },
       { path: '', pathMatch: 'full', redirectTo: 'incidents' },
     ],
   },

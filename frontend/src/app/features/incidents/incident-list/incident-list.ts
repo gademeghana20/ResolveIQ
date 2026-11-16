@@ -11,6 +11,7 @@ import { MatProgressBarModule } from '@angular/material/progress-bar';
 import { MatSelectModule } from '@angular/material/select';
 import { MatSortModule, Sort } from '@angular/material/sort';
 import { MatTableModule } from '@angular/material/table';
+import { Router, RouterLink } from '@angular/router';
 import { catchError, debounceTime, distinctUntilChanged, of, switchMap, tap } from 'rxjs';
 
 import { Badge } from '../../../shared/badge/badge';
@@ -57,6 +58,7 @@ const SORT_FIELDS: Record<string, IncidentSortField> = {
     MatButtonModule,
     MatButtonToggleModule,
     MatProgressBarModule,
+    RouterLink,
     Badge,
   ],
   templateUrl: './incident-list.html',
@@ -64,6 +66,7 @@ const SORT_FIELDS: Record<string, IncidentSortField> = {
 })
 export class IncidentList {
   private readonly incidents = inject(IncidentService);
+  private readonly router = inject(Router);
 
   // What the person has asked for. Changing this signal is the only way to load new data.
   protected readonly query = signal<IncidentQuery>({ ...DEFAULT_QUERY });
@@ -137,6 +140,10 @@ export class IncidentList {
   protected get scope(): Scope {
     const q = this.query();
     return q.assignedToMe ? 'assigned' : q.reportedByMe ? 'reported' : 'all';
+  }
+
+  protected open(incident: IncidentSummary): void {
+    this.router.navigate(['/incidents', incident.id]);
   }
 
   protected onStatus(value: IncidentStatus | ''): void {

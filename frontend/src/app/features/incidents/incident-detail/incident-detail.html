@@ -1,0 +1,120 @@
+<a mat-button routerLink="/incidents" class="back">← All incidents</a>
+
+@switch (state()) {
+  @case ('loading') {
+    <mat-progress-bar mode="indeterminate" aria-label="Loading incident" />
+  }
+
+  @case ('notFound') {
+    <p class="message" role="alert">
+      This incident was not found, or you do not have access to it.
+    </p>
+  }
+
+  @case ('failed') {
+    <p class="message error" role="alert">
+      The incident could not be loaded.
+      <button mat-button type="button" (click)="reload()">Try again</button>
+    </p>
+  }
+
+  @case ('ready') {
+    @if (detail(); as incident) {
+      <header class="header">
+        <span class="number">{{ incident.incidentNumber }}</span>
+        <h1>{{ incident.title }}</h1>
+        <div class="badges">
+          <app-badge [label]="statusLabel(incident.status)" [tone]="statusTone(incident.status)" />
+          <app-badge [label]="priorityLabel(incident.priority)" [tone]="priorityTone(incident.priority)" />
+          <app-badge [label]="'SLA: ' + slaLabel(incident.slaState)" [tone]="slaTone(incident.slaState)" />
+        </div>
+      </header>
+
+      <div class="layout">
+        <div class="main">
+          <mat-card>
+            <mat-card-header><mat-card-title>Description</mat-card-title></mat-card-header>
+            <mat-card-content>
+              <p class="text">{{ incident.description }}</p>
+            </mat-card-content>
+          </mat-card>
+
+          <mat-card>
+            <mat-card-header><mat-card-title>Comments</mat-card-title></mat-card-header>
+            <mat-card-content>
+              @if (comments(); as list) {
+                @for (comment of list; track comment.id) {
+                  <article class="comment">
+                    <div class="meta">
+                      <strong>{{ comment.authorEmail ?? 'Unknown user' }}</strong>
+                      · {{ comment.createdAtUtc | date: 'medium' }}
+                    </div>
+                    <p class="text">{{ comment.text }}</p>
+                  </article>
+                } @empty {
+                  <p class="muted">No comments yet.</p>
+                }
+              } @else {
+                <p class="error">Comments could not be loaded.</p>
+              }
+            </mat-card-content>
+          </mat-card>
+        </div>
+
+        <aside class="side">
+          <mat-card>
+            <mat-card-header><mat-card-title>Details</mat-card-title></mat-card-header>
+            <mat-card-content>
+              <dl class="facts">
+                <dt>Reported by</dt>
+                <dd>{{ incident.reportedByEmail ?? '—' }}</dd>
+
+                <dt>Assigned to</dt>
+                <dd>{{ incident.assignedToEmail ?? 'Unassigned' }}</dd>
+
+                <dt>Category</dt>
+                <dd>{{ incident.categoryName ?? '—' }}</dd>
+
+                <dt>Created</dt>
+                <dd>{{ incident.createdAtUtc | date: 'medium' }}</dd>
+
+                <dt>Last updated</dt>
+                <dd>{{ incident.updatedAtUtc ? (incident.updatedAtUtc | date: 'medium') : '—' }}</dd>
+
+                @if (incident.resolvedAtUtc) {
+                  <dt>Resolved</dt>
+                  <dd>{{ incident.resolvedAtUtc | date: 'medium' }}</dd>
+                }
+
+                <dt>SLA due</dt>
+                <dd>{{ incident.slaDueAtUtc ? (incident.slaDueAtUtc | date: 'medium') : '—' }}</dd>
+              </dl>
+            </mat-card-content>
+          </mat-card>
+
+          <mat-card>
+            <mat-card-header><mat-card-title>History</mat-card-title></mat-card-header>
+            <mat-card-content>
+              @if (history(); as entries) {
+                <ol class="timeline">
+                  @for (entry of entries; track $index) {
+                    <li>
+                      <div>{{ describeChange(entry) }}</div>
+                      <div class="meta">
+                        {{ entry.changedBy ?? 'Unknown user' }} · {{ entry.changedAtUtc | date: 'medium' }}
+                      </div>
+                    </li>
+                  } @empty {
+                    <li class="muted">No changes yet.</li>
+                  }
+                </ol>
+              } @else {
+                <p class="error">History could not be loaded.</p>
+              }
+            </mat-card-content>
+          </mat-card>
+        </aside>
+      </div>
+    }
+  }
+}

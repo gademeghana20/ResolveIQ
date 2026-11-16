@@ -3,7 +3,15 @@ import { Injectable, inject } from '@angular/core';
 import { Observable } from 'rxjs';
 
 import { API_URL } from '../../core/api-config';
-import { Category, IncidentQuery, IncidentSummary, PagedResult } from './incident.models';
+import {
+  Category,
+  HistoryEntry,
+  IncidentComment,
+  IncidentDetail,
+  IncidentQuery,
+  IncidentSummary,
+  PagedResult,
+} from './incident.models';
 
 /** Talks to the incident endpoints of the API. */
 @Injectable({ providedIn: 'root' })
@@ -12,6 +20,18 @@ export class IncidentService {
 
   getIncidents(query: IncidentQuery): Observable<PagedResult<IncidentSummary>> {
     return this.http.get<PagedResult<IncidentSummary>>(`${API_URL}/incidents`, { params: toParams(query) });
+  }
+
+  getIncident(id: string): Observable<IncidentDetail> {
+    return this.http.get<IncidentDetail>(`${API_URL}/incidents/${id}`);
+  }
+
+  getHistory(id: string): Observable<HistoryEntry[]> {
+    return this.http.get<HistoryEntry[]>(`${API_URL}/incidents/${id}/history`);
+  }
+
+  getComments(id: string): Observable<IncidentComment[]> {
+    return this.http.get<IncidentComment[]>(`${API_URL}/incidents/${id}/comments`);
   }
 
   getCategories(): Observable<Category[]> {

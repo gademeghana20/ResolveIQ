@@ -28,6 +28,45 @@ export interface IncidentSummary {
   slaDueAtUtc: string | null;
 }
 
+/** Everything about one incident (the detail page). */
+export interface IncidentDetail {
+  id: string;
+  incidentNumber: string;
+  title: string;
+  description: string;
+  priority: IncidentPriority | null;
+  status: IncidentStatus;
+  categoryId: string | null;
+  categoryName: string | null;
+  reportedByUserId: string;
+  assignedToUserId: string | null;
+  reportedByEmail: string | null;
+  assignedToEmail: string | null;
+  createdAtUtc: string;
+  updatedAtUtc: string | null;
+  resolvedAtUtc: string | null;
+  slaState: SlaState;
+  slaStartedAtUtc: string | null;
+  slaDueAtUtc: string | null;
+}
+
+/** One line of an incident's audit trail: who changed what, and when. */
+export interface HistoryEntry {
+  fieldChanged: string;
+  oldValue: string | null;
+  newValue: string | null;
+  changedBy: string | null;
+  changedAtUtc: string;
+}
+
+export interface IncidentComment {
+  id: string;
+  text: string;
+  authorUserId: string;
+  authorEmail: string | null;
+  createdAtUtc: string;
+}
+
 /** One page of results, with what we need to draw the paginator. */
 export interface PagedResult<T> {
   items: T[];
