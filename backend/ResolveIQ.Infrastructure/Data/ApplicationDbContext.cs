@@ -21,6 +21,8 @@ namespace ResolveIQ.Infrastructure.Data
 
         public DbSet<IncidentHistory> IncidentHistory { get; set; } = null!;
 
+        public DbSet<SlaPolicy> SlaPolicies { get; set; } = null!;
+
         protected override void ConfigureConventions(ModelConfigurationBuilder configurationBuilder)
         {
             base.ConfigureConventions(configurationBuilder);

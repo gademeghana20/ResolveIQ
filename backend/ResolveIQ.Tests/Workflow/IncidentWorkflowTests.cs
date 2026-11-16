@@ -154,6 +154,17 @@ namespace ResolveIQ.Tests.Workflow
             Assert.Equal(StatusChangeCheck.TransitionNotAllowed, result);
         }
 
+        [Theory]
+        [InlineData(IncidentStatus.Open, true)]
+        [InlineData(IncidentStatus.InProgress, true)]
+        [InlineData(IncidentStatus.OnHold, true)]
+        [InlineData(IncidentStatus.Resolved, false)]
+        [InlineData(IncidentStatus.Closed, false)]
+        public void PriorityCanOnlyChangeWhileTheIncidentIsStillBeingWorked(IncidentStatus status, bool expected)
+        {
+            Assert.Equal(expected, IncidentWorkflow.CanChangePriority(status));
+        }
+
         [Fact]
         public void OnlyClosedIsFinal()
         {

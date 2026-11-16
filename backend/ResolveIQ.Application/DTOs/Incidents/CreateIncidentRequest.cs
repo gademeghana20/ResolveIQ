@@ -1,8 +1,11 @@
 using System.ComponentModel.DataAnnotations;
-using ResolveIQ.Domain.Enums;
 
 namespace ResolveIQ.Application.DTOs.Incidents
 {
+    /// <summary>
+    /// What a reporter sends. There is deliberately no priority: a Manager or Admin sets it
+    /// when assigning (triaging) the incident.
+    /// </summary>
     public class CreateIncidentRequest
     {
         [Required]
@@ -12,9 +15,6 @@ namespace ResolveIQ.Application.DTOs.Incidents
         [Required]
         [StringLength(4000)]
         public string Description { get; set; } = string.Empty;
-
-        [EnumDataType(typeof(IncidentPriority))]
-        public IncidentPriority Priority { get; set; }
 
         public Guid? CategoryId { get; set; }
     }

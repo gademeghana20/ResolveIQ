@@ -61,6 +61,10 @@ builder.Services
 
 builder.Services.AddScoped<IIncidentService, IncidentService>();
 builder.Services.AddScoped<IUserService, UserService>();
+builder.Services.AddScoped<ISlaPolicyService, SlaPolicyService>();
+
+// The clock the app reads "now" from. Tests can swap in a fake one.
+builder.Services.AddSingleton(TimeProvider.System);
 
 // Show enums as readable text ("High") instead of numbers (3) in API responses.
 // The OpenAPI/Swagger document reads the first setting; the controllers read the second.
@@ -109,6 +113,7 @@ using (var scope = app.Services.CreateScope())
     // Reference data every environment needs (incident categories).
     var db = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
     await ReferenceDataSeeder.SeedCategoriesAsync(db);
+    await ReferenceDataSeeder.SeedSlaPoliciesAsync(db);
 
     // Demo users exist only in Development, with a password from user secrets.
     if (app.Environment.IsDevelopment())

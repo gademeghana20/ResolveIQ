@@ -33,21 +33,25 @@ namespace ResolveIQ.Application.Abstractions
             CancellationToken cancellationToken = default);
 
         /// <summary>
-        /// Assigns an incident to a user and records the change in the incident's history.
-        /// The caller must already have checked that the acting user is allowed to assign.
+        /// Assigns (triages) an incident: picks who owns it and, if it has none yet, sets its priority.
+        /// The first assignment starts the SLA clock. The caller must already have checked that the
+        /// acting user is allowed to assign.
         /// </summary>
         Task<IncidentChangeResult> AssignIncidentAsync(
             Guid id,
             string assigneeUserId,
+            IncidentPriority? priority,
             string actingUserId,
             CancellationToken cancellationToken = default);
 
         /// <summary>
         /// Moves an incident to a new status, if the workflow rules allow this user to do so.
+        /// Putting an incident OnHold needs a reason and pauses the SLA clock.
         /// </summary>
         Task<IncidentChangeResult> ChangeStatusAsync(
             Guid id,
             IncidentStatus newStatus,
+            string? reason,
             string userId,
             IReadOnlyCollection<string> roles,
             CancellationToken cancellationToken = default);

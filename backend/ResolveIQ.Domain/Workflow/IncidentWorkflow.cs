@@ -73,6 +73,14 @@ namespace ResolveIQ.Domain.Workflow
             return StatusChangeCheck.NotPermitted;
         }
 
+        /// <summary>
+        /// Priority can only change while the incident is still being worked. Once it is resolved
+        /// or closed, its SLA result is fixed, so the priority cannot be used to rewrite it.
+        /// (A reopened incident is unresolved again, so its priority can change.)
+        /// </summary>
+        public static bool CanChangePriority(IncidentStatus status) =>
+            status is not (IncidentStatus.Resolved or IncidentStatus.Closed);
+
         /// <summary>A closed incident is final: no status, priority or detail changes.</summary>
         public static bool IsClosed(IncidentStatus status) => status == IncidentStatus.Closed;
     }

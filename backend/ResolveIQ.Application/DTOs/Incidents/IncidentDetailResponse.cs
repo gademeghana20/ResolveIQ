@@ -1,4 +1,5 @@
 using ResolveIQ.Domain.Enums;
+using ResolveIQ.Domain.Sla;
 
 namespace ResolveIQ.Application.DTOs.Incidents
 {
@@ -12,7 +13,7 @@ namespace ResolveIQ.Application.DTOs.Incidents
 
         public string Description { get; set; } = string.Empty;
 
-        public IncidentPriority Priority { get; set; }
+        public IncidentPriority? Priority { get; set; }
 
         public IncidentStatus Status { get; set; }
 
@@ -29,5 +30,12 @@ namespace ResolveIQ.Application.DTOs.Incidents
         public DateTime? UpdatedAtUtc { get; set; }
 
         public DateTime? ResolvedAtUtc { get; set; }
+
+        public SlaState SlaState { get; set; }
+
+        public DateTime? SlaStartedAtUtc { get; set; }
+
+        /// <summary>The SLA deadline. Empty while not started, paused, or without a target.</summary>
+        public DateTime? SlaDueAtUtc { get; set; }
     }
 }

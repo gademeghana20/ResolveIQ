@@ -115,7 +115,7 @@ namespace ResolveIQ.API.Controllers
             }
 
             return ToActionResult(await _incidentService.AssignIncidentAsync(
-                id, request.AssigneeUserId, userId, cancellationToken));
+                id, request.AssigneeUserId, request.Priority, userId, cancellationToken));
         }
 
         [HttpPut("{id:guid}/status")]
@@ -136,7 +136,7 @@ namespace ResolveIQ.API.Controllers
             }
 
             return ToActionResult(await _incidentService.ChangeStatusAsync(
-                id, request.Status, userId, roles, cancellationToken));
+                id, request.Status, request.Reason, userId, roles, cancellationToken));
         }
 
         [HttpPut("{id:guid}/priority")]

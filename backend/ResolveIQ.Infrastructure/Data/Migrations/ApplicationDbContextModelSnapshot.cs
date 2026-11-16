@@ -274,7 +274,7 @@ namespace ResolveIQ.Infrastructure.Data.Migrations
                         .HasMaxLength(20)
                         .HasColumnType("nvarchar(20)");
 
-                    b.Property<int>("Priority")
+                    b.Property<int?>("Priority")
                         .HasColumnType("int");
 
                     b.Property<string>("ReportedByUserId")
@@ -290,6 +290,15 @@ namespace ResolveIQ.Infrastructure.Data.Migrations
                         .IsRequired()
                         .ValueGeneratedOnAddOrUpdate()
                         .HasColumnType("rowversion");
+
+                    b.Property<DateTime?>("SlaPausedAtUtc")
+                        .HasColumnType("datetime2");
+
+                    b.Property<long>("SlaPausedSeconds")
+                        .HasColumnType("bigint");
+
+                    b.Property<DateTime?>("SlaStartedAtUtc")
+                        .HasColumnType("datetime2");
 
                     b.Property<int>("Status")
                         .HasColumnType("int");
@@ -357,6 +366,32 @@ namespace ResolveIQ.Infrastructure.Data.Migrations
                     b.HasIndex("IncidentId", "ChangedAtUtc");
 
                     b.ToTable("IncidentHistory");
+                });
+
+            modelBuilder.Entity("ResolveIQ.Domain.Entities.SlaPolicy", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<bool>("IsActive")
+                        .HasColumnType("bit");
+
+                    b.Property<int>("Priority")
+                        .HasColumnType("int");
+
+                    b.Property<int>("ResolutionTargetHours")
+                        .HasColumnType("int");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("Priority")
+                        .IsUnique();
+
+                    b.ToTable("SlaPolicies", t =>
+                        {
+                            t.HasCheckConstraint("CK_SlaPolicies_ResolutionTargetHours", "[ResolutionTargetHours] BETWEEN 1 AND 720");
+                        });
                 });
 
             modelBuilder.Entity("Microsoft.AspNetCore.Identity.IdentityRoleClaim<string>", b =>
