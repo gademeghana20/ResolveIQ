@@ -2,6 +2,7 @@ using System.Security.Claims;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using ResolveIQ.Application.Abstractions;
+using ResolveIQ.Application.DTOs.Common;
 using ResolveIQ.Application.DTOs.Incidents;
 using ResolveIQ.Domain.Constants;
 
@@ -21,8 +22,10 @@ namespace ResolveIQ.API.Controllers
 
         [HttpGet]
         [ProducesResponseType(StatusCodes.Status200OK)]
+        [ProducesResponseType(StatusCodes.Status400BadRequest)]
         [ProducesResponseType(StatusCodes.Status401Unauthorized)]
-        public async Task<ActionResult<IReadOnlyList<IncidentSummaryResponse>>> GetIncidents(
+        public async Task<ActionResult<PagedResult<IncidentSummaryResponse>>> GetIncidents(
+            [FromQuery] IncidentQuery query,
             CancellationToken cancellationToken)
         {
             if (!TryGetCurrentUser(out var userId, out var roles))
@@ -30,7 +33,7 @@ namespace ResolveIQ.API.Controllers
                 return Unauthorized();
             }
 
-            return Ok(await _incidentService.GetIncidentsAsync(userId, roles, cancellationToken));
+            return Ok(await _incidentService.GetIncidentsAsync(query, userId, roles, cancellationToken));
         }
 
         [HttpGet("{id:guid}")]

@@ -1,5 +1,6 @@
 using Microsoft.EntityFrameworkCore;
 using ResolveIQ.Application.Abstractions;
+using ResolveIQ.Application.DTOs.Common;
 using ResolveIQ.Application.DTOs.Incidents;
 using ResolveIQ.Domain.Constants;
 using ResolveIQ.Domain.Entities;
@@ -30,20 +31,56 @@ namespace ResolveIQ.Infrastructure.Services
 
         // ---- reading ----
 
-        public async Task<IReadOnlyList<IncidentSummaryResponse>> GetIncidentsAsync(
+        public async Task<PagedResult<IncidentSummaryResponse>> GetIncidentsAsync(
+            IncidentQuery query,
             string userId,
             IReadOnlyCollection<string> roles,
             CancellationToken cancellationToken = default)
         {
-            var incidents = await ApplyVisibility(
-                    _db.Incidents.AsNoTracking().Include(i => i.Category), userId, roles)
-                .OrderByDescending(i => i.CreatedAtUtc)
-                .ToListAsync(cancellationToken);
+            // 1. Only what this user may see. Filters can narrow this, never widen it.
+            var incidents = ApplyVisibility(_db.Incidents.AsNoTracking(), userId, roles);
+
+            // 2. The user's filters, all done by SQL Server.
+            incidents = ApplyFilters(incidents, query, userId);
+            var sorted = ApplySorting(incidents, query.SortBy, query.SortDirection);
 
             var targets = await LoadTargetHoursAsync(cancellationToken);
             var now = Now();
 
-            return incidents.Select(i => ToSummary(i, targets, now)).ToList();
+            // The SLA state is worked out in code, not stored, so SQL cannot filter on it.
+            // When it is requested, load the matches so far, filter them here, then page them here.
+            if (query.SlaState is SlaState wantedState)
+            {
+                var matches = (await sorted.Include(i => i.Category).ToListAsync(cancellationToken))
+                    .Select(i => ToSummary(i, targets, now))
+                    .Where(s => s.SlaState == wantedState)
+                    .ToList();
+
+                return new PagedResult<IncidentSummaryResponse>
+                {
+                    Items = matches.Skip((query.Page - 1) * query.PageSize).Take(query.PageSize).ToList(),
+                    Page = query.Page,
+                    PageSize = query.PageSize,
+                    TotalCount = matches.Count
+                };
+            }
+
+            // 3. The normal path: count, then fetch only the requested page.
+            var totalCount = await sorted.CountAsync(cancellationToken);
+
+            var page = await sorted
+                .Include(i => i.Category)
+                .Skip((query.Page - 1) * query.PageSize)
+                .Take(query.PageSize)
+                .ToListAsync(cancellationToken);
+
+            return new PagedResult<IncidentSummaryResponse>
+            {
+                Items = page.Select(i => ToSummary(i, targets, now)).ToList(),
+                Page = query.Page,
+                PageSize = query.PageSize,
+                TotalCount = totalCount
+            };
         }
 
         public async Task<IncidentDetailResponse?> GetIncidentByIdAsync(
@@ -392,6 +429,84 @@ namespace ResolveIQ.Infrastructure.Services
             return IsManagerOrAdmin(roles)
                 ? query
                 : query.Where(i => i.ReportedByUserId == userId || i.AssignedToUserId == userId);
+        }
+
+        private static IQueryable<Incident> ApplyFilters(IQueryable<Incident> incidents, IncidentQuery query, string userId)
+        {
+            if (!string.IsNullOrWhiteSpace(query.Search))
+            {
+                var text = query.Search.Trim();
+                incidents = incidents.Where(i =>
+                    i.IncidentNumber.Contains(text) || i.Title.Contains(text) || i.Description.Contains(text));
+            }
+
+            if (query.Status is IncidentStatus status)
+            {
+                incidents = incidents.Where(i => i.Status == status);
+            }
+
+            if (query.Priority is IncidentPriority priority)
+            {
+                incidents = incidents.Where(i => i.Priority == priority);
+            }
+
+            if (query.CategoryId is Guid categoryId)
+            {
+                incidents = incidents.Where(i => i.CategoryId == categoryId);
+            }
+
+            if (!string.IsNullOrWhiteSpace(query.AssignedToUserId))
+            {
+                var assigneeId = query.AssignedToUserId.Trim();
+                incidents = incidents.Where(i => i.AssignedToUserId == assigneeId);
+            }
+
+            if (query.Unassigned is true)
+            {
+                incidents = incidents.Where(i => i.AssignedToUserId == null);
+            }
+
+            if (query.AssignedToMe)
+            {
+                incidents = incidents.Where(i => i.AssignedToUserId == userId);
+            }
+
+            if (query.ReportedByMe)
+            {
+                incidents = incidents.Where(i => i.ReportedByUserId == userId);
+            }
+
+            return incidents;
+        }
+
+        private static IQueryable<Incident> ApplySorting(
+            IQueryable<Incident> incidents,
+            IncidentSortField field,
+            SortDirection direction)
+        {
+            var descending = direction == SortDirection.Desc;
+
+            IOrderedQueryable<Incident> sorted = field switch
+            {
+                IncidentSortField.Priority => descending
+                    ? incidents.OrderByDescending(i => i.Priority)
+                    : incidents.OrderBy(i => i.Priority),
+                IncidentSortField.Status => descending
+                    ? incidents.OrderByDescending(i => i.Status)
+                    : incidents.OrderBy(i => i.Status),
+                IncidentSortField.IncidentNumber => descending
+                    ? incidents.OrderByDescending(i => i.IncidentNumber)
+                    : incidents.OrderBy(i => i.IncidentNumber),
+                IncidentSortField.Title => descending
+                    ? incidents.OrderByDescending(i => i.Title)
+                    : incidents.OrderBy(i => i.Title),
+                _ => descending
+                    ? incidents.OrderByDescending(i => i.CreatedAtUtc)
+                    : incidents.OrderBy(i => i.CreatedAtUtc)
+            };
+
+            // A tie-breaker keeps the order stable, so an incident never appears on two pages.
+            return sorted.ThenBy(i => i.Id);
         }
 
         private static bool IsManagerOrAdmin(IReadOnlyCollection<string> roles) =>

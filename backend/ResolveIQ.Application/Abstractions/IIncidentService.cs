@@ -1,3 +1,4 @@
+using ResolveIQ.Application.DTOs.Common;
 using ResolveIQ.Application.DTOs.Incidents;
 using ResolveIQ.Domain.Enums;
 
@@ -6,10 +7,12 @@ namespace ResolveIQ.Application.Abstractions
     public interface IIncidentService
     {
         /// <summary>
-        /// Lists the incidents the given user is allowed to see.
-        /// Admins and Managers see all; others see only incidents they reported or are assigned to.
+        /// Lists one page of the incidents the given user is allowed to see, after applying the
+        /// query's search, filters and sorting. Admins and Managers can see all incidents; others
+        /// see only incidents they reported or are assigned to, and filters work inside that.
         /// </summary>
-        Task<IReadOnlyList<IncidentSummaryResponse>> GetIncidentsAsync(
+        Task<PagedResult<IncidentSummaryResponse>> GetIncidentsAsync(
+            IncidentQuery query,
             string userId,
             IReadOnlyCollection<string> roles,
             CancellationToken cancellationToken = default);
