@@ -7,6 +7,9 @@ namespace ResolveIQ.Domain.Entities
     {
         public Guid Id { get; set; } = Guid.NewGuid();
 
+        /// <summary>Counts up in the order comments are saved (filled in by the database), to break ties in time.</summary>
+        public long Sequence { get; set; }
+
         public Guid IncidentId { get; set; }
 
         public string AuthorUserId { get; set; } = string.Empty;

@@ -112,6 +112,7 @@ namespace ResolveIQ.Infrastructure.Services
             return await _db.IncidentHistory.AsNoTracking()
                 .Where(h => h.IncidentId == id)
                 .OrderBy(h => h.ChangedAtUtc)
+                .ThenBy(h => h.Sequence)
                 .Select(h => new IncidentHistoryResponse
                 {
                     FieldChanged = h.FieldChanged,
@@ -507,8 +508,12 @@ namespace ResolveIQ.Infrastructure.Services
                     : incidents.OrderBy(i => i.CreatedAtUtc)
             };
 
-            // A tie-breaker keeps the order stable, so an incident never appears on two pages.
-            return sorted.ThenBy(i => i.Id);
+            // Ties are broken by the incident number, which is unique and counts up in creation order.
+            // That keeps the order stable (an incident never appears on two pages) and "newest first"
+            // truly newest first, even for incidents created at the same instant.
+            return descending
+                ? sorted.ThenByDescending(i => i.IncidentNumber)
+                : sorted.ThenBy(i => i.IncidentNumber);
         }
 
         private static bool IsManagerOrAdmin(IReadOnlyCollection<string> roles) =>

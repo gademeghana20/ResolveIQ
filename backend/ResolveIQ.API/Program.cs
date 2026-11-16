@@ -9,6 +9,7 @@ using Microsoft.OpenApi;
 using ResolveIQ.API.Authentication;
 using ResolveIQ.API.ErrorHandling;
 using ResolveIQ.Application.Abstractions;
+using ResolveIQ.Domain.Constants;
 using ResolveIQ.Infrastructure.Authentication;
 using ResolveIQ.Infrastructure.Data;
 using ResolveIQ.Infrastructure.Services;
@@ -129,6 +130,38 @@ using (var scope = app.Services.CreateScope())
     await ReferenceDataSeeder.SeedCategoriesAsync(db);
     await ReferenceDataSeeder.SeedSlaPoliciesAsync(db);
 
+    // The first Admin comes from settings (environment variables in production, never from code).
+    // It is only created when no Admin exists yet.
+    var adminEmail = app.Configuration["Seed:AdminEmail"];
+    var adminPassword = app.Configuration["Seed:AdminPassword"];
+    var bootstrapUserManager = scope.ServiceProvider.GetRequiredService<UserManager<IdentityUser>>();
+
+    if (!string.IsNullOrWhiteSpace(adminEmail) && !string.IsNullOrWhiteSpace(adminPassword))
+    {
+        var outcome = await IdentitySeeder.EnsureFirstAdminAsync(bootstrapUserManager, adminEmail, adminPassword);
+
+        if (outcome == BootstrapAdminResult.Created)
+        {
+            app.Logger.LogInformation("Created the first Admin account ({Email}).", adminEmail);
+        }
+        else if (outcome == BootstrapAdminResult.EmailAlreadyRegistered)
+        {
+            app.Logger.LogWarning(
+                "Seed:AdminEmail is already registered as a normal user and no Admin exists. " +
+                "It was NOT promoted. Choose another email, or promote it from the database.");
+        }
+    }
+    else if (!string.IsNullOrWhiteSpace(adminEmail) || !string.IsNullOrWhiteSpace(adminPassword))
+    {
+        app.Logger.LogWarning("Set both Seed:AdminEmail and Seed:AdminPassword to create the first Admin.");
+    }
+    else if ((await bootstrapUserManager.GetUsersInRoleAsync(RoleNames.Admin)).Count == 0
+             && !app.Environment.IsDevelopment())
+    {
+        app.Logger.LogWarning(
+            "There is no Admin account. Set Seed:AdminEmail and Seed:AdminPassword to create the first one.");
+    }
+
     // Demo users exist only in Development, with a password from user secrets.
     if (app.Environment.IsDevelopment())
     {
@@ -171,3 +204,6 @@ app.UseAuthorization();
 app.MapControllers();
 
 app.Run();
+
+// Lets the automated tests start the real API in memory.
+public partial class Program { }

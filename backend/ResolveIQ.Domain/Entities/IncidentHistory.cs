@@ -7,6 +7,12 @@ namespace ResolveIQ.Domain.Entities
     {
         public Guid Id { get; set; } = Guid.NewGuid();
 
+        /// <summary>
+        /// Counts up in the order rows are saved (filled in by the database). Several changes can be saved
+        /// at the same instant, so the timestamp alone cannot say which happened first; this can.
+        /// </summary>
+        public long Sequence { get; set; }
+
         public Guid IncidentId { get; set; }
 
         public string ChangedByUserId { get; set; } = string.Empty;

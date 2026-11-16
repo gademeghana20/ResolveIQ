@@ -9,6 +9,11 @@ namespace ResolveIQ.Infrastructure.Data.Configurations
     {
         public void Configure(EntityTypeBuilder<IncidentHistory> builder)
         {
+            // The database hands out 1, 2, 3... as rows are saved.
+            builder.Property(h => h.Sequence)
+                .ValueGeneratedOnAdd()
+                .UseIdentityColumn();
+
             builder.Property(h => h.ChangedByUserId)
                 .IsRequired()
                 .HasMaxLength(450);

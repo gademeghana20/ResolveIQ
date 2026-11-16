@@ -35,7 +35,7 @@ namespace ResolveIQ.Infrastructure.Services
             return await _db.IncidentComments.AsNoTracking()
                 .Where(c => c.IncidentId == incidentId)
                 .OrderBy(c => c.CreatedAtUtc)
-                .ThenBy(c => c.Id)
+                .ThenBy(c => c.Sequence)
                 .Select(c => new CommentResponse
                 {
                     Id = c.Id,

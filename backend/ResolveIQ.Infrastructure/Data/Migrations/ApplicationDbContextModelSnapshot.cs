@@ -346,6 +346,12 @@ namespace ResolveIQ.Infrastructure.Data.Migrations
                     b.Property<Guid>("IncidentId")
                         .HasColumnType("uniqueidentifier");
 
+                    b.Property<long>("Sequence")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("bigint");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<long>("Sequence"));
+
                     b.Property<string>("Text")
                         .IsRequired()
                         .HasMaxLength(2000)
@@ -389,6 +395,12 @@ namespace ResolveIQ.Infrastructure.Data.Migrations
                     b.Property<string>("OldValue")
                         .HasMaxLength(500)
                         .HasColumnType("nvarchar(500)");
+
+                    b.Property<long>("Sequence")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("bigint");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<long>("Sequence"));
 
                     b.HasKey("Id");
 
