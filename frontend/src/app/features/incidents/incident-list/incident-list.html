@@ -1,0 +1,166 @@
+<h1>Incidents</h1>
+
+<section class="filters" aria-label="Search and filters">
+  <mat-form-field appearance="outline" class="search">
+    <mat-label>Search</mat-label>
+    <input matInput type="search" [formControl]="searchControl" placeholder="Number, title or description" />
+  </mat-form-field>
+
+  <mat-form-field appearance="outline">
+    <mat-label>Status</mat-label>
+    <mat-select [value]="query().status ?? ''" (selectionChange)="onStatus($event.value)">
+      <mat-option value="">All</mat-option>
+      @for (status of statuses; track status) {
+        <mat-option [value]="status">{{ statusLabel(status) }}</mat-option>
+      }
+    </mat-select>
+  </mat-form-field>
+
+  <mat-form-field appearance="outline">
+    <mat-label>Priority</mat-label>
+    <mat-select [value]="query().priority ?? ''" (selectionChange)="onPriority($event.value)">
+      <mat-option value="">All</mat-option>
+      @for (priority of priorities; track priority) {
+        <mat-option [value]="priority">{{ priority }}</mat-option>
+      }
+    </mat-select>
+  </mat-form-field>
+
+  <mat-form-field appearance="outline">
+    <mat-label>Category</mat-label>
+    <mat-select [value]="query().categoryId ?? ''" (selectionChange)="onCategory($event.value)">
+      <mat-option value="">All</mat-option>
+      @for (category of categories(); track category.id) {
+        <mat-option [value]="category.id">{{ category.name }}</mat-option>
+      }
+    </mat-select>
+  </mat-form-field>
+
+  <mat-form-field appearance="outline">
+    <mat-label>SLA</mat-label>
+    <mat-select [value]="query().slaState ?? ''" (selectionChange)="onSla($event.value)">
+      <mat-option value="">All</mat-option>
+      @for (state of slaStates; track state) {
+        <mat-option [value]="state">{{ slaLabel(state) }}</mat-option>
+      }
+    </mat-select>
+  </mat-form-field>
+</section>
+
+<div class="scope-row">
+  <mat-button-toggle-group
+    aria-label="Show incidents"
+    [value]="scope"
+    (change)="onScope($event.value)"
+  >
+    <mat-button-toggle value="all">All</mat-button-toggle>
+    <mat-button-toggle value="assigned">Assigned to me</mat-button-toggle>
+    <mat-button-toggle value="reported">Reported by me</mat-button-toggle>
+  </mat-button-toggle-group>
+
+  @if (hasFilters) {
+    <button mat-button type="button" (click)="clearFilters()">Clear filters</button>
+  }
+</div>
+
+@if (loading()) {
+  <mat-progress-bar mode="indeterminate" aria-label="Loading incidents" />
+}
+
+@if (loadFailed()) {
+  <p class="message error" role="alert">
+    The incidents could not be loaded.
+    <button mat-button type="button" (click)="retry()">Try again</button>
+  </p>
+}
+
+<div class="table-wrap">
+  <table
+    mat-table
+    matSort
+    aria-label="Incidents"
+    [dataSource]="result()?.items ?? []"
+    [matSortActive]="sortColumn()"
+    [matSortDirection]="query().sortDirection === 'Asc' ? 'asc' : 'desc'"
+    matSortDisableClear
+    (matSortChange)="onSort($event)"
+  >
+    <ng-container matColumnDef="incidentNumber">
+      <th mat-header-cell *matHeaderCellDef mat-sort-header>Number</th>
+      <td mat-cell *matCellDef="let row" class="number">{{ row.incidentNumber }}</td>
+    </ng-container>
+
+    <ng-container matColumnDef="title">
+      <th mat-header-cell *matHeaderCellDef mat-sort-header>Title</th>
+      <td mat-cell *matCellDef="let row" class="title">{{ row.title }}</td>
+    </ng-container>
+
+    <ng-container matColumnDef="priority">
+      <th mat-header-cell *matHeaderCellDef mat-sort-header>Priority</th>
+      <td mat-cell *matCellDef="let row">
+        <app-badge [label]="priorityLabel(row.priority)" [tone]="priorityTone(row.priority)" />
+      </td>
+    </ng-container>
+
+    <ng-container matColumnDef="status">
+      <th mat-header-cell *matHeaderCellDef mat-sort-header>Status</th>
+      <td mat-cell *matCellDef="let row">
+        <app-badge [label]="statusLabel(row.status)" [tone]="statusTone(row.status)" />
+      </td>
+    </ng-container>
+
+    <ng-container matColumnDef="category">
+      <th mat-header-cell *matHeaderCellDef>Category</th>
+      <td mat-cell *matCellDef="let row">{{ row.categoryName ?? '—' }}</td>
+    </ng-container>
+
+    <ng-container matColumnDef="assignee">
+      <th mat-header-cell *matHeaderCellDef>Assignee</th>
+      <td mat-cell *matCellDef="let row">
+        @if (row.assignedToUserId) {
+          Assigned
+        } @else {
+          <span class="muted">Unassigned</span>
+        }
+      </td>
+    </ng-container>
+
+    <ng-container matColumnDef="sla">
+      <th mat-header-cell *matHeaderCellDef>SLA</th>
+      <td mat-cell *matCellDef="let row">
+        <app-badge [label]="slaLabel(row.slaState)" [tone]="slaTone(row.slaState)" />
+        @if (row.slaDueAtUtc) {
+          <div class="due">due {{ row.slaDueAtUtc | date: 'MMM d, h:mm a' }}</div>
+        }
+      </td>
+    </ng-container>
+
+    <ng-container matColumnDef="createdAt">
+      <th mat-header-cell *matHeaderCellDef mat-sort-header>Created</th>
+      <td mat-cell *matCellDef="let row">{{ row.createdAtUtc | date: 'MMM d, y, h:mm a' }}</td>
+    </ng-container>
+
+    <tr mat-header-row *matHeaderRowDef="columns"></tr>
+    <tr mat-row *matRowDef="let row; columns: columns"></tr>
+  </table>
+
+  @if (!loading() && !loadFailed() && result()?.items?.length === 0) {
+    <p class="message">
+      @if (hasFilters) {
+        No incidents match your filters.
+      } @else {
+        There are no incidents yet.
+      }
+    </p>
+  }
+</div>
+
+<mat-paginator
+  [length]="result()?.totalCount ?? 0"
+  [pageSize]="query().pageSize"
+  [pageIndex]="query().page - 1"
+  [pageSizeOptions]="[10, 20, 50]"
+  showFirstLastButtons
+  aria-label="Choose a page of incidents"
+  (page)="onPage($event)"
+/>

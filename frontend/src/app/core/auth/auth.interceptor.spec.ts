@@ -92,6 +92,20 @@ describe('authInterceptor', () => {
     expect(navigate).not.toHaveBeenCalled();
   });
 
+  it('a wrong password does not sign out or redirect, even if an old session is still saved', () => {
+    setUp(true); // someone is still "logged in" in this browser
+    let failedWith: number | undefined;
+
+    client.post(`${API_URL}/auth/login`, {}).subscribe({ error: (e) => (failedWith = e.status) });
+    const request = http.expectOne(`${API_URL}/auth/login`);
+    expect(request.request.headers.has('Authorization')).toBe(false); // no token goes to the login call
+    request.flush({ message: 'Invalid email or password.' }, { status: 401, statusText: 'Unauthorized' });
+
+    expect(failedWith).toBe(401);
+    expect(auth.isLoggedIn()).toBe(true); // the saved session is untouched
+    expect(navigate).not.toHaveBeenCalled();
+  });
+
   it('a 403 (not allowed) keeps you logged in', () => {
     setUp(true);
 

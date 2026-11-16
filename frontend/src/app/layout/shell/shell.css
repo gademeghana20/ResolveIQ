@@ -1,0 +1,33 @@
+.top-bar {
+  background: var(--mat-sys-surface-container);
+}
+
+.brand {
+  font: var(--mat-sys-title-large);
+}
+
+.spacer {
+  flex: 1;
+}
+
+.who {
+  margin-right: 8px;
+  font: var(--mat-sys-body-medium);
+  color: var(--mat-sys-on-surface-variant);
+}
+
+.page {
+  padding: 24px;
+  max-width: 1280px;
+  margin: 0 auto;
+}
+
+@media (max-width: 600px) {
+  .who {
+    display: none;
+  }
+
+  .page {
+    padding: 12px;
+  }
+}

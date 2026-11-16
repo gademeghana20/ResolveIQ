@@ -21,6 +21,12 @@ export const authInterceptor: HttpInterceptorFn = (request, next) => {
     return next(request);
   }
 
+  // Login and register are how you GET a token. They carry none, and a 401 from them just means
+  // "wrong email or password", which the login screen shows itself. It must never sign anyone out.
+  if (request.url.startsWith(`${API_URL}/auth/`)) {
+    return next(request);
+  }
+
   const token = auth.getValidToken();
   const outgoing = token ? request.clone({ setHeaders: { Authorization: `Bearer ${token}` } }) : request;
 

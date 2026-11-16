@@ -1,0 +1,207 @@
+import { provideHttpClient } from '@angular/common/http';
+import { HttpTestingController, provideHttpClientTesting, TestRequest } from '@angular/common/http/testing';
+import { DebugElement } from '@angular/core';
+import { ComponentFixture, TestBed } from '@angular/core/testing';
+import { By } from '@angular/platform-browser';
+import { MatPaginator } from '@angular/material/paginator';
+import { MatSort } from '@angular/material/sort';
+import { MatSelect } from '@angular/material/select';
+
+import { API_URL } from '../../../core/api-config';
+import { IncidentSummary, PagedResult } from '../incident.models';
+import { IncidentList } from './incident-list';
+
+function incident(overrides: Partial<IncidentSummary> = {}): IncidentSummary {
+  return {
+    id: 'id-1',
+    incidentNumber: 'INC-000001',
+    title: 'Printer broken',
+    priority: 'High',
+    status: 'Open',
+    categoryName: 'Hardware',
+    reportedByUserId: 'u1',
+    assignedToUserId: null,
+    createdAtUtc: '2026-11-16T18:00:00Z',
+    slaState: 'NotStarted',
+    slaDueAtUtc: null,
+    ...overrides,
+  };
+}
+
+function page(items: IncidentSummary[], totalCount = items.length): PagedResult<IncidentSummary> {
+  return { items, page: 1, pageSize: 20, totalCount, totalPages: Math.ceil(totalCount / 20) };
+}
+
+describe('IncidentList', () => {
+  let fixture: ComponentFixture<IncidentList>;
+  let http: HttpTestingController;
+
+  const isIncidentsCall = (r: { url: string }) => r.url === `${API_URL}/incidents`;
+  const text = () => (fixture.nativeElement as HTMLElement).textContent ?? '';
+
+  async function settle() {
+    fixture.detectChanges();
+    await fixture.whenStable();
+    fixture.detectChanges();
+  }
+
+  /** Answers the list request that is waiting, and the categories request on first load. */
+  async function load(items: IncidentSummary[], totalCount?: number): Promise<TestRequest> {
+    await settle(); // lets the component notice a changed query and send its request
+    const request = http.expectOne(isIncidentsCall);
+    request.flush(page(items, totalCount));
+    await settle();
+    return request;
+  }
+
+  beforeEach(async () => {
+    localStorage.clear();
+    await TestBed.configureTestingModule({
+      imports: [IncidentList],
+      providers: [provideHttpClient(), provideHttpClientTesting()],
+    }).compileComponents();
+
+    http = TestBed.inject(HttpTestingController);
+    fixture = TestBed.createComponent(IncidentList);
+    await settle();
+
+    http.expectOne(`${API_URL}/categories`).flush([
+      { id: 'c1', name: 'Hardware', description: null, isActive: true },
+      { id: 'c2', name: 'Retired', description: null, isActive: false },
+    ]);
+  });
+
+  it('asks for the newest incidents first, 20 to a page', async () => {
+    const request = http.expectOne(isIncidentsCall);
+
+    expect(request.request.params.get('page')).toBe('1');
+    expect(request.request.params.get('pageSize')).toBe('20');
+    expect(request.request.params.get('sortBy')).toBe('CreatedAt');
+    expect(request.request.params.get('sortDirection')).toBe('Desc');
+    request.flush(page([]));
+  });
+
+  it('marks the Created column as the active sort, newest first', async () => {
+    await load([incident()]);
+
+    const sort = fixture.debugElement.query(By.directive(MatSort)).injector.get(MatSort);
+    expect(sort.active).toBe('createdAt');
+    expect(sort.direction).toBe('desc');
+  });
+
+  it('shows each incident as a row, with friendly labels', async () => {
+    await load([
+      incident(),
+      incident({ id: 'id-2', incidentNumber: 'INC-000002', title: 'VPN down', priority: null, status: 'InProgress', assignedToUserId: 'u2' }),
+    ]);
+
+    const rows = fixture.nativeElement.querySelectorAll('tr[mat-row]');
+    expect(rows.length).toBe(2);
+    expect(text()).toContain('INC-000001');
+    expect(text()).toContain('Printer broken');
+    expect(text()).toContain('Unassigned');
+    expect(text()).toContain('In progress');
+    expect(text()).toContain('Not set'); // no priority yet
+  });
+
+  it('says so when there are no incidents at all', async () => {
+    await load([]);
+
+    expect(text()).toContain('There are no incidents yet.');
+  });
+
+  it('says so when filters leave nothing, and offers to clear them', async () => {
+    await load([incident()]);
+
+    const status = fixture.debugElement.queryAll(By.directive(MatSelect))[0];
+    status.componentInstance.selectionChange.emit({ value: 'Closed' });
+    await load([]);
+
+    expect(text()).toContain('No incidents match your filters.');
+    expect(text()).toContain('Clear filters');
+  });
+
+  it('applies a filter, and goes back to page 1', async () => {
+    await load([incident()], 60);
+
+    // Move to page 3 first.
+    fixture.debugElement.query(By.directive(MatPaginator)).triggerEventHandler('page', { pageIndex: 2, pageSize: 20, length: 60 });
+    await settle();
+    const onPage3 = http.expectOne(isIncidentsCall);
+    expect(onPage3.request.params.get('page')).toBe('3');
+    onPage3.flush(page([incident()], 60));
+    await settle();
+
+    // Changing a filter must not leave us on page 3.
+    const statusSelect: DebugElement = fixture.debugElement.queryAll(By.directive(MatSelect))[0];
+    statusSelect.componentInstance.selectionChange.emit({ value: 'Open' });
+    await settle();
+
+    const filtered = http.expectOne(isIncidentsCall);
+    expect(filtered.request.params.get('status')).toBe('Open');
+    expect(filtered.request.params.get('page')).toBe('1');
+    filtered.flush(page([incident()]));
+  });
+
+  it('only offers active categories in the filter', async () => {
+    await load([]);
+
+    const select = fixture.debugElement.queryAll(By.directive(MatSelect))[2].componentInstance as MatSelect;
+    select.open();
+    await settle();
+
+    const options = Array.from(document.querySelectorAll('mat-option')).map((o) => o.textContent?.trim());
+    expect(options).toContain('Hardware');
+    expect(options).not.toContain('Retired');
+  });
+
+  it('asks the API to sort when a column header is clicked', async () => {
+    await load([incident()]);
+
+    fixture.debugElement.query(By.directive(MatSort)).triggerEventHandler('matSortChange', { active: 'priority', direction: 'asc' });
+    await settle();
+
+    const request = http.expectOne(isIncidentsCall);
+    expect(request.request.params.get('sortBy')).toBe('Priority');
+    expect(request.request.params.get('sortDirection')).toBe('Asc');
+    request.flush(page([incident()]));
+  });
+
+  it('waits for a pause in typing before searching', async () => {
+    await load([incident()]);
+
+    const input = (fixture.nativeElement as HTMLElement).querySelector('input[type="search"]') as HTMLInputElement;
+    input.value = 'prin';
+    input.dispatchEvent(new Event('input'));
+    input.value = 'printer';
+    input.dispatchEvent(new Event('input'));
+    await settle();
+    http.expectNone(isIncidentsCall); // nothing sent while still typing
+
+    await new Promise((resolve) => setTimeout(resolve, 400));
+    await settle();
+
+    const request = http.expectOne(isIncidentsCall);
+    expect(request.request.params.get('search')).toBe('printer'); // one call, with the final text
+    request.flush(page([incident()]));
+  });
+
+  it('shows an error with a retry when the API fails, and recovers', async () => {
+    await load([incident()]);
+    fixture.debugElement.query(By.directive(MatSort)).triggerEventHandler('matSortChange', { active: 'title', direction: 'asc' });
+    await settle();
+
+    http.expectOne(isIncidentsCall).flush({}, { status: 500, statusText: 'Server Error' });
+    await settle();
+
+    expect(text()).toContain('The incidents could not be loaded.');
+    expect(text()).toContain('Printer broken'); // the last good results stay visible
+
+    const retry = Array.from((fixture.nativeElement as HTMLElement).querySelectorAll('button')).find((b) => b.textContent?.includes('Try again'))!;
+    retry.click();
+    await load([incident({ title: 'Recovered' })]);
+
+    expect(text()).not.toContain('could not be loaded');
+    expect(text()).toContain('Recovered');
+  });
+});
