@@ -4,13 +4,8 @@ import { TestBed } from '@angular/core/testing';
 
 import { API_URL } from '../api-config';
 import { AuthResponse } from './auth.models';
+import { fakeToken } from '../../testing/fake-token';
 import { AuthService } from './auth.service';
-
-// Builds a token shaped like the real one (header.payload.signature) with a chosen expiry.
-function fakeToken(expiresInSeconds: number): string {
-  const payload = { sub: 'user-1', exp: Math.floor(Date.now() / 1000) + expiresInSeconds };
-  return `header.${btoa(JSON.stringify(payload))}.signature`;
-}
 
 function response(overrides: Partial<AuthResponse> = {}): AuthResponse {
   return { token: fakeToken(3600), email: 'manager@example.com', roles: ['Manager'], ...overrides };

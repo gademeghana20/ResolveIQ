@@ -4,11 +4,8 @@ import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { ActivatedRoute, Router, convertToParamMap, provideRouter } from '@angular/router';
 
 import { API_URL } from '../../../core/api-config';
+import { fakeToken } from '../../../testing/fake-token';
 import { Login } from './login';
-
-function fakeToken(): string {
-  return `h.${btoa(JSON.stringify({ exp: Math.floor(Date.now() / 1000) + 3600 }))}.s`;
-}
 
 describe('Login', () => {
   let fixture: ComponentFixture<Login>;
