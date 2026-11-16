@@ -5,6 +5,7 @@ using ResolveIQ.Application.DTOs.Incidents;
 using ResolveIQ.Domain.Constants;
 using ResolveIQ.Domain.Entities;
 using ResolveIQ.Domain.Enums;
+using ResolveIQ.Domain.Workflow;
 using ResolveIQ.Infrastructure.Data;
 
 namespace ResolveIQ.Infrastructure.Services
@@ -14,6 +15,9 @@ namespace ResolveIQ.Infrastructure.Services
         // Constant text (no user input), so it is safe to run as raw SQL.
         private const string NextIncidentNumberSql =
             "SELECT NEXT VALUE FOR " + ApplicationDbContext.IncidentNumberSequence + " AS [Value]";
+
+        // History columns hold 500 characters.
+        private const int HistoryValueMaxLength = 500;
 
         private static readonly Expression<Func<Incident, IncidentDetailResponse>> ToDetail = i =>
             new IncidentDetailResponse
@@ -110,13 +114,10 @@ namespace ResolveIQ.Infrastructure.Services
             _db.Incidents.Add(incident);
             await _db.SaveChangesAsync(cancellationToken);
 
-            return await _db.Incidents.AsNoTracking()
-                .Where(i => i.Id == incident.Id)
-                .Select(ToDetail)
-                .SingleAsync(cancellationToken);
+            return await LoadDetailAsync(incident.Id, cancellationToken);
         }
 
-        public async Task<AssignIncidentResult> AssignIncidentAsync(
+        public async Task<IncidentChangeResult> AssignIncidentAsync(
             Guid id,
             string assigneeUserId,
             string actingUserId,
@@ -125,7 +126,7 @@ namespace ResolveIQ.Infrastructure.Services
             var incident = await _db.Incidents.FirstOrDefaultAsync(i => i.Id == id, cancellationToken);
             if (incident is null)
             {
-                return new AssignIncidentResult(AssignOutcome.IncidentNotFound);
+                return new IncidentChangeResult(ChangeOutcome.NotFound);
             }
 
             var assignee = await _db.Users.AsNoTracking()
@@ -134,7 +135,7 @@ namespace ResolveIQ.Infrastructure.Services
                 .FirstOrDefaultAsync(cancellationToken);
             if (assignee is null)
             {
-                return new AssignIncidentResult(AssignOutcome.AssigneeNotFound);
+                return Invalid("AssigneeUserId", "No user exists with that id.");
             }
 
             // Assigning to the person who already has it changes nothing, so write no history.
@@ -150,34 +151,152 @@ namespace ResolveIQ.Infrastructure.Services
 
                 incident.AssignedToUserId = assignee.Id;
                 incident.UpdatedAtUtc = DateTime.UtcNow;
+                AddHistory(incident.Id, actingUserId, "AssignedTo", previousAssignee, assignee.Email);
 
-                _db.IncidentHistory.Add(new IncidentHistory
+                if (!await TrySaveAsync(cancellationToken))
                 {
-                    IncidentId = incident.Id,
-                    ChangedByUserId = actingUserId,
-                    FieldChanged = "AssignedTo",
-                    OldValue = previousAssignee,
-                    NewValue = assignee.Email,
-                    ChangedAtUtc = DateTime.UtcNow
-                });
-
-                try
-                {
-                    // One SaveChanges = one transaction: the change and its history are saved together or not at all.
-                    await _db.SaveChangesAsync(cancellationToken);
-                }
-                catch (DbUpdateConcurrencyException)
-                {
-                    return new AssignIncidentResult(AssignOutcome.Conflict);
+                    return new IncidentChangeResult(ChangeOutcome.Conflict);
                 }
             }
 
-            var detail = await _db.Incidents.AsNoTracking()
-                .Where(i => i.Id == id)
-                .Select(ToDetail)
-                .SingleAsync(cancellationToken);
+            return await SuccessAsync(id, cancellationToken);
+        }
 
-            return new AssignIncidentResult(AssignOutcome.Assigned, detail);
+        public async Task<IncidentChangeResult> ChangeStatusAsync(
+            Guid id,
+            IncidentStatus newStatus,
+            string userId,
+            IReadOnlyCollection<string> roles,
+            CancellationToken cancellationToken = default)
+        {
+            var incident = await FindVisibleTrackedAsync(id, userId, roles, cancellationToken);
+            if (incident is null)
+            {
+                return new IncidentChangeResult(ChangeOutcome.NotFound);
+            }
+
+            var check = IncidentWorkflow.CheckStatusChange(
+                from: incident.Status,
+                to: newStatus,
+                isManagerOrAdmin: IsManagerOrAdmin(roles),
+                isAssignee: incident.AssignedToUserId == userId,
+                isReporter: incident.ReportedByUserId == userId,
+                hasAssignee: incident.AssignedToUserId is not null);
+
+            switch (check)
+            {
+                case StatusChangeCheck.TransitionNotAllowed:
+                    return Invalid("Status", $"An incident cannot move from {incident.Status} to {newStatus}.");
+                case StatusChangeCheck.AssigneeRequired:
+                    return Invalid("Status", "Assign the incident to someone before work can start.");
+                case StatusChangeCheck.NotPermitted:
+                    return new IncidentChangeResult(ChangeOutcome.Forbidden);
+            }
+
+            var oldStatus = incident.Status;
+            var now = DateTime.UtcNow;
+
+            incident.Status = newStatus;
+            incident.UpdatedAtUtc = now;
+
+            if (newStatus == IncidentStatus.Resolved)
+            {
+                incident.ResolvedAtUtc = now;
+            }
+            else if (oldStatus == IncidentStatus.Resolved && newStatus == IncidentStatus.InProgress)
+            {
+                incident.ResolvedAtUtc = null; // reopened
+            }
+
+            AddHistory(incident.Id, userId, "Status", oldStatus.ToString(), newStatus.ToString());
+
+            return await SaveAndRespondAsync(id, cancellationToken);
+        }
+
+        public async Task<IncidentChangeResult> ChangePriorityAsync(
+            Guid id,
+            IncidentPriority newPriority,
+            string userId,
+            IReadOnlyCollection<string> roles,
+            CancellationToken cancellationToken = default)
+        {
+            var incident = await FindVisibleTrackedAsync(id, userId, roles, cancellationToken);
+            if (incident is null)
+            {
+                return new IncidentChangeResult(ChangeOutcome.NotFound);
+            }
+
+            if (!IsManagerOrAdmin(roles))
+            {
+                return new IncidentChangeResult(ChangeOutcome.Forbidden);
+            }
+
+            if (IncidentWorkflow.IsClosed(incident.Status))
+            {
+                return Invalid("Priority", "The priority of a closed incident cannot be changed.");
+            }
+
+            if (incident.Priority == newPriority)
+            {
+                return await SuccessAsync(id, cancellationToken);
+            }
+
+            var oldPriority = incident.Priority;
+            incident.Priority = newPriority;
+            incident.UpdatedAtUtc = DateTime.UtcNow;
+            AddHistory(incident.Id, userId, "Priority", oldPriority.ToString(), newPriority.ToString());
+
+            return await SaveAndRespondAsync(id, cancellationToken);
+        }
+
+        public async Task<IncidentChangeResult> UpdateIncidentAsync(
+            Guid id,
+            UpdateIncidentRequest request,
+            string userId,
+            IReadOnlyCollection<string> roles,
+            CancellationToken cancellationToken = default)
+        {
+            var incident = await FindVisibleTrackedAsync(id, userId, roles, cancellationToken);
+            if (incident is null)
+            {
+                return new IncidentChangeResult(ChangeOutcome.NotFound);
+            }
+
+            if (!IsManagerOrAdmin(roles) && incident.ReportedByUserId != userId)
+            {
+                return new IncidentChangeResult(ChangeOutcome.Forbidden);
+            }
+
+            if (IncidentWorkflow.IsClosed(incident.Status))
+            {
+                return Invalid("Status", "A closed incident cannot be edited.");
+            }
+
+            var newTitle = request.Title.Trim();
+            var newDescription = request.Description.Trim();
+            var changed = false;
+
+            if (incident.Title != newTitle)
+            {
+                AddHistory(incident.Id, userId, "Title", incident.Title, newTitle);
+                incident.Title = newTitle;
+                changed = true;
+            }
+
+            if (incident.Description != newDescription)
+            {
+                AddHistory(incident.Id, userId, "Description", incident.Description, newDescription);
+                incident.Description = newDescription;
+                changed = true;
+            }
+
+            if (!changed)
+            {
+                return await SuccessAsync(id, cancellationToken);
+            }
+
+            incident.UpdatedAtUtc = DateTime.UtcNow;
+            return await SaveAndRespondAsync(id, cancellationToken);
         }
 
         public async Task<IReadOnlyList<IncidentHistoryResponse>?> GetHistoryAsync(
@@ -210,17 +329,75 @@ namespace ResolveIQ.Infrastructure.Services
                 .ToListAsync(cancellationToken);
         }
 
-        // The visibility rule lives in one place so list and single-item reads always agree.
+        // ---- helpers ----
+
+        // The visibility rule lives in one place so list, single-item reads and changes always agree.
         private static IQueryable<Incident> ApplyVisibility(
             IQueryable<Incident> query,
             string userId,
             IReadOnlyCollection<string> roles)
         {
-            var canViewAll = roles.Contains(RoleNames.Admin) || roles.Contains(RoleNames.Manager);
-
-            return canViewAll
+            return IsManagerOrAdmin(roles)
                 ? query
                 : query.Where(i => i.ReportedByUserId == userId || i.AssignedToUserId == userId);
         }
+
+        private static bool IsManagerOrAdmin(IReadOnlyCollection<string> roles) =>
+            roles.Contains(RoleNames.Admin) || roles.Contains(RoleNames.Manager);
+
+        // Loads the incident for editing (tracked by EF), but only if this user may see it.
+        private Task<Incident?> FindVisibleTrackedAsync(
+            Guid id,
+            string userId,
+            IReadOnlyCollection<string> roles,
+            CancellationToken cancellationToken) =>
+            ApplyVisibility(_db.Incidents, userId, roles).FirstOrDefaultAsync(i => i.Id == id, cancellationToken);
+
+        private void AddHistory(Guid incidentId, string changedByUserId, string field, string? oldValue, string? newValue)
+        {
+            _db.IncidentHistory.Add(new IncidentHistory
+            {
+                IncidentId = incidentId,
+                ChangedByUserId = changedByUserId,
+                FieldChanged = field,
+                OldValue = Truncate(oldValue),
+                NewValue = Truncate(newValue),
+                ChangedAtUtc = DateTime.UtcNow
+            });
+        }
+
+        private static string? Truncate(string? value) =>
+            value is { Length: > HistoryValueMaxLength } ? value[..(HistoryValueMaxLength - 1)] + "…" : value;
+
+        // One SaveChanges = one transaction: the change and its history rows are saved together or not at all.
+        private async Task<bool> TrySaveAsync(CancellationToken cancellationToken)
+        {
+            try
+            {
+                await _db.SaveChangesAsync(cancellationToken);
+                return true;
+            }
+            catch (DbUpdateConcurrencyException)
+            {
+                return false;
+            }
+        }
+
+        private async Task<IncidentChangeResult> SaveAndRespondAsync(Guid id, CancellationToken cancellationToken) =>
+            await TrySaveAsync(cancellationToken)
+                ? await SuccessAsync(id, cancellationToken)
+                : new IncidentChangeResult(ChangeOutcome.Conflict);
+
+        private async Task<IncidentChangeResult> SuccessAsync(Guid id, CancellationToken cancellationToken) =>
+            new(ChangeOutcome.Success, await LoadDetailAsync(id, cancellationToken));
+
+        private Task<IncidentDetailResponse> LoadDetailAsync(Guid id, CancellationToken cancellationToken) =>
+            _db.Incidents.AsNoTracking()
+                .Where(i => i.Id == id)
+                .Select(ToDetail)
+                .SingleAsync(cancellationToken);
+
+        private static IncidentChangeResult Invalid(string field, string message) =>
+            new(ChangeOutcome.Invalid, Field: field, Message: message);
     }
 }

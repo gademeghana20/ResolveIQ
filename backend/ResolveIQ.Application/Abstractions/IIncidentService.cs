@@ -1,4 +1,5 @@
 using ResolveIQ.Application.DTOs.Incidents;
+using ResolveIQ.Domain.Enums;
 
 namespace ResolveIQ.Application.Abstractions
 {
@@ -35,10 +36,41 @@ namespace ResolveIQ.Application.Abstractions
         /// Assigns an incident to a user and records the change in the incident's history.
         /// The caller must already have checked that the acting user is allowed to assign.
         /// </summary>
-        Task<AssignIncidentResult> AssignIncidentAsync(
+        Task<IncidentChangeResult> AssignIncidentAsync(
             Guid id,
             string assigneeUserId,
             string actingUserId,
+            CancellationToken cancellationToken = default);
+
+        /// <summary>
+        /// Moves an incident to a new status, if the workflow rules allow this user to do so.
+        /// </summary>
+        Task<IncidentChangeResult> ChangeStatusAsync(
+            Guid id,
+            IncidentStatus newStatus,
+            string userId,
+            IReadOnlyCollection<string> roles,
+            CancellationToken cancellationToken = default);
+
+        /// <summary>
+        /// Changes an incident's priority. Only Admins and Managers may, and not on a closed incident.
+        /// </summary>
+        Task<IncidentChangeResult> ChangePriorityAsync(
+            Guid id,
+            IncidentPriority newPriority,
+            string userId,
+            IReadOnlyCollection<string> roles,
+            CancellationToken cancellationToken = default);
+
+        /// <summary>
+        /// Edits an incident's title and description. Allowed for the reporter and for Admins and
+        /// Managers, until the incident is closed.
+        /// </summary>
+        Task<IncidentChangeResult> UpdateIncidentAsync(
+            Guid id,
+            UpdateIncidentRequest request,
+            string userId,
+            IReadOnlyCollection<string> roles,
             CancellationToken cancellationToken = default);
 
         /// <summary>
