@@ -10,7 +10,7 @@ using ResolveIQ.Infrastructure.Data;
 namespace ResolveIQ.Tests.Api
 {
     /// <summary>
-    /// Starts the real API in memory for tests. It gets its own throwaway SQL Server LocalDB database
+    /// Starts the real API in memory for tests. It gets its own throwaway SQL Server database (LocalDB on your computer)
     /// (created from the real migrations, deleted afterwards), so tests never touch your real data.
     /// The app's clock is a FakeTimeProvider, so tests can move time forward at will.
     /// </summary>
@@ -33,9 +33,26 @@ namespace ResolveIQ.Tests.Api
         /// <summary>Whether the app is told to create a first Admin at startup.</summary>
         protected virtual bool SeedBootstrapAdmin => true;
 
-        private string ConnectionString =>
-            $"Server=(localdb)\\MSSQLLocalDB;Database={DatabaseName};Trusted_Connection=True;" +
-            "MultipleActiveResultSets=true;TrustServerCertificate=True";
+        /// <summary>
+        /// Which SQL Server the throwaway databases are made on. By default your computer's LocalDB. A build server
+        /// (which has no LocalDB) sets RESOLVEIQ_TEST_SQL_SERVER to the server part of a connection string instead,
+        /// for example "Server=localhost,1433;User Id=sa;Password=...".
+        /// </summary>
+        private const string ServerVariable = "RESOLVEIQ_TEST_SQL_SERVER";
+
+        private string ConnectionString
+        {
+            get
+            {
+                var server = Environment.GetEnvironmentVariable(ServerVariable);
+                if (string.IsNullOrWhiteSpace(server))
+                {
+                    server = "Server=(localdb)\\MSSQLLocalDB;Trusted_Connection=True";
+                }
+
+                return $"{server};Database={DatabaseName};MultipleActiveResultSets=true;TrustServerCertificate=True";
+            }
+        }
 
         protected override void ConfigureWebHost(IWebHostBuilder builder)
         {
