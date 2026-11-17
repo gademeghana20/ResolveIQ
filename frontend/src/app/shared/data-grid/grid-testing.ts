@@ -1,4 +1,4 @@
-/**
+﻿/**
  * Helpers for tests that look inside a table. AG Grid draws its rows and cells itself, a moment after the
  * data arrives, so tests wait for it and then read what is on screen (text, headings), as a person would.
  */
@@ -7,7 +7,7 @@ import { vi } from 'vitest';
 
 // The first table in a test file has to load all of AG Grid, which can take longer than the default 5 seconds
 // on a busy computer. A longer limit stops those tests failing for being slow rather than wrong.
-vi.setConfig({ testTimeout: 30_000 });
+vi.setConfig({ testTimeout: 30_000, hookTimeout: 30_000 });
 
 /** Gives the grid time to draw. Call after the data has been set and the fixture has settled. */
 export async function drawGrid(detect: () => void): Promise<void> {
@@ -65,3 +65,4 @@ export function clickHeading(root: HTMLElement, name: string): void {
 export function gridRow(root: HTMLElement, index = 0): HTMLElement {
   return root.querySelectorAll<HTMLElement>('.ag-row')[index];
 }
+

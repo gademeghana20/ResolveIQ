@@ -106,15 +106,14 @@
   cursor: pointer;
 }
 
-/* A quiet text link above the Log out button, in the sidebar colours. */
+/* Sits in the same column as the main links above (same padding and gap), so icons and words line up. */
 .account {
   display: flex;
   align-items: center;
-  justify-content: center;
-  gap: 8px;
+  gap: 14px;
   margin-bottom: 10px;
-  padding: 8px 12px;
-  border-radius: 999px;
+  padding: 12px 14px;
+  border-radius: 14px;
   color: var(--app-sidebar-muted);
   font-weight: 500;
   text-decoration: none;

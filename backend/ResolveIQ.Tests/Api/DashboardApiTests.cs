@@ -246,6 +246,69 @@ namespace ResolveIQ.Tests.Api
             Assert.Equal(365, stats.GetProperty("createdPerDay").GetArrayLength());
         }
 
+        // ---- the analytics charts ----
+
+        [Fact]
+        public async Task TheSummary_SaysHowOldTheOpenIncidentsAre_InFourBands()
+        {
+            var (s, _) = await BuildAsync();
+
+            var buckets = (await GetAsync(s.Reporter, "/api/dashboard/summary")).GetProperty("openAgeBuckets");
+
+            Assert.Equal(new[] { "Under1Day", "1To3Days", "3To7Days", "Over7Days" }, buckets.EnumerateArray().Select(b => b.Str("name")));
+            // Three of the four incidents are still open (the third was resolved), and all of them were raised just now.
+            Assert.Equal(3, Named(buckets, "Under1Day"));
+            Assert.Equal(0, Named(buckets, "Over7Days"));
+        }
+
+        [Fact]
+        public async Task TheStatistics_ShowHowLongEachPriorityTakesToResolve()
+        {
+            var (s, _) = await BuildAsync();
+
+            var rows = (await GetAsync(s.Reporter, "/api/dashboard/incident-statistics")).GetProperty("resolutionByPriority");
+
+            Assert.Equal(new[] { "Critical", "High", "Medium", "Low" }, rows.EnumerateArray().Select(r => r.Str("priority")));
+
+            var critical = rows.EnumerateArray().Single(r => r.Str("priority") == "Critical");
+            Assert.Equal(1, critical.GetProperty("count").GetInt32());                         // the third incident
+            Assert.True(critical.GetProperty("averageHours").GetDouble() >= 0);
+
+            var high = rows.EnumerateArray().Single(r => r.Str("priority") == "High");
+            Assert.Equal(0, high.GetProperty("count").GetInt32());
+            Assert.Equal(JsonValueKind.Null, high.GetProperty("averageHours").ValueKind);      // none resolved: no average
+        }
+
+        [Fact]
+        public async Task TheStatistics_GiveOneComplianceEntryPerDay_AndTodayCountsTheOnTimeResolution()
+        {
+            var (s, createdOn) = await BuildAsync();
+
+            var trend = (await GetAsync(s.Reporter, "/api/dashboard/incident-statistics?days=7")).GetProperty("slaComplianceTrend");
+
+            Assert.Equal(7, trend.GetArrayLength());
+            var today = trend.EnumerateArray().Single(d => d.Str("date") == createdOn.ToString("yyyy-MM-dd"));
+            Assert.Equal(1, today.GetProperty("resolved").GetInt32());
+            Assert.Equal(100.0, today.GetProperty("percent").GetDouble());                     // resolved in minutes, within hours
+
+            // The days before had nothing resolved in their week: a gap, not 0%.
+            var first = trend.EnumerateArray().First();
+            Assert.Equal(JsonValueKind.Null, first.GetProperty("percent").ValueKind);
+        }
+
+        [Fact]
+        public async Task TheAnalytics_AreSafeForAnEmployeeWithNoIncidents()
+        {
+            var nobody = await _factory.CreateUserAsync();
+
+            var summary = await GetAsync(nobody, "/api/dashboard/summary");
+            var stats = await GetAsync(nobody, "/api/dashboard/incident-statistics");
+
+            Assert.Equal(4, summary.GetProperty("openAgeBuckets").GetArrayLength());
+            Assert.Equal(4, stats.GetProperty("resolutionByPriority").GetArrayLength());
+            Assert.Equal(30, stats.GetProperty("slaComplianceTrend").GetArrayLength());
+        }
+
         // ---- who sees the workload table ----
 
         [Fact]

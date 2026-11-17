@@ -74,13 +74,17 @@
 
 /*
  * Chart colours. Defined once here and used by the dashboard's charts by role (not by raw hex),
- * so light and dark are swapped in one place. The two line colours were checked with the palette
- * validator (colour-blind separation and contrast) in both modes.
+ * so light and dark are swapped in one place. The first five series colours (blue, orange, aqua, yellow,
+ * magenta, in that fixed order) were checked with the palette validator (colour-blind separation and
+ * contrast) in both modes. Status colours (good, warning, critical, neutral) keep their own meaning.
  */
 :root {
   --viz-surface: #fcfcfb;
   --viz-series-1: #2a78d6; /* blue: the single hue for one measure; "created" in the trend chart */
   --viz-series-2: #eb6834; /* orange: "resolved" in the trend chart */
+  --viz-series-3: #1baf7a; /* aqua */
+  --viz-series-4: #eda100; /* yellow */
+  --viz-series-5: #e87ba4; /* magenta */
   --viz-ink: #0b0b0b;
   --viz-ink-2: #52514e;
   --viz-muted: #898781;
@@ -97,6 +101,9 @@
     --viz-surface: #1a1a19;
     --viz-series-1: #3987e5;
     --viz-series-2: #d95926;
+    --viz-series-3: #199e70;
+    --viz-series-4: #c98500;
+    --viz-series-5: #d55181;
     --viz-ink: #f0efec;
     --viz-ink-2: #c3c2b7;
     --viz-grid: #2c2c2a;
@@ -108,6 +115,9 @@
   --viz-surface: #1a1a19;
   --viz-series-1: #3987e5;
   --viz-series-2: #d95926;
+  --viz-series-3: #199e70;
+  --viz-series-4: #c98500;
+  --viz-series-5: #d55181;
   --viz-ink: #f0efec;
   --viz-ink-2: #c3c2b7;
   --viz-grid: #2c2c2a;

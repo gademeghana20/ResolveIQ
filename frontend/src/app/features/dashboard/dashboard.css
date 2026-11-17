@@ -56,6 +56,24 @@ mat-card-content {
   margin-bottom: 0;
 }
 
+/* Two charts side by side when there is room, stacked when there is not. */
+.charts {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(380px, 1fr));
+  gap: 16px;
+  margin-bottom: 16px;
+}
+
+.charts .card {
+  margin-bottom: 0;
+}
+
+.chart-note {
+  margin: 0 0 8px;
+  color: var(--mat-sys-on-surface-variant);
+  font: var(--mat-sys-body-small);
+}
+
 /* While newer numbers load, the old ones stay in place, dimmed, so nothing jumps. */
 .stats.stale {
   opacity: 0.55;

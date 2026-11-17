@@ -16,6 +16,13 @@ namespace ResolveIQ.Application.Dashboard
         public const string UnprioritizedLabel = "Unprioritized";
         public const string UncategorizedLabel = "Uncategorized";
 
+        // The four age bands of an open incident, youngest first. The names are stable keys the web app labels.
+        public static readonly string[] AgeBandNames = { "Under1Day", "1To3Days", "3To7Days", "Over7Days" };
+
+        // How many days back the SLA compliance trend looks from each day. A single day often has no
+        // resolutions at all, so each point looks at the week up to it.
+        public const int ComplianceWindowDays = 7;
+
         public static DashboardSummaryResponse BuildSummary(
             IReadOnlyList<Incident> incidents,
             string currentUserId,
@@ -48,7 +55,8 @@ namespace ResolveIQ.Application.Dashboard
                 AssignedToMe = incidents.Count(i => IsActive(i) && i.AssignedToUserId == currentUserId),
                 Unassigned = unassigned.Count,
                 OldestUnassignedWaitingMinutes = oldestWaiting,
-                Sla = sla
+                Sla = sla,
+                OpenAgeBuckets = BuildAgeBuckets(incidents, nowUtc)
             };
         }
 
@@ -96,8 +104,83 @@ namespace ResolveIQ.Application.Dashboard
                     .Select(i => DateOnly.FromDateTime(i.ResolvedAtUtc!.Value))),
                 AverageResolutionHours = averageHours,
                 SlaCompliancePercent = compliance,
+                SlaComplianceTrend = BuildComplianceTrend(incidents, from, today, nowUtc),
+                ResolutionByPriority = BuildResolutionByPriority(resolvedInWindow),
                 Workload = includeWorkload ? BuildWorkload(incidents, userEmails, nowUtc) : null
             };
+        }
+
+        // Active incidents grouped by how long they have been open. All four bands are always listed.
+        private static List<CountItem> BuildAgeBuckets(IReadOnlyList<Incident> incidents, DateTime nowUtc)
+        {
+            var counts = incidents
+                .Where(IsActive)
+                .GroupBy(i => AgeBand(nowUtc - i.CreatedAtUtc))
+                .ToDictionary(g => g.Key, g => g.Count());
+
+            return AgeBandNames
+                .Select(name => new CountItem { Name = name, Count = counts.GetValueOrDefault(name) })
+                .ToList();
+        }
+
+        private static string AgeBand(TimeSpan age) =>
+            age.TotalDays < 1 ? AgeBandNames[0]
+            : age.TotalDays < 3 ? AgeBandNames[1]
+            : age.TotalDays < 7 ? AgeBandNames[2]
+            : AgeBandNames[3];
+
+        // For each day: of the incidents (with an SLA) resolved in the week up to that day, the share that met it.
+        private static List<SlaComplianceDay> BuildComplianceTrend(
+            IReadOnlyList<Incident> incidents,
+            DateOnly from,
+            DateOnly to,
+            DateTime nowUtc)
+        {
+            // Only incidents resolved with an SLA to measure count. Each is Met or Breached.
+            var judged = incidents
+                .Where(i => i.ResolvedAtUtc.HasValue)
+                .Select(i => (Day: DateOnly.FromDateTime(i.ResolvedAtUtc!.Value), State: StateOf(i, nowUtc)))
+                .Where(x => x.State is SlaState.Met or SlaState.Breached)
+                .ToList();
+
+            var result = new List<SlaComplianceDay>();
+
+            for (var day = from; day <= to; day = day.AddDays(1))
+            {
+                var windowStart = day.AddDays(-(ComplianceWindowDays - 1));
+                var inWindow = judged.Where(x => x.Day >= windowStart && x.Day <= day).ToList();
+                var met = inWindow.Count(x => x.State == SlaState.Met);
+
+                result.Add(new SlaComplianceDay
+                {
+                    Date = day,
+                    Resolved = inWindow.Count,
+                    Percent = inWindow.Count == 0 ? null : Math.Round(100.0 * met / inWindow.Count, 1)
+                });
+            }
+
+            return result;
+        }
+
+        // Average time to resolve for each priority, for the incidents resolved in the period.
+        private static List<PriorityResolution> BuildResolutionByPriority(IReadOnlyList<Incident> resolvedInWindow)
+        {
+            return Enum.GetValues<IncidentPriority>()
+                .OrderByDescending(p => (int)p)
+                .Select(p =>
+                {
+                    var ofPriority = resolvedInWindow.Where(i => i.Priority == p).ToList();
+
+                    return new PriorityResolution
+                    {
+                        Priority = p.ToString(),
+                        Count = ofPriority.Count,
+                        AverageHours = ofPriority.Count == 0
+                            ? null
+                            : Math.Round(ofPriority.Average(i => (i.ResolvedAtUtc!.Value - i.CreatedAtUtc).TotalHours), 1)
+                    };
+                })
+                .ToList();
         }
 
         private static bool IsActive(Incident i) =>

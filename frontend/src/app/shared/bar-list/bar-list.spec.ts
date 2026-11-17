@@ -90,6 +90,17 @@ describe('BarList', () => {
     expect(page().textContent).toContain('There are no incidents yet.');
   });
 
+  it('prints a bar\'s own value text at its tip instead of the number, when it has one', async () => {
+    await setUp([
+      { label: 'Critical', value: 3.5, valueText: '3 h 30 min' },
+      { label: 'Low', value: 0, valueText: '—' },
+    ]);
+
+    expect(rows()[0].querySelector('.value')!.textContent).toBe('3 h 30 min');
+    expect(rows()[0].getAttribute('title')).toBe('Critical: 3 h 30 min');
+    expect(rows()[1].querySelector('.value')!.textContent).toBe('—');
+  });
+
   it('is named for screen readers', async () => {
     await setUp([{ label: 'Open', value: 1 }]);
 

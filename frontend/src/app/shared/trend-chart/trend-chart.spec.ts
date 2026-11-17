@@ -257,4 +257,100 @@ describe('TrendChart', () => {
 
     expect(page().querySelectorAll('path.line').length).toBe(0);
   });
+
+  describe('a percentage line with gaps', () => {
+    const percent = (value: number) => `${value}%`;
+
+    const compliance: TrendSeries = {
+      name: 'Resolved within SLA',
+      color: 'var(--viz-series-1)',
+      points: [
+        { date: DATES[0], value: null },
+        { date: DATES[1], value: 100, note: '2 resolved in the last 7 days' },
+        { date: DATES[2], value: 50 },
+        { date: DATES[3], value: null },
+        { date: DATES[4], value: 75 },
+      ],
+    };
+
+    async function setUpPercent(series: TrendSeries[] = [compliance]) {
+      await TestBed.configureTestingModule({ imports: [TrendChart] }).compileComponents();
+      fixture = TestBed.createComponent(TrendChart);
+      fixture.componentRef.setInput('series', series);
+      fixture.componentRef.setInput('ariaLabel', 'Share that met their SLA');
+      fixture.componentRef.setInput('maxValue', 100);
+      fixture.componentRef.setInput('valueFormat', percent);
+      await settle();
+    }
+
+    it('uses a fixed 0 to 100 axis, written as percentages', async () => {
+      await setUpPercent();
+
+      const labels = Array.from(page().querySelectorAll('svg text.axis-text')).map((n) => n.textContent!.trim());
+      expect(labels).toEqual(expect.arrayContaining(['0%', '25%', '50%', '75%', '100%']));
+    });
+
+    it('breaks the line at a day with no data instead of dropping to zero', async () => {
+      await setUpPercent();
+
+      const path = page().querySelector('path.line')!.getAttribute('d')!;
+      expect(path.match(/M/g)!.length).toBe(1); // one stretch: days 2 and 3
+      expect(path).not.toContain('NaN');
+    });
+
+    it('shows a day that stands alone between gaps as a dot, since there is no line to sit on', async () => {
+      await setUpPercent();
+
+      // The last day (75%) is alone after a gap, and the end marker covers it; the lone-day dot is drawn too.
+      expect(page().querySelectorAll('circle.dot').length).toBeGreaterThanOrEqual(2);
+    });
+
+    it('has no legend for a single line (the card names it)', async () => {
+      await setUpPercent();
+
+      expect(page().querySelector('.legend')).toBeNull();
+    });
+
+    it('says "no data" in the tooltip for a day without data, and draws no dot on it', async () => {
+      await setUpPercent();
+      page().querySelector('.chart')!.dispatchEvent(new Event('focus'));
+      await settle();
+
+      // Focus lands on the latest day (75%). Step left to the gap day.
+      page().querySelector('.chart')!.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowLeft', bubbles: true }));
+      await settle();
+
+      expect(page().querySelector('.tooltip')!.textContent).toContain('no data');
+      // Only the end marker and the lone-day dot: nothing is drawn for the hovered gap day.
+      expect(page().querySelectorAll('svg circle.dot').length).toBe(2);
+    });
+
+    it('writes a hovered day as a percentage with its note', async () => {
+      await setUpPercent();
+      page().querySelector('.chart')!.dispatchEvent(new Event('focus'));
+      for (let i = 0; i < 3; i++) {
+        page().querySelector('.chart')!.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowLeft', bubbles: true }));
+      }
+      await settle();
+
+      expect(page().querySelector('.tooltip')!.textContent).toContain('100% · 2 resolved in the last 7 days');
+    });
+
+    it('lists the same values in the table, with a dash for a day without data', async () => {
+      await setUpPercent();
+
+      page().querySelector<HTMLButtonElement>('button.switch')!.click();
+      await settle();
+
+      const cells = Array.from(page().querySelectorAll('tbody tr')).map((r) => r.querySelectorAll('td')[0].textContent!.trim());
+      expect(cells).toEqual(['no data', '100% · 2 resolved in the last 7 days', '50%', 'no data', '75%']);
+    });
+
+    it('copes with a period where every day is a gap', async () => {
+      await setUpPercent([{ ...compliance, points: DATES.map((date) => ({ date, value: null })) }]);
+
+      expect(page().querySelector('path.line')!.getAttribute('d')).toBe('');
+      expect(page().querySelectorAll('svg circle.dot').length).toBe(0);
+    });
+  });
 });

@@ -5,6 +5,8 @@ const BAR_SHARE_OF_ROW = 80;
 export interface BarItem {
   label: string;
   value: number;
+  /** What to print at the bar's tip instead of the number (for example "4 h 30 min", or "—" for no data). */
+  valueText?: string;
   /** A CSS colour for this bar. Leave out to use the standard single series colour. */
   color?: string;
 }

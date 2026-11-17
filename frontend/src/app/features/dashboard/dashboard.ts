@@ -10,10 +10,11 @@ import { EMPTY, catchError, switchMap, tap } from 'rxjs';
 import { formatDuration, formatHours, formatPercent } from '../../shared/format';
 import { DataGrid } from '../../shared/data-grid/data-grid';
 import { BarItem, BarList } from '../../shared/bar-list/bar-list';
+import { DonutChart, DonutItem } from '../../shared/donut-chart/donut-chart';
 import { StatTile } from '../../shared/stat-tile/stat-tile';
 import { TrendChart, TrendSeries } from '../../shared/trend-chart/trend-chart';
 import { slaLabel, statusLabel } from '../incidents/incident-display';
-import { IncidentStatus, SlaState } from '../incidents/incident.models';
+import { IncidentStatus } from '../incidents/incident.models';
 import { DashboardStatistics, DashboardSummary, PERIOD_CHOICES, WorkloadItem } from './dashboard.models';
 import { DashboardService } from './dashboard.service';
 
@@ -23,21 +24,27 @@ type SummaryState = 'loading' | 'ready' | 'failed';
 const STATUS_ORDER: IncidentStatus[] = ['Open', 'InProgress', 'OnHold', 'Resolved', 'Closed'];
 const PRIORITY_ORDER = ['Critical', 'High', 'Medium', 'Low', 'Unprioritized'];
 
-// SLA states in the order a manager cares about them, and the colour each one means.
-// Colour is a hint only: every row also says its state in words.
-const SLA_ROWS: { state: SlaState; key: keyof DashboardSummary['sla']; color: string }[] = [
-  { state: 'Breached', key: 'breached', color: 'var(--viz-critical)' },
-  { state: 'AtRisk', key: 'atRisk', color: 'var(--viz-warning)' },
-  { state: 'OnTrack', key: 'onTrack', color: 'var(--viz-good)' },
-  { state: 'Paused', key: 'paused', color: 'var(--viz-neutral)' },
-  { state: 'NotStarted', key: 'notStarted', color: 'var(--viz-neutral)' },
-  { state: 'Met', key: 'met', color: 'var(--viz-good)' },
-  { state: 'None', key: 'none', color: 'var(--viz-neutral)' },
+// The first five categorical colours, in their fixed order (checked with the palette validator).
+// A status keeps its colour whatever else is shown.
+const STATUS_COLORS = [
+  'var(--viz-series-1)',
+  'var(--viz-series-2)',
+  'var(--viz-series-3)',
+  'var(--viz-series-4)',
+  'var(--viz-series-5)',
 ];
+
+// What each age band is called on screen. The API sends stable keys.
+const AGE_LABELS: Record<string, string> = {
+  Under1Day: 'Under 1 day',
+  '1To3Days': '1 to 3 days',
+  '3To7Days': '3 to 7 days',
+  Over7Days: 'Over 7 days',
+};
 
 @Component({
   selector: 'app-dashboard',
-  imports: [MatButtonModule, MatButtonToggleModule, MatCardModule, MatProgressBarModule, StatTile, BarList, TrendChart, DataGrid],
+  imports: [MatButtonModule, MatButtonToggleModule, MatCardModule, MatProgressBarModule, StatTile, BarList, DonutChart, TrendChart, DataGrid],
   templateUrl: './dashboard.html',
   styleUrl: './dashboard.css',
 })
@@ -65,14 +72,44 @@ export class Dashboard {
   private readonly summaryReload = signal(0);
   private readonly statsReload = signal(0);
 
-  protected readonly slaRows = computed<BarItem[]>(() => {
+  /**
+   * The SLA states as five parts of a donut. Three states mean "no clock is running" (paused, not started, no SLA),
+   * so they share one part, and the legend spells out what is inside it.
+   */
+  protected readonly slaDonut = computed<DonutItem[]>(() => {
     const sla = this.summary()?.sla;
-    return sla ? SLA_ROWS.map((row) => ({ label: slaLabel(row.state), value: sla[row.key], color: row.color })) : [];
+    if (!sla) {
+      return [];
+    }
+
+    const notRunning = sla.paused + sla.notStarted + sla.none;
+
+    return [
+      { label: slaLabel('Breached'), value: sla.breached, color: 'var(--viz-critical)' },
+      { label: slaLabel('AtRisk'), value: sla.atRisk, color: 'var(--viz-warning)' },
+      { label: slaLabel('OnTrack'), value: sla.onTrack, color: 'var(--viz-good)' },
+      { label: slaLabel('Met'), value: sla.met, color: 'var(--viz-series-1)' },
+      {
+        label: 'No clock running',
+        value: notRunning,
+        color: 'var(--viz-neutral)',
+        detail: `${slaLabel('Paused')} ${sla.paused} · ${slaLabel('NotStarted')} ${sla.notStarted} · ${slaLabel('None')} ${sla.none}`,
+      },
+    ];
   });
 
-  protected readonly statusRows = computed<BarItem[]>(() => {
+  /** How long the open incidents have been waiting, oldest last. */
+  protected readonly ageRows = computed<BarItem[]>(() =>
+    (this.summary()?.openAgeBuckets ?? []).map((bucket) => ({ label: AGE_LABELS[bucket.name] ?? bucket.name, value: bucket.count })),
+  );
+
+  protected readonly statusDonut = computed<DonutItem[]>(() => {
     const byName = new Map((this.stats()?.byStatus ?? []).map((item) => [item.name, item.count]));
-    return STATUS_ORDER.map((status) => ({ label: statusLabel(status), value: byName.get(status) ?? 0 }));
+    return STATUS_ORDER.map((status, index) => ({
+      label: statusLabel(status),
+      value: byName.get(status) ?? 0,
+      color: STATUS_COLORS[index],
+    }));
   });
 
   protected readonly priorityRows = computed<BarItem[]>(() => {
@@ -96,6 +133,35 @@ export class Dashboard {
         ]
       : [];
   });
+
+  /** The average time to resolve, for each priority (most urgent first). A priority with nothing resolved shows a dash. */
+  protected readonly resolutionRows = computed<BarItem[]>(() =>
+    (this.stats()?.resolutionByPriority ?? []).map((row) => ({
+      label: row.priority,
+      value: row.averageHours ?? 0,
+      valueText: row.averageHours === null ? '—' : formatHours(row.averageHours),
+    })),
+  );
+
+  /** One line: the share of resolved incidents that met their SLA, over the week up to each day. Gaps where none were resolved. */
+  protected readonly complianceTrend = computed<TrendSeries[]>(() => {
+    const trend = this.stats()?.slaComplianceTrend;
+    return trend
+      ? [
+          {
+            name: 'Resolved within SLA',
+            color: 'var(--viz-series-1)',
+            points: trend.map((day) => ({
+              date: day.date,
+              value: day.percent,
+              note: day.resolved > 0 ? `${day.resolved} resolved in the last 7 days` : undefined,
+            })),
+          },
+        ]
+      : [];
+  });
+
+  protected readonly formatPercent = formatPercent;
 
   protected readonly createdTotal = computed(() => (this.stats()?.createdPerDay ?? []).reduce((sum, d) => sum + d.count, 0));
   protected readonly resolvedTotal = computed(() => (this.stats()?.resolvedPerDay ?? []).reduce((sum, d) => sum + d.count, 0));

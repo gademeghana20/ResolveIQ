@@ -17,6 +17,12 @@ const summary: DashboardSummary = {
   unassigned: 4,
   oldestUnassignedWaitingMinutes: 200,
   sla: { notStarted: 4, onTrack: 5, atRisk: 2, paused: 1, breached: 3, met: 14, none: 1 },
+  openAgeBuckets: [
+    { name: 'Under1Day', count: 4 },
+    { name: '1To3Days', count: 3 },
+    { name: '3To7Days', count: 3 },
+    { name: 'Over7Days', count: 2 },
+  ],
 };
 
 const statistics: DashboardStatistics = {
@@ -52,6 +58,16 @@ const statistics: DashboardStatistics = {
   ],
   averageResolutionHours: 4.5,
   slaCompliancePercent: 83.3,
+  slaComplianceTrend: [
+    { date: '2026-11-16', percent: null, resolved: 0 },
+    { date: '2026-11-17', percent: 83.3, resolved: 6 },
+  ],
+  resolutionByPriority: [
+    { priority: 'Critical', averageHours: 3.5, count: 2 },
+    { priority: 'High', averageHours: 6, count: 4 },
+    { priority: 'Medium', averageHours: 20.5, count: 3 },
+    { priority: 'Low', averageHours: null, count: 0 },
+  ],
   workload: [
     { userId: 'u1', email: 'dana@example.com', activeIncidents: 5, breachedIncidents: 1 },
     { userId: 'u2', email: 'lee@example.com', activeIncidents: 2, breachedIncidents: 0 },
@@ -150,36 +166,92 @@ describe('Dashboard', () => {
       expect(tile('Assigned to me').querySelector('a')).toBeNull();
     });
 
-    it('lists every SLA state in words, with its count', async () => {
-      await loadBoth();
+    describe('the SLA state donut', () => {
+      const card = () => Array.from(page().querySelectorAll('mat-card')).find((c) => c.textContent!.includes('Incidents by SLA state'))!;
+      const legend = () => Array.from(card().querySelectorAll('li.item'));
+      const rowFor = (name: string) => legend().find((r) => r.querySelector('.label')!.textContent!.trim() === name)!;
 
-      const card = page().querySelector('app-bar-list')!;
-      for (const [name, count] of [
-        ['Breached', '3'],
-        ['At risk', '2'],
-        ['On track', '5'],
-        ['Paused', '1'],
-        ['Not started', '4'],
-        ['Met', '14'],
-        ['No SLA', '1'],
-      ]) {
-        const row = Array.from(card.querySelectorAll('li.row')).find((r) => r.textContent!.includes(name));
-        expect(row, name).toBeDefined();
-        expect(row!.textContent).toContain(count);
-      }
+      it('shows the total in the middle and every SLA state in words, with its count', async () => {
+        await loadBoth();
+
+        expect(card().querySelector('.readout')!.textContent).toContain('30');
+        for (const [name, count] of [
+          ['Breached', '3'],
+          ['At risk', '2'],
+          ['On track', '5'],
+          ['Met', '14'],
+          ['No clock running', '6'],
+        ]) {
+          expect(rowFor(name), name).toBeDefined();
+          expect(rowFor(name).querySelector('.count')!.textContent).toBe(count);
+        }
+      });
+
+      it('says what the combined "no clock running" part is made of', async () => {
+        await loadBoth();
+
+        const detail = rowFor('No clock running').querySelector('.detail')!.textContent!;
+        expect(detail).toContain('Paused 1');
+        expect(detail).toContain('Not started 4');
+        expect(detail).toContain('No SLA 1');
+      });
+
+      it('colours breached, at risk and on track by what they mean', async () => {
+        await loadBoth();
+
+        const colourOf = (name: string) => (rowFor(name).querySelector('.key') as HTMLElement).style.background;
+
+        expect(colourOf('Breached')).toContain('--viz-critical');
+        expect(colourOf('At risk')).toContain('--viz-warning');
+        expect(colourOf('On track')).toContain('--viz-good');
+      });
+
+      it('can be read as a table', async () => {
+        await loadBoth();
+
+        card().querySelector<HTMLButtonElement>('button.switch')!.click();
+        await settle();
+
+        expect(card().querySelectorAll('tbody tr').length).toBe(5);
+      });
+
+      it('says so when there are no incidents at all', async () => {
+        await setUp();
+        const none = { notStarted: 0, onTrack: 0, atRisk: 0, paused: 0, breached: 0, met: 0, none: 0 };
+        summaryRequest().flush({ ...summary, totalIncidents: 0, activeIncidents: 0, sla: none });
+        statsRequest().flush(statistics);
+        await settle();
+
+        expect(card().textContent).toContain('There are no incidents yet.');
+      });
     });
 
-    it('colours breached, at risk and on track by what they mean', async () => {
-      await loadBoth();
-
-      const colourOf = (name: string) => {
-        const row = Array.from(page().querySelectorAll('li.row')).find((r) => r.querySelector('.name')!.textContent!.trim() === name)!;
-        return (row.querySelector('.bar') as HTMLElement).style.background;
+    describe('how long open incidents have waited', () => {
+      const rows = () => {
+        const card = Array.from(page().querySelectorAll('mat-card')).find((c) => c.textContent!.includes('How long open incidents have waited'))!;
+        return Array.from(card.querySelectorAll('li.row')).map((r) => [r.querySelector('.name')!.textContent!.trim(), r.querySelector('.value')!.textContent!.trim()]);
       };
 
-      expect(colourOf('Breached')).toContain('--viz-critical');
-      expect(colourOf('At risk')).toContain('--viz-warning');
-      expect(colourOf('On track')).toContain('--viz-good');
+      it('lists the four age bands in words, oldest last, with their counts', async () => {
+        await loadBoth();
+
+        expect(rows()).toEqual([
+          ['Under 1 day', '4'],
+          ['1 to 3 days', '3'],
+          ['3 to 7 days', '3'],
+          ['Over 7 days', '2'],
+        ]);
+      });
+
+      it('says so when nothing is open', async () => {
+        await setUp();
+        const empty = ['Under1Day', '1To3Days', '3To7Days', 'Over7Days'].map((name) => ({ name, count: 0 }));
+        summaryRequest().flush({ ...summary, openAgeBuckets: empty });
+        statsRequest().flush(statistics);
+        await settle();
+
+        expect(text()).toContain('Nothing is open right now.');
+      });
     });
   });
 
@@ -214,12 +286,74 @@ describe('Dashboard', () => {
       expect(chart.querySelectorAll('path.line').length).toBe(2);
     });
 
-    it('lists statuses in their natural order, with friendly names', async () => {
+    it('shows statuses as a donut, in their natural order, with friendly names and counts', async () => {
       await loadBoth();
 
       const card = Array.from(page().querySelectorAll('mat-card')).find((c) => c.textContent!.includes('By status'))!;
-      const names = Array.from(card.querySelectorAll('.name')).map((n) => n.textContent!.trim());
+      const names = Array.from(card.querySelectorAll('li.item .label')).map((n) => n.textContent!.trim());
+      const counts = Array.from(card.querySelectorAll('li.item .count')).map((n) => n.textContent!.trim());
       expect(names).toEqual(['Open', 'In progress', 'On hold', 'Resolved', 'Closed']);
+      expect(counts).toEqual(['6', '4', '2', '8', '10']);
+      expect(card.querySelector('.readout')!.textContent).toContain('30');
+    });
+
+    it('gives each status its own colour, in a fixed order', async () => {
+      await loadBoth();
+
+      const card = Array.from(page().querySelectorAll('mat-card')).find((c) => c.textContent!.includes('By status'))!;
+      const colours = Array.from(card.querySelectorAll<HTMLElement>('li.item .key')).map((k) => k.style.background);
+      expect(colours.map((c) => c.match(/series-(\d)/)![1])).toEqual(['1', '2', '3', '4', '5']);
+    });
+
+    describe('the SLA compliance trend', () => {
+      const card = () => Array.from(page().querySelectorAll('mat-card')).find((c) => c.querySelector('mat-card-title')!.textContent!.includes('Resolved within SLA'))!;
+
+      it('draws one line on a 0 to 100% axis, named by its card', async () => {
+        await loadBoth();
+
+        const chart = card().querySelector('app-trend-chart')!;
+        expect(chart.querySelector('path.line')!.getAttribute('d')).toBe(''); // one point alone has no line to draw: it is a dot
+        expect(chart.textContent).toContain('100%');
+        expect(chart.querySelector('.legend')).toBeNull();
+        expect(card().textContent).toContain('7 days up to it');
+      });
+
+      it('leaves a gap, not a zero, for days where nothing was resolved', async () => {
+        await loadBoth();
+
+        card().querySelector<HTMLButtonElement>('button.switch')!.click();
+        await settle();
+
+        const cells = Array.from(card().querySelectorAll('tbody tr')).map((r) => r.querySelectorAll('td')[0].textContent!.trim());
+        expect(cells).toEqual(['no data', '83% · 6 resolved in the last 7 days']);
+      });
+    });
+
+    describe('average time to resolve, by priority', () => {
+      const rows = () => {
+        const card = Array.from(page().querySelectorAll('mat-card')).find((c) => c.textContent!.includes('Average time to resolve, by priority'))!;
+        return Array.from(card.querySelectorAll('li.row')).map((r) => [r.querySelector('.name')!.textContent!.trim(), r.querySelector('.value')!.textContent!.trim()]);
+      };
+
+      it('lists the priorities most urgent first, with the average written as a time', async () => {
+        await loadBoth();
+
+        expect(rows()).toEqual([
+          ['Critical', '3 h 30 min'],
+          ['High', '6 h'],
+          ['Medium', '20 h 30 min'],
+          ['Low', '—'], // none resolved: a dash, not 0
+        ]);
+      });
+
+      it('says so when nothing was resolved in the period', async () => {
+        await loadBoth({
+          ...statistics,
+          resolutionByPriority: ['Critical', 'High', 'Medium', 'Low'].map((priority) => ({ priority, averageHours: null, count: 0 })),
+        });
+
+        expect(text()).toContain('Nothing was resolved in this period.');
+      });
     });
 
     it('lists priorities from most to least urgent, and calls the missing one "Not set"', async () => {

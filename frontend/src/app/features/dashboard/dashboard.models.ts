@@ -19,6 +19,8 @@ export interface DashboardSummary {
   unassigned: number;
   oldestUnassignedWaitingMinutes: number | null;
   sla: SlaCounts;
+  /** Active incidents by how long they have been open: Under1Day, 1To3Days, 3To7Days, Over7Days (always all four). */
+  openAgeBuckets: CountItem[];
 }
 
 export interface CountItem {
@@ -28,6 +30,20 @@ export interface CountItem {
 
 export interface DailyCount {
   date: string; // "2026-11-17"
+  count: number;
+}
+
+/** SLA compliance around one day: the share that met their SLA among those resolved in the 7 days up to it. */
+export interface SlaComplianceDay {
+  date: string;
+  percent: number | null; // null when nothing with an SLA was resolved in that week
+  resolved: number;
+}
+
+/** Average time to resolve for one priority. */
+export interface PriorityResolution {
+  priority: string; // Critical, High, Medium or Low
+  averageHours: number | null; // null when none were resolved
   count: number;
 }
 
@@ -50,6 +66,8 @@ export interface DashboardStatistics {
   resolvedPerDay: DailyCount[];
   averageResolutionHours: number | null;
   slaCompliancePercent: number | null;
+  slaComplianceTrend: SlaComplianceDay[];
+  resolutionByPriority: PriorityResolution[];
   /** Only sent to Managers and Admins. */
   workload: WorkloadItem[] | null;
 }

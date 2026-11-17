@@ -1,4 +1,16 @@
-import { Component, DestroyRef, ElementRef, ViewEncapsulation, computed, effect, inject, input, output, signal } from '@angular/core';
+import {
+  Component,
+  DestroyRef,
+  ElementRef,
+  ViewEncapsulation,
+  afterNextRender,
+  computed,
+  effect,
+  inject,
+  input,
+  output,
+  signal,
+} from '@angular/core';
 import { AgGridAngular } from 'ag-grid-angular';
 import { ColDef, GetRowIdParams, GridApi, GridReadyEvent, RowClickedEvent, SortChangedEvent } from 'ag-grid-community';
 
@@ -122,7 +134,20 @@ export class DataGrid<TRow = unknown> {
   private fitTimer: ReturnType<typeof setTimeout> | undefined;
 
   constructor() {
-    inject(DestroyRef).onDestroy(() => clearTimeout(this.fitTimer));
+    const destroyRef = inject(DestroyRef);
+    destroyRef.onDestroy(() => clearTimeout(this.fitTimer));
+
+    // A table that is already on screen when the page loads may be measured before the page has found its final
+    // width. Whenever the table's own box changes size (the page settling, a window resize, a menu opening), fit again.
+    afterNextRender(() => {
+      if (typeof ResizeObserver === 'undefined') {
+        return;
+      }
+
+      const watcher = new ResizeObserver(() => this.scheduleFit());
+      watcher.observe(this.host.nativeElement);
+      destroyRef.onDestroy(() => watcher.disconnect());
+    });
 
     // Keep the arrows on the headings matching the sort the page is using.
     effect(() => {
@@ -170,7 +195,15 @@ export class DataGrid<TRow = unknown> {
     const total = columns.reduce((sum, column) => sum + column.getActualWidth(), 0);
 
     if (total <= available) {
-      api.sizeColumnsToFit();
+      // Share the spare room out in proportion to what each column needs. (AG Grid's own fill-the-width step would
+      // even every column out, which would squash a wide email column down to the width of a number.)
+      const spare = available - total;
+      api.setColumnWidths(
+        columns.map((column) => ({
+          key: column.getColId(),
+          newWidth: column.getActualWidth() + (spare * column.getActualWidth()) / total,
+        })),
+      );
       return;
     }
 

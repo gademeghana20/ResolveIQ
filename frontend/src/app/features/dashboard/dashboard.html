@@ -49,16 +49,30 @@
           />
         </div>
 
-        <mat-card class="card">
-          <mat-card-header><mat-card-title>Incidents by SLA state</mat-card-title></mat-card-header>
-          <mat-card-content>
-            <app-bar-list
-              [items]="slaRows()"
-              ariaLabel="Number of incidents in each SLA state"
-              emptyText="There are no incidents yet."
-            />
-          </mat-card-content>
-        </mat-card>
+        <div class="breakdowns">
+          <mat-card class="card">
+            <mat-card-header><mat-card-title>Incidents by SLA state</mat-card-title></mat-card-header>
+            <mat-card-content>
+              <app-donut-chart
+                [items]="slaDonut()"
+                ariaLabel="Number of incidents in each SLA state"
+                centerLabel="incidents"
+                emptyText="There are no incidents yet."
+              />
+            </mat-card-content>
+          </mat-card>
+
+          <mat-card class="card">
+            <mat-card-header><mat-card-title>How long open incidents have waited</mat-card-title></mat-card-header>
+            <mat-card-content>
+              <app-bar-list
+                [items]="ageRows()"
+                ariaLabel="Open incidents by how long they have been open"
+                emptyText="Nothing is open right now."
+              />
+            </mat-card-content>
+          </mat-card>
+        </div>
       }
     }
   }
@@ -98,21 +112,36 @@
         />
       </div>
 
-      <mat-card class="card">
-        <mat-card-header><mat-card-title>Created and resolved per day</mat-card-title></mat-card-header>
-        <mat-card-content>
-          <app-trend-chart
-            [series]="trend()"
-            [ariaLabel]="'Incidents created and resolved per day over the last ' + period.days + ' days'"
-          />
-        </mat-card-content>
-      </mat-card>
+      <div class="charts">
+        <mat-card class="card">
+          <mat-card-header><mat-card-title>Created and resolved per day</mat-card-title></mat-card-header>
+          <mat-card-content>
+            <app-trend-chart
+              [series]="trend()"
+              [ariaLabel]="'Incidents created and resolved per day over the last ' + period.days + ' days'"
+            />
+          </mat-card-content>
+        </mat-card>
+
+        <mat-card class="card">
+          <mat-card-header><mat-card-title>Resolved within SLA</mat-card-title></mat-card-header>
+          <mat-card-content>
+            <p class="chart-note">Each day shows the share of incidents resolved in the 7 days up to it that met their deadline.</p>
+            <app-trend-chart
+              [series]="complianceTrend()"
+              [maxValue]="100"
+              [valueFormat]="formatPercent"
+              [ariaLabel]="'Share of resolved incidents that met their SLA, over the last ' + period.days + ' days'"
+            />
+          </mat-card-content>
+        </mat-card>
+      </div>
 
       <div class="breakdowns">
         <mat-card class="card">
           <mat-card-header><mat-card-title>By status</mat-card-title></mat-card-header>
           <mat-card-content>
-            <app-bar-list [items]="statusRows()" ariaLabel="Incidents by status" />
+            <app-donut-chart [items]="statusDonut()" ariaLabel="Incidents by status" centerLabel="incidents" emptyText="Nothing to show for this period." />
           </mat-card-content>
         </mat-card>
 
@@ -131,24 +160,37 @@
         </mat-card>
       </div>
 
-      @if (period.workload; as people) {
+      <div class="charts">
         <mat-card class="card">
-          <mat-card-header><mat-card-title>Workload by assignee</mat-card-title></mat-card-header>
+          <mat-card-header><mat-card-title>Average time to resolve, by priority</mat-card-title></mat-card-header>
           <mat-card-content>
-            @if (people.length === 0) {
-              <p class="muted">Nobody has active incidents assigned.</p>
-            } @else {
-              <app-data-grid
-                ariaLabel="Workload by assignee"
-                [rows]="people"
-                [columns]="workloadColumns"
-                [rowId]="workloadRowId"
-                [rowHeight]="48"
-              />
-            }
+            <app-bar-list
+              [items]="resolutionRows()"
+              ariaLabel="Average time to resolve, by priority"
+              emptyText="Nothing was resolved in this period."
+            />
           </mat-card-content>
         </mat-card>
-      }
+
+        @if (period.workload; as people) {
+          <mat-card class="card">
+            <mat-card-header><mat-card-title>Workload by assignee</mat-card-title></mat-card-header>
+            <mat-card-content>
+              @if (people.length === 0) {
+                <p class="muted">Nobody has active incidents assigned.</p>
+              } @else {
+                <app-data-grid
+                  ariaLabel="Workload by assignee"
+                  [rows]="people"
+                  [columns]="workloadColumns"
+                  [rowId]="workloadRowId"
+                  [rowHeight]="48"
+                />
+              }
+            </mat-card-content>
+          </mat-card>
+        }
+      </div>
     </div>
   }
 </section>

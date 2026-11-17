@@ -4,7 +4,10 @@ import { formatDay, niceAxis } from '../format';
 
 export interface TrendPoint {
   date: string; // "2026-11-17"
-  value: number;
+  /** Empty when there is nothing to plot that day: the line breaks there instead of dropping to zero. */
+  value: number | null;
+  /** Small print added to the tooltip and the table, e.g. "3 resolved". */
+  note?: string;
 }
 
 export interface TrendSeries {
@@ -35,6 +38,10 @@ const PLOT_HEIGHT = HEIGHT - MARGIN.top - MARGIN.bottom;
 export class TrendChart {
   readonly series = input.required<TrendSeries[]>();
   readonly ariaLabel = input.required<string>();
+  /** A fixed top for the vertical axis (for example 100 for percentages). Leave out to fit the data. */
+  readonly maxValue = input<number | null>(null);
+  /** How a value is written on the axis, in the tooltip and in the table (for example 67 -> "67%"). */
+  readonly valueFormat = input<(value: number) => string>((value) => String(value));
 
   protected readonly width = WIDTH;
   protected readonly height = HEIGHT;
@@ -48,15 +55,18 @@ export class TrendChart {
 
   protected readonly dates = computed(() => this.series()[0]?.points.map((p) => p.date) ?? []);
 
-  private readonly axis = computed(() =>
-    niceAxis(Math.max(0, ...this.series().flatMap((s) => s.points.map((p) => p.value)))),
-  );
+  private readonly axis = computed(() => {
+    const fixed = this.maxValue();
+    return fixed !== null
+      ? { top: fixed, step: fixed / 4 }
+      : niceAxis(Math.max(0, ...this.series().flatMap((s) => s.points.map((p) => p.value ?? 0))));
+  });
 
   protected readonly yTicks = computed(() => {
     const { top, step } = this.axis();
-    const ticks: { value: number; y: number }[] = [];
-    for (let value = 0; value <= top; value += step) {
-      ticks.push({ value, y: this.y(value) });
+    const ticks: { value: number; y: number; text: string }[] = [];
+    for (let value = 0; value <= top + 1e-9; value += step) {
+      ticks.push({ value, y: this.y(value), text: this.valueFormat()(value) });
     }
     return ticks;
   });
@@ -82,16 +92,41 @@ export class TrendChart {
 
   protected readonly lines = computed(() =>
     this.series().map((s) => {
-      const coordinates = s.points.map((p, index) => `${this.x(index).toFixed(1)},${this.y(p.value).toFixed(1)}`);
-      const last = s.points[s.points.length - 1];
+      // A run of days with data is one stretch of line; a day without data ends it.
+      const stretches: { x: number; y: number }[][] = [];
+      let current: { x: number; y: number }[] = [];
+
+      s.points.forEach((point, index) => {
+        if (point.value === null) {
+          if (current.length) {
+            stretches.push(current);
+          }
+          current = [];
+        } else {
+          current.push({ x: this.x(index), y: this.y(point.value) });
+        }
+      });
+      if (current.length) {
+        stretches.push(current);
+      }
+
+      const path = stretches
+        .filter((stretch) => stretch.length > 1)
+        .map((stretch) => `M${stretch.map((c) => `${c.x.toFixed(1)},${c.y.toFixed(1)}`).join(' L')}`)
+        .join(' ');
+
+      // A day with data between two days without has no line to sit on, so it is shown as a dot.
+      const lone = stretches.filter((stretch) => stretch.length === 1).map((stretch) => stretch[0]);
+      const last = stretches.length ? stretches[stretches.length - 1][stretches[stretches.length - 1].length - 1] : null;
 
       return {
         name: s.name,
         color: s.color,
-        path: coordinates.length ? `M${coordinates.join(' L')}` : '',
-        endX: last ? this.x(s.points.length - 1) : 0,
-        endY: last ? this.y(last.value) : 0,
-        hasEnd: !!last,
+        path,
+        lone,
+        endX: last?.x ?? 0,
+        endY: last?.y ?? 0,
+        hasEnd: last !== null,
       };
     }),
   );
@@ -108,21 +143,37 @@ export class TrendChart {
       x: xPosition,
       percent: (xPosition / WIDTH) * 100,
       date: formatDay(this.dates()[index]),
-      values: this.series().map((s) => ({
-        name: s.name,
-        color: s.color,
-        value: s.points[index]?.value ?? 0,
-        y: this.y(s.points[index]?.value ?? 0),
-      })),
+      values: this.series().map((s) => {
+        const point = s.points[index];
+        const value = point ? point.value : 0;
+
+        return {
+          name: s.name,
+          color: s.color,
+          text: this.describe(value, point?.note),
+          y: value === null ? null : this.y(value),
+        };
+      }),
     };
   });
 
   protected readonly tableRows = computed(() =>
     this.dates().map((date, index) => ({
       date: formatDay(date),
-      values: this.series().map((s) => s.points[index]?.value ?? 0),
+      values: this.series().map((s) => {
+        const point = s.points[index];
+        return point ? this.describe(point.value, point.note) : this.describe(0);
+      }),
     })),
   );
+
+  /** A value as text, with its note; "no data" for a day with nothing to plot. */
+  private describe(value: number | null, note?: string): string {
+    if (value === null) {
+      return 'no data';
+    }
+    return note ? `${this.valueFormat()(value)} · ${note}` : this.valueFormat()(value);
+  }
 
   protected x(index: number): number {
     const count = this.dates().length;
