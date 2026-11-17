@@ -148,14 +148,14 @@
         <mat-card class="card">
           <mat-card-header><mat-card-title>By priority</mat-card-title></mat-card-header>
           <mat-card-content>
-            <app-bar-list [items]="priorityRows()" ariaLabel="Incidents by priority" />
+            <app-donut-chart [items]="priorityDonut()" ariaLabel="Incidents by priority" centerLabel="incidents" emptyText="Nothing to show for this period." />
           </mat-card-content>
         </mat-card>
 
         <mat-card class="card">
           <mat-card-header><mat-card-title>By category</mat-card-title></mat-card-header>
           <mat-card-content>
-            <app-bar-list [items]="categoryRows()" ariaLabel="Incidents by category" />
+            <app-donut-chart [items]="categoryDonut()" ariaLabel="Incidents by category" centerLabel="incidents" emptyText="Nothing to show for this period." />
           </mat-card-content>
         </mat-card>
       </div>

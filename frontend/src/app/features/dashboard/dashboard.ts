@@ -24,15 +24,23 @@ type SummaryState = 'loading' | 'ready' | 'failed';
 const STATUS_ORDER: IncidentStatus[] = ['Open', 'InProgress', 'OnHold', 'Resolved', 'Closed'];
 const PRIORITY_ORDER = ['Critical', 'High', 'Medium', 'Low', 'Unprioritized'];
 
-// The first five categorical colours, in their fixed order (checked with the palette validator).
+// The categorical colours, in their fixed order (checked with the palette validator).
 // A status keeps its colour whatever else is shown.
-const STATUS_COLORS = [
+const SERIES_COLORS = [
   'var(--viz-series-1)',
   'var(--viz-series-2)',
   'var(--viz-series-3)',
   'var(--viz-series-4)',
   'var(--viz-series-5)',
+  'var(--viz-series-6)',
 ];
+
+// Priority is an ordered scale, so it is one blue hue, strongest (Critical) first; "Not set" is the neutral grey.
+const PRIORITY_COLORS = ['var(--viz-ordinal-1)', 'var(--viz-ordinal-2)', 'var(--viz-ordinal-3)', 'var(--viz-ordinal-4)', 'var(--viz-neutral)'];
+
+// A donut stays readable with about six parts. More categories than that: the biggest five, then the rest together.
+const MAX_CATEGORY_PARTS = 6;
+const REST_LABEL = 'All the rest';
 
 // What each age band is called on screen. The API sends stable keys.
 const AGE_LABELS: Record<string, string> = {
@@ -108,21 +116,38 @@ export class Dashboard {
     return STATUS_ORDER.map((status, index) => ({
       label: statusLabel(status),
       value: byName.get(status) ?? 0,
-      color: STATUS_COLORS[index],
+      color: SERIES_COLORS[index],
     }));
   });
 
-  protected readonly priorityRows = computed<BarItem[]>(() => {
+  protected readonly priorityDonut = computed<DonutItem[]>(() => {
     const byName = new Map((this.stats()?.byPriority ?? []).map((item) => [item.name, item.count]));
-    return PRIORITY_ORDER.map((name) => ({ label: name === 'Unprioritized' ? 'Not set' : name, value: byName.get(name) ?? 0 }));
+    return PRIORITY_ORDER.map((name, index) => ({
+      label: name === 'Unprioritized' ? 'Not set' : name,
+      value: byName.get(name) ?? 0,
+      color: PRIORITY_COLORS[index],
+    }));
   });
 
-  // Categories have no natural order, so they are ranked by size.
-  protected readonly categoryRows = computed<BarItem[]>(() =>
-    [...(this.stats()?.byCategory ?? [])]
-      .sort((a, b) => b.count - a.count)
-      .map((item) => ({ label: item.name, value: item.count })),
-  );
+  // Categories have no natural order, so the biggest come first. Past six, the small ones are added together.
+  protected readonly categoryDonut = computed<DonutItem[]>(() => {
+    const ranked = [...(this.stats()?.byCategory ?? [])].sort((a, b) => b.count - a.count || a.name.localeCompare(b.name));
+    const shown = ranked.length > MAX_CATEGORY_PARTS ? ranked.slice(0, MAX_CATEGORY_PARTS - 1) : ranked;
+    const rest = ranked.slice(shown.length);
+
+    const parts: DonutItem[] = shown.map((item, index) => ({ label: item.name, value: item.count, color: SERIES_COLORS[index] }));
+
+    if (rest.length > 0) {
+      parts.push({
+        label: REST_LABEL,
+        value: rest.reduce((sum, item) => sum + item.count, 0),
+        color: 'var(--viz-neutral)',
+        detail: `${rest.length} smaller categories`,
+      });
+    }
+
+    return parts;
+  });
 
   protected readonly trend = computed<TrendSeries[]>(() => {
     const stats = this.stats();

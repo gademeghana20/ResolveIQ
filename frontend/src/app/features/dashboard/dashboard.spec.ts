@@ -356,20 +356,75 @@ describe('Dashboard', () => {
       });
     });
 
-    it('lists priorities from most to least urgent, and calls the missing one "Not set"', async () => {
-      await loadBoth();
+    describe('by priority', () => {
+      const card = () => Array.from(page().querySelectorAll('mat-card')).find((c) => c.querySelector('mat-card-title')!.textContent!.includes('By priority'))!;
+      const labels = () => Array.from(card().querySelectorAll('li.item .label')).map((n) => n.textContent!.trim());
+      const colours = () => Array.from(card().querySelectorAll<HTMLElement>('li.item .key')).map((k) => k.style.background);
 
-      const card = Array.from(page().querySelectorAll('mat-card')).find((c) => c.textContent!.includes('By priority'))!;
-      const names = Array.from(card.querySelectorAll('.name')).map((n) => n.textContent!.trim());
-      expect(names).toEqual(['Critical', 'High', 'Medium', 'Low', 'Not set']);
+      it('is a donut listing priorities from most to least urgent, and calls the missing one "Not set"', async () => {
+        await loadBoth();
+
+        expect(labels()).toEqual(['Critical', 'High', 'Medium', 'Low', 'Not set']);
+        expect(Array.from(card().querySelectorAll('li.item .count')).map((n) => n.textContent!.trim())).toEqual(['1', '9', '5', '2', '13']);
+        expect(card().querySelector('.readout')!.textContent).toContain('30');
+      });
+
+      it('uses one blue hue from strongest to lightest for the four priorities, and grey for "Not set"', async () => {
+        await loadBoth();
+
+        expect(colours().map((c) => c.match(/ordinal-(\d)|neutral/)![0])).toEqual(['ordinal-1', 'ordinal-2', 'ordinal-3', 'ordinal-4', 'neutral']);
+      });
     });
 
-    it('ranks categories from largest to smallest', async () => {
-      await loadBoth();
+    describe('by category', () => {
+      const card = () => Array.from(page().querySelectorAll('mat-card')).find((c) => c.querySelector('mat-card-title')!.textContent!.includes('By category'))!;
+      const labels = () => Array.from(card().querySelectorAll('li.item .label')).map((n) => n.textContent!.trim());
+      const counts = () => Array.from(card().querySelectorAll('li.item .count')).map((n) => n.textContent!.trim());
 
-      const card = Array.from(page().querySelectorAll('mat-card')).find((c) => c.textContent!.includes('By category'))!;
-      const names = Array.from(card.querySelectorAll('.name')).map((n) => n.textContent!.trim());
-      expect(names).toEqual(['Hardware', 'Uncategorized', 'Network']);
+      const withCategories = (names: [string, number][]) =>
+        loadBoth({ ...statistics, byCategory: names.map(([name, count]) => ({ name, count })) });
+
+      it('is a donut ranking categories from largest to smallest', async () => {
+        await loadBoth();
+
+        expect(labels()).toEqual(['Hardware', 'Uncategorized', 'Network']);
+        expect(counts()).toEqual(['12', '5', '3']);
+      });
+
+      it('gives each category its own colour, in a fixed order', async () => {
+        await loadBoth();
+
+        const colours = Array.from(card().querySelectorAll<HTMLElement>('li.item .key')).map((k) => k.style.background);
+        expect(colours.map((c) => c.match(/series-(\d)/)![1])).toEqual(['1', '2', '3']);
+      });
+
+      it('shows all six when there are exactly six', async () => {
+        await withCategories([['A', 6], ['B', 5], ['C', 4], ['D', 3], ['E', 2], ['F', 1]]);
+
+        expect(labels()).toEqual(['A', 'B', 'C', 'D', 'E', 'F']);
+      });
+
+      it('with more than six, keeps the biggest five and adds the rest together, saying how many that is', async () => {
+        await withCategories([['A', 8], ['B', 7], ['C', 6], ['D', 5], ['E', 4], ['F', 3], ['G', 2], ['H', 1]]);
+
+        expect(labels()).toEqual(['A', 'B', 'C', 'D', 'E', 'All the rest']);
+        expect(counts()).toEqual(['8', '7', '6', '5', '4', '6']); // F + G + H = 6
+        const rest = card().querySelectorAll('li.item')[5];
+        expect(rest.querySelector('.detail')!.textContent).toContain('3 smaller categories');
+        expect((rest.querySelector('.key') as HTMLElement).style.background).toContain('--viz-neutral');
+      });
+
+      it('keeps the total right when the small ones are added together', async () => {
+        await withCategories([['A', 8], ['B', 7], ['C', 6], ['D', 5], ['E', 4], ['F', 3], ['G', 2], ['H', 1]]);
+
+        expect(card().querySelector('.readout')!.textContent).toContain('36');
+      });
+
+      it('says so when there is nothing to show', async () => {
+        await withCategories([]);
+
+        expect(card().textContent).toContain('Nothing to show for this period.');
+      });
     });
 
     it('asks for new numbers when another period is chosen, keeping the old ones dimmed meanwhile', async () => {

@@ -74,8 +74,8 @@
 
 /*
  * Chart colours. Defined once here and used by the dashboard's charts by role (not by raw hex),
- * so light and dark are swapped in one place. The first five series colours (blue, orange, aqua, yellow,
- * magenta, in that fixed order) were checked with the palette validator (colour-blind separation and
+ * so light and dark are swapped in one place. The first six series colours (blue, orange, aqua, yellow,
+ * magenta, green, in that fixed order) were checked with the palette validator (colour-blind separation and
  * contrast) in both modes. Status colours (good, warning, critical, neutral) keep their own meaning.
  */
 :root {
@@ -85,6 +85,12 @@
   --viz-series-3: #1baf7a; /* aqua */
   --viz-series-4: #eda100; /* yellow */
   --viz-series-5: #e87ba4; /* magenta */
+  --viz-series-6: #008300; /* green */
+  /* An ordered scale (priority): one hue, strongest first. Validated as an ordinal ramp. */
+  --viz-ordinal-1: #184f95;
+  --viz-ordinal-2: #2a78d6;
+  --viz-ordinal-3: #5598e7;
+  --viz-ordinal-4: #86b6ef;
   --viz-ink: #0b0b0b;
   --viz-ink-2: #52514e;
   --viz-muted: #898781;
@@ -104,6 +110,11 @@
     --viz-series-3: #199e70;
     --viz-series-4: #c98500;
     --viz-series-5: #d55181;
+    --viz-series-6: #0ca30c;
+    --viz-ordinal-1: #86b6ef;
+    --viz-ordinal-2: #5598e7;
+    --viz-ordinal-3: #2a78d6;
+    --viz-ordinal-4: #1c5cab;
     --viz-ink: #f0efec;
     --viz-ink-2: #c3c2b7;
     --viz-grid: #2c2c2a;
@@ -118,6 +129,11 @@
   --viz-series-3: #199e70;
   --viz-series-4: #c98500;
   --viz-series-5: #d55181;
+  --viz-series-6: #0ca30c;
+  --viz-ordinal-1: #86b6ef;
+  --viz-ordinal-2: #5598e7;
+  --viz-ordinal-3: #2a78d6;
+  --viz-ordinal-4: #1c5cab;
   --viz-ink: #f0efec;
   --viz-ink-2: #c3c2b7;
   --viz-grid: #2c2c2a;
