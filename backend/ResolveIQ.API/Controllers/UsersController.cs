@@ -79,6 +79,23 @@ namespace ResolveIQ.API.Controllers
             return result.Outcome == ChangeOutcome.Success ? Ok(result.User) : ToProblem(result);
         }
 
+        [HttpPut("{id}/password")]
+        [Authorize(Roles = RoleNames.Admin)]
+        [ProducesResponseType(StatusCodes.Status200OK)]
+        [ProducesResponseType(StatusCodes.Status400BadRequest)]
+        [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+        [ProducesResponseType(StatusCodes.Status403Forbidden)]
+        [ProducesResponseType(StatusCodes.Status404NotFound)]
+        public async Task<ActionResult<UserSummaryResponse>> ResetPassword(
+            string id,
+            ResetUserPasswordRequest request,
+            CancellationToken cancellationToken)
+        {
+            var result = await _userService.ResetPasswordAsync(id, request.NewPassword, cancellationToken);
+
+            return result.Outcome == ChangeOutcome.Success ? Ok(result.User) : ToProblem(result);
+        }
+
         [HttpPut("{id}/active")]
         [Authorize(Roles = RoleNames.Admin)]
         [ProducesResponseType(StatusCodes.Status200OK)]

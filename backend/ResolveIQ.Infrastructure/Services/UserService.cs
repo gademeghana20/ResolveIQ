@@ -91,6 +91,39 @@ namespace ResolveIQ.Infrastructure.Services
             return await SuccessAsync(user.Id, cancellationToken);
         }
 
+        public async Task<UserChangeResult> ResetPasswordAsync(
+            string id,
+            string newPassword,
+            CancellationToken cancellationToken = default)
+        {
+            var user = await _userManager.FindByIdAsync(id);
+            if (user is null)
+            {
+                return new UserChangeResult(ChangeOutcome.NotFound);
+            }
+
+            // Identity's own reset checks the password rules and also changes the security stamp,
+            // so every token the user already holds stops working straight away.
+            var token = await _userManager.GeneratePasswordResetTokenAsync(user);
+            var result = await _userManager.ResetPasswordAsync(user, token, newPassword);
+            if (!result.Succeeded)
+            {
+                return new UserChangeResult(
+                    ChangeOutcome.Invalid,
+                    Errors: result.Errors.Select(e => new FieldError("NewPassword", e.Description)).ToList());
+            }
+
+            // The person is about to log in with a fresh password, so forget earlier failed attempts and any
+            // short lock-out. A deactivated user is locked "until the end of time" and must stay that way.
+            await _userManager.ResetAccessFailedCountAsync(user);
+            if (user.LockoutEnd is { } lockedUntil && lockedUntil < DateTimeOffset.MaxValue)
+            {
+                await _userManager.SetLockoutEndDateAsync(user, null);
+            }
+
+            return await SuccessAsync(user.Id, cancellationToken);
+        }
+
         public async Task<UserChangeResult> SetActiveAsync(
             string id,
             bool isActive,

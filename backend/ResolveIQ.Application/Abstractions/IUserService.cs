@@ -27,6 +27,16 @@ namespace ResolveIQ.Application.Abstractions
             CancellationToken cancellationToken = default);
 
         /// <summary>
+        /// Gives a user a new password (an Admin action, for example after it was forgotten). It must meet
+        /// the normal password rules. Their current login tokens stop working at once, and a short lock-out
+        /// from failed attempts is cleared. A deactivated user stays deactivated.
+        /// </summary>
+        Task<UserChangeResult> ResetPasswordAsync(
+            string id,
+            string newPassword,
+            CancellationToken cancellationToken = default);
+
+        /// <summary>
         /// Deactivates or reactivates a user. Either way, their current login tokens stop working at once.
         /// An Admin cannot deactivate themselves.
         /// </summary>

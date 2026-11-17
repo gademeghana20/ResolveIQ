@@ -31,7 +31,9 @@ builder.Services
         options.User.RequireUniqueEmail = true;
     })
     .AddRoles<IdentityRole>()
-    .AddEntityFrameworkStores<ApplicationDbContext>();
+    .AddEntityFrameworkStores<ApplicationDbContext>()
+    // Identity's password-reset needs these token providers (an Admin resetting a password uses it).
+    .AddDefaultTokenProviders();
 
 // Configure JWT authentication: how the API validates incoming tokens.
 var jwtKey = builder.Configuration["Jwt:Key"]

@@ -42,6 +42,14 @@ namespace ResolveIQ.Application.DTOs.Users
         public string Role { get; set; } = string.Empty;
     }
 
+    /// <summary>What an Admin sends to give a user a new password (for example when it was forgotten).</summary>
+    public class ResetUserPasswordRequest
+    {
+        [Required]
+        [StringLength(100)]
+        public string NewPassword { get; set; } = string.Empty;
+    }
+
     public class SetUserActiveRequest
     {
         public bool IsActive { get; set; }

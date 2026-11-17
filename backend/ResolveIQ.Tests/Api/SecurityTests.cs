@@ -42,6 +42,7 @@ namespace ResolveIQ.Tests.Api
             ("POST", "/api/users", AdminsOnly),
             ("PUT", "/api/users/some-user/role", AdminsOnly),
             ("PUT", "/api/users/some-user/active", AdminsOnly),
+            ("PUT", "/api/users/some-user/password", AdminsOnly),
             ("GET", "/api/sla/policies", ManagersAndAdmins),
             ("PUT", "/api/sla/policies/Low", AdminsOnly),
             ("GET", "/api/categories", Everyone),
