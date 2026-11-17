@@ -8,10 +8,21 @@ import { MatInputModule } from '@angular/material/input';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 
 import { AuthService } from '../../../core/auth/auth.service';
+import { ThemeToggle } from '../../../shared/theme-toggle/theme-toggle';
+import { AuthBrand } from '../auth-brand/auth-brand';
 
 @Component({
   selector: 'app-login',
-  imports: [ReactiveFormsModule, RouterLink, MatCardModule, MatFormFieldModule, MatInputModule, MatButtonModule],
+  imports: [
+    ReactiveFormsModule,
+    RouterLink,
+    MatCardModule,
+    MatFormFieldModule,
+    MatInputModule,
+    MatButtonModule,
+    AuthBrand,
+    ThemeToggle,
+  ],
   templateUrl: './login.html',
   styleUrl: '../auth-page.css',
 })

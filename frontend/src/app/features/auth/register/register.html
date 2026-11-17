@@ -1,4 +1,7 @@
 <main class="auth-page">
+  <app-auth-brand />
+
+  <section class="form-panel">
   <mat-card class="auth-card">
     <mat-card-header>
       <mat-card-title>Create your account</mat-card-title>
@@ -64,4 +67,7 @@
       <p class="switch">Already have an account? <a routerLink="/login">Sign in</a></p>
     </mat-card-content>
   </mat-card>
+
+  <div class="theme"><app-theme-toggle /></div>
+  </section>
 </main>

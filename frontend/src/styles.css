@@ -1,9 +1,81 @@
 /* You can add global styles to this file, and also import other style files */
 
 /*
+ * ResolveIQ's brand colours, light and dark, in one place.
+ *
+ * They are laid over Angular Material's own colour variables (--mat-sys-*), so every Material component
+ * (buttons, inputs, menus, dialogs, tables) picks them up without any per-component work.
+ * light-dark(a, b) gives "a" in light mode and "b" in dark mode, following the page's colour scheme,
+ * which is set by the Light / Dark / System choice (see ThemeService).
+ *
+ * The palette: a deep forest green, mint tints, soft grey surfaces, and orange / purple / blue accents.
+ */
+:root {
+  /* Brand green */
+  --mat-sys-primary: light-dark(#2b7a62, #6fcfb0);
+  --mat-sys-on-primary: light-dark(#ffffff, #00382a);
+  --mat-sys-primary-container: light-dark(#cfe9df, #1f5a47);
+  --mat-sys-on-primary-container: light-dark(#0a3a2c, #cfe9df);
+  --mat-sys-surface-tint: light-dark(#2b7a62, #6fcfb0);
+
+  /* Calm green-grey for secondary things such as the active tab */
+  --mat-sys-secondary: light-dark(#4d6b5f, #a9cdbf);
+  --mat-sys-on-secondary: light-dark(#ffffff, #153229);
+  --mat-sys-secondary-container: light-dark(#d9eae3, #2a4036);
+  --mat-sys-on-secondary-container: light-dark(#10291f, #d5e8df);
+
+  /* Warm orange accent */
+  --mat-sys-tertiary: light-dark(#b26a00, #f6a93b);
+  --mat-sys-on-tertiary: light-dark(#ffffff, #442a00);
+  --mat-sys-tertiary-container: light-dark(#ffe3b8, #5c3b00);
+  --mat-sys-on-tertiary-container: light-dark(#3a2400, #ffe3b8);
+
+  /* Surfaces: soft grey-green in light, deep green-black in dark */
+  --mat-sys-surface: light-dark(#f2f5f3, #0f1513);
+  --mat-sys-background: light-dark(#f2f5f3, #0f1513);
+  --mat-sys-surface-dim: light-dark(#dde3e0, #0b100e);
+  --mat-sys-surface-bright: light-dark(#f8faf9, #2a3330);
+  --mat-sys-surface-container-lowest: light-dark(#ffffff, #0a0f0d);
+  --mat-sys-surface-container-low: light-dark(#f8faf9, #141b18);
+  --mat-sys-surface-container: light-dark(#eef2f0, #19211e);
+  --mat-sys-surface-container-high: light-dark(#e6ece9, #202a26);
+  --mat-sys-surface-container-highest: light-dark(#dde5e1, #283430);
+  --mat-sys-on-surface: light-dark(#17211d, #e1eae6);
+  --mat-sys-on-background: light-dark(#17211d, #e1eae6);
+  --mat-sys-surface-variant: light-dark(#dde5e1, #34443d);
+  --mat-sys-on-surface-variant: light-dark(#4a5a53, #a9b8b1);
+  --mat-sys-outline: light-dark(#7d8d86, #6f8179);
+  --mat-sys-outline-variant: light-dark(#cbd6d1, #34443d);
+
+  --mat-sys-inverse-surface: light-dark(#2c3631, #e1eae6);
+  --mat-sys-inverse-on-surface: light-dark(#eef2f0, #1c2521);
+  --mat-sys-inverse-primary: light-dark(#6fcfb0, #2b7a62);
+
+  /* Rounder corners than Material's default, for the softer look of a modern product */
+  --mat-sys-corner-small: 10px;
+  --mat-sys-corner-medium: 14px;
+  --mat-sys-corner-large: 18px;
+  --mat-sys-corner-extra-large: 24px;
+
+  /* The sidebar: deep green in both modes, a little darker at night */
+  --app-sidebar-bg: light-dark(#2b7a62, #123229);
+  --app-sidebar-fg: #ffffff;
+  --app-sidebar-muted: rgba(255, 255, 255, 0.74);
+  --app-sidebar-hover: rgba(255, 255, 255, 0.1);
+  --app-sidebar-active: rgba(255, 255, 255, 0.18);
+  --app-sidebar-divider: rgba(255, 255, 255, 0.16);
+  /* The white pill buttons on the sidebar (New incident, Log out): white in both modes, with green text. */
+  --app-sidebar-pill-bg: #ffffff;
+  --app-sidebar-pill-fg: light-dark(#2b7a62, #123229);
+
+  /* Mint, used for soft highlights and the login backdrop */
+  --app-mint: light-dark(#d3ebe4, #16281f);
+}
+
+/*
  * Chart colours. Defined once here and used by the dashboard's charts by role (not by raw hex),
- * so light and dark are swapped in one place. Series colours were checked with the palette validator
- * (colour-blind separation and contrast) in both modes.
+ * so light and dark are swapped in one place. The two line colours were checked with the palette
+ * validator (colour-blind separation and contrast) in both modes.
  */
 :root {
   --viz-surface: #fcfcfb;

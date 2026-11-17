@@ -17,14 +17,15 @@
   color: var(--mat-sys-on-primary-container);
 }
 
+/* light-dark(day, night): soft tints by day, deep tints with light text at night. */
 .tone-success {
-  background: #d7f0dc;
-  color: #14501f;
+  background: light-dark(#d7f0dc, #1d3d2a);
+  color: light-dark(#14501f, #bfe8c9);
 }
 
 .tone-warning {
-  background: #fdebc8;
-  color: #6b4500;
+  background: light-dark(#fdebc8, #4a3a12);
+  color: light-dark(#6b4500, #f6d58e);
 }
 
 .tone-danger {

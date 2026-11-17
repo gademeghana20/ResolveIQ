@@ -2,7 +2,6 @@ import { Routes } from '@angular/router';
 
 import { authGuard } from './core/auth/auth.guard';
 import { roleGuard } from './core/auth/role.guard';
-import { Shell } from './layout/shell/shell';
 
 // Pages use loadComponent so their code is downloaded only when someone visits them (lazy loading).
 // That keeps the first download small: the login page does not carry the incident table's code.
@@ -10,10 +9,11 @@ export const routes: Routes = [
   { path: 'login', loadComponent: () => import('./features/auth/login/login').then((m) => m.Login) },
   { path: 'register', loadComponent: () => import('./features/auth/register/register').then((m) => m.Register) },
 
-  // Everything signed-in people see lives inside the Shell (the top bar) and behind the guard.
+  // Everything signed-in people see lives inside the Shell (the sidebar frame) and behind the guard.
+  // The Shell is lazy too, so the sign-in pages do not download the sidebar's code.
   {
     path: '',
-    component: Shell,
+    loadComponent: () => import('./layout/shell/shell').then((m) => m.Shell),
     canActivate: [authGuard],
     children: [
       {

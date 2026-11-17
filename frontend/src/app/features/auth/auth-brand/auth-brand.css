@@ -1,0 +1,110 @@
+:host {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: 32px;
+  padding: 40px 48px;
+  overflow: hidden;
+  color: #ffffff;
+  background:
+    radial-gradient(circle at 15% 0%, rgba(255, 255, 255, 0.16), transparent 50%),
+    var(--app-sidebar-bg);
+}
+
+.logo {
+  --logo-size: 40px;
+}
+
+/* Centred in the space below the logo (the auto margins share the leftover room above and below). */
+.message {
+  position: relative;
+  z-index: 1;
+  max-width: 440px;
+  margin: auto 0;
+  padding-bottom: 80px;
+}
+
+.headline {
+  margin: 0 0 24px;
+  font-size: 2.25rem;
+  font-weight: 700;
+  line-height: 1.15;
+  letter-spacing: -0.02em;
+}
+
+.points {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  font-size: 1.05rem;
+}
+
+.points li {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.points mat-icon {
+  flex: none;
+  padding: 6px;
+  width: 24px;
+  height: 24px;
+  box-sizing: content-box;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.16);
+}
+
+/* Soft decorative rings, echoing the dashboard's donut charts. */
+.ring {
+  position: absolute;
+  border-radius: 50%;
+  border-style: solid;
+  pointer-events: none;
+}
+
+/* Tucked into the bottom-right corner, well below and beside the text. */
+.ring-orange {
+  right: -80px;
+  bottom: -70px;
+  width: 200px;
+  height: 200px;
+  border-width: 26px;
+  border-color: rgba(246, 169, 59, 0.85);
+  border-top-color: transparent;
+}
+
+.ring-purple {
+  right: 110px;
+  bottom: -90px;
+  width: 140px;
+  height: 140px;
+  border-width: 20px;
+  border-color: rgba(176, 106, 214, 0.5);
+  border-top-color: transparent;
+}
+
+/* On a narrow screen the panel shrinks to a banner: logo and headline only. */
+@media (max-width: 900px) {
+  :host {
+    padding: 22px 24px;
+    gap: 12px;
+  }
+
+  .logo {
+    --logo-size: 32px;
+  }
+
+  .headline {
+    margin: 0;
+    font-size: 1.35rem;
+  }
+
+  .points,
+  .ring {
+    display: none;
+  }
+}

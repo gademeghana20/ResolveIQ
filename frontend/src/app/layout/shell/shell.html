@@ -1,19 +1,67 @@
-<mat-toolbar class="top-bar">
-  <span class="brand">ResolveIQ</span>
+<mat-sidenav-container class="layout">
+  <mat-sidenav
+    class="sidebar"
+    [mode]="narrow() ? 'over' : 'side'"
+    [opened]="!narrow() || menuOpen()"
+    (closedStart)="menuOpen.set(false)"
+  >
+    <a class="brand" routerLink="/dashboard" aria-label="ResolveIQ, go to the dashboard">
+      <app-logo />
+    </a>
 
-  <nav class="links" aria-label="Main">
-    <a mat-button routerLink="/dashboard" routerLinkActive="active" ariaCurrentWhenActive="page">Dashboard</a>
-    <a mat-button routerLink="/incidents" routerLinkActive="active" ariaCurrentWhenActive="page">Incidents</a>
-    @if (auth.hasRole('Admin')) {
-      <a mat-button routerLink="/admin" routerLinkActive="active" ariaCurrentWhenActive="page">Admin</a>
-    }
-  </nav>
+    <a class="new-incident" routerLink="/incidents/new">
+      <mat-icon aria-hidden="true">add</mat-icon>
+      New incident
+    </a>
 
-  <span class="spacer"></span>
-  <span class="who">{{ auth.email() }} · {{ auth.roles().join(', ') }}</span>
-  <button mat-button type="button" (click)="signOut()">Sign out</button>
-</mat-toolbar>
+    <nav class="menu" aria-label="Main">
+      <a class="link" routerLink="/dashboard" routerLinkActive="active" ariaCurrentWhenActive="page">
+        <mat-icon aria-hidden="true">space_dashboard</mat-icon>
+        <span class="label">Dashboard</span>
+      </a>
+      <a class="link" routerLink="/incidents" routerLinkActive="active" ariaCurrentWhenActive="page">
+        <mat-icon aria-hidden="true">confirmation_number</mat-icon>
+        <span class="label">Incidents</span>
+      </a>
+      @if (auth.hasRole('Admin')) {
+        <a class="link" routerLink="/admin" routerLinkActive="active" ariaCurrentWhenActive="page">
+          <mat-icon aria-hidden="true">admin_panel_settings</mat-icon>
+          <span class="label">Admin</span>
+        </a>
+      }
+    </nav>
 
-<main class="page">
-  <router-outlet />
-</main>
+    <div class="bottom">
+      <button type="button" class="logout" (click)="signOut()">
+        <mat-icon aria-hidden="true">logout</mat-icon>
+        Log out
+      </button>
+    </div>
+  </mat-sidenav>
+
+  <mat-sidenav-content class="content">
+    <header class="topbar">
+      @if (narrow()) {
+        <button mat-icon-button type="button" class="menu-button" aria-label="Open the menu" (click)="menuOpen.set(true)">
+          <mat-icon>menu</mat-icon>
+        </button>
+      }
+
+      <span class="spacer"></span>
+
+      <app-theme-toggle />
+
+      <div class="user" [attr.title]="auth.email()">
+        <span class="avatar" aria-hidden="true">{{ initials() }}</span>
+        <span class="who">
+          <span class="email">{{ auth.email() }}</span>
+          <span class="role">{{ roleText() }}</span>
+        </span>
+      </div>
+    </header>
+
+    <main class="page">
+      <router-outlet />
+    </main>
+  </mat-sidenav-content>
+</mat-sidenav-container>

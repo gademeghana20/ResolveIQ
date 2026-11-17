@@ -1,45 +1,202 @@
-.top-bar {
-  background: var(--mat-sys-surface-container);
+.layout {
+  min-height: 100vh;
+  background: var(--mat-sys-surface);
+}
+
+/* ---- the green sidebar ---- */
+
+.sidebar {
+  --mat-sidenav-container-width: 252px;
+  --mat-sidenav-container-background-color: var(--app-sidebar-bg);
+  --mat-sidenav-container-text-color: var(--app-sidebar-fg);
+  --mat-sidenav-container-shape: 0;
+  --mat-sidenav-container-divider-color: transparent;
+
+  display: flex;
+  flex-direction: column;
+  padding: 24px 16px 20px;
+  box-sizing: border-box;
+  color: var(--app-sidebar-fg);
 }
 
 .brand {
-  font: var(--mat-sys-title-large);
+  display: inline-flex;
+  margin: 0 8px 24px;
+  color: var(--app-sidebar-fg);
+  text-decoration: none;
+  --logo-size: 34px;
 }
 
-.links {
+.new-incident {
   display: flex;
-  gap: 4px;
-  margin-left: 24px;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  margin: 0 0 20px;
+  padding: 11px 16px;
+  border-radius: 999px;
+  background: var(--app-sidebar-pill-bg);
+  color: var(--app-sidebar-pill-fg);
+  font-weight: 600;
+  text-decoration: none;
 }
 
-/* The page you are on is marked, not only by colour but by weight. */
-.links .active {
+.new-incident:hover {
+  filter: brightness(0.94);
+}
+
+.menu {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.link {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 12px 14px;
+  border-radius: 14px;
+  color: var(--app-sidebar-muted);
+  font-weight: 500;
+  text-decoration: none;
+}
+
+.link:hover {
+  background: var(--app-sidebar-hover);
+  color: var(--app-sidebar-fg);
+}
+
+/* The page you are on: lifted by a lighter background, bolder text and a small dot, so it never relies on colour alone. */
+.link.active {
+  background: var(--app-sidebar-active);
+  color: var(--app-sidebar-fg);
   font-weight: 700;
-  background: var(--mat-sys-secondary-container);
+}
+
+.link.active::after {
+  content: '';
+  position: absolute;
+  right: 16px;
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--app-sidebar-fg);
+}
+
+.bottom {
+  margin-top: auto;
+  padding-top: 20px;
+}
+
+.logout {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  width: 100%;
+  padding: 11px 16px;
+  border: none;
+  border-radius: 999px;
+  background: var(--app-sidebar-pill-bg);
+  color: var(--app-sidebar-pill-fg);
+  font: inherit;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.logout:hover {
+  filter: brightness(0.94);
+}
+
+.new-incident:focus-visible,
+.link:focus-visible,
+.logout:focus-visible,
+.brand:focus-visible {
+  outline: 2px solid var(--app-sidebar-fg);
+  outline-offset: 2px;
+}
+
+/* ---- the top bar and the page ---- */
+
+.content {
+  background: var(--mat-sys-surface);
+}
+
+.topbar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 14px 28px 0;
 }
 
 .spacer {
   flex: 1;
 }
 
+/* Who is signed in, as a green pill with their initials. */
+.user {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 5px 16px 5px 5px;
+  border-radius: 999px;
+  background: var(--mat-sys-primary);
+  color: var(--mat-sys-on-primary);
+}
+
+.avatar {
+  display: grid;
+  place-items: center;
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+  background: color-mix(in srgb, var(--mat-sys-on-primary) 24%, transparent);
+  font-size: 0.8rem;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+}
+
 .who {
-  margin-right: 8px;
-  font: var(--mat-sys-body-medium);
-  color: var(--mat-sys-on-surface-variant);
+  display: flex;
+  flex-direction: column;
+  line-height: 1.2;
+  max-width: 220px;
+}
+
+.email {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font: var(--mat-sys-label-large);
+}
+
+.role {
+  font: var(--mat-sys-label-small);
+  opacity: 0.85;
 }
 
 .page {
-  padding: 24px;
-  max-width: 1280px;
+  padding: 20px 28px 32px;
+  max-width: 1320px;
   margin: 0 auto;
 }
 
-@media (max-width: 600px) {
-  .who {
-    display: none;
+@media (max-width: 900px) {
+  .topbar {
+    padding: 10px 12px 0;
   }
 
   .page {
-    padding: 12px;
+    padding: 14px 14px 28px;
+  }
+
+  .who {
+    display: none; /* the avatar alone is enough on a narrow screen */
+  }
+
+  .user {
+    padding: 5px;
   }
 }

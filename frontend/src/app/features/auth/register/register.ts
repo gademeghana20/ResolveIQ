@@ -12,12 +12,23 @@ import { allFieldMessages } from '../../../core/api-error';
 import { AuthService } from '../../../core/auth/auth.service';
 import { PASSWORD_HINT } from '../../../core/password-rules';
 import { emailWithDomain, fieldsMatch, mismatchErrorMatcher } from '../../../core/validators';
+import { ThemeToggle } from '../../../shared/theme-toggle/theme-toggle';
+import { AuthBrand } from '../auth-brand/auth-brand';
 
 type Problems = { email: string[]; password: string[]; other: string[] };
 
 @Component({
   selector: 'app-register',
-  imports: [ReactiveFormsModule, RouterLink, MatCardModule, MatFormFieldModule, MatInputModule, MatButtonModule],
+  imports: [
+    ReactiveFormsModule,
+    RouterLink,
+    MatCardModule,
+    MatFormFieldModule,
+    MatInputModule,
+    MatButtonModule,
+    AuthBrand,
+    ThemeToggle,
+  ],
   templateUrl: './register.html',
   styleUrl: '../auth-page.css',
 })
