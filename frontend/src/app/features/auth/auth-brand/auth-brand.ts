@@ -10,31 +10,32 @@ interface Benefit {
 }
 
 // Every claim here is something the app really does.
+// Kept short on purpose: one line each, so the panel stays calm.
 const BENEFITS: Benefit[] = [
   {
     icon: 'bolt',
     title: 'Report in seconds',
-    text: 'Describe it once and your managers see it right away.',
+    text: 'Describe it once and managers see it right away.',
   },
   {
     icon: 'timer',
     title: 'Never miss a deadline',
-    text: 'Each incident gets a clock that starts when it is assigned, pauses when it is on hold, and flags it before time runs out.',
+    text: 'Clocks start at assignment, pause on hold, and warn you early.',
   },
   {
     icon: 'groups',
     title: 'Know who is doing what',
-    text: 'Clear ownership, dashboards for the whole picture, and a workload view for managers.',
+    text: 'Clear ownership and a workload view for managers.',
   },
   {
     icon: 'history',
     title: 'Every change on record',
-    text: 'A complete history of who changed what, and when, so nothing is ever lost.',
+    text: 'A full history of who changed what, and when.',
   },
   {
-    icon: 'lock',
-    title: 'Private by design',
-    text: 'Employees see only incidents they reported or work on.',
+    icon: 'admin_panel_settings',
+    title: 'Roles that fit your team',
+    text: 'Employees report, managers assign, admins manage users.',
   },
 ];
 
@@ -47,10 +48,7 @@ const BENEFITS: Benefit[] = [
 
     <div class="message">
       <p class="headline">From reported to resolved, on time.</p>
-      <p class="lead">
-        ResolveIQ gives your team one place to report problems, hand them to the right person, and track every
-        deadline until the job is done.
-      </p>
+      <p class="lead">One place to report problems, hand them to the right person, and track every deadline.</p>
 
       <ul class="points">
         @for (benefit of benefits; track benefit.title) {

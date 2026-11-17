@@ -70,6 +70,12 @@ describe('Register', () => {
       expect(text()).toContain('Type the password again');
     });
 
+    it('has just the heading, with no extra tagline under "Create your account"', () => {
+      expect(text()).toContain('Create your account');
+      expect(text()).not.toContain('Report and follow incidents');
+      expect(page().querySelector('mat-card-subtitle')).toBeNull();
+    });
+
     it('tells people the password rules before they type', () => {
       expect(text()).toContain('upper-case letter');
       expect(text()).toContain('digit');

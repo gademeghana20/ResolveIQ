@@ -36,16 +36,17 @@
 }
 
 .lead {
-  margin: 0 0 32px;
-  font-size: 1.1rem;
-  line-height: 1.55;
-  opacity: 0.92;
+  margin: 0 0 28px;
+  font-size: 1rem;
+  line-height: 1.5;
+  opacity: 0.9;
 }
 
+/* Compact on purpose: small icons, small type, one line per point, so the panel stays calm and the form stays the focus. */
 .points {
   display: flex;
   flex-direction: column;
-  gap: 20px;
+  gap: 14px;
   margin: 0;
   padding: 0;
   list-style: none;
@@ -53,15 +54,16 @@
 
 .points li {
   display: flex;
-  align-items: flex-start;
-  gap: 16px;
+  align-items: center;
+  gap: 12px;
 }
 
 .points mat-icon {
   flex: none;
-  padding: 8px;
-  width: 24px;
-  height: 24px;
+  padding: 6px;
+  width: 18px;
+  height: 18px;
+  font-size: 18px;
   box-sizing: content-box;
   border-radius: 50%;
   background: rgba(255, 255, 255, 0.16);
@@ -70,18 +72,18 @@
 .points div {
   display: flex;
   flex-direction: column;
-  gap: 2px;
+  gap: 1px;
 }
 
 .points strong {
-  font-size: 1.05rem;
+  font-size: 0.9rem;
   font-weight: 600;
 }
 
 .points span {
-  font-size: 0.95rem;
-  line-height: 1.45;
-  opacity: 0.85;
+  font-size: 0.8rem;
+  line-height: 1.35;
+  opacity: 0.8;
 }
 
 /* Big, faint circles that run off the panel's edge, a quiet backdrop that is clearly meant to bleed out. */
