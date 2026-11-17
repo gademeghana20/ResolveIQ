@@ -80,6 +80,27 @@ describe('Register', () => {
       expect(text()).toContain('do not use a password you use anywhere else');
     });
 
+    it('lets the password rules take as many lines as they need, instead of spilling onto the next box', () => {
+      const passwordField = Array.from(page().querySelectorAll('mat-form-field')).find((field) =>
+        field.textContent!.includes('upper-case letter'),
+      )!;
+
+      // "dynamic" sizing makes the strip under the box grow with its text (a fixed strip overlapped the next box).
+      expect(passwordField.querySelector('.mat-mdc-form-field-subscript-wrapper')!.classList).toContain(
+        'mat-mdc-form-field-subscript-dynamic-size',
+      );
+    });
+
+    it('does the same for the email box, which can show several complaints', () => {
+      const emailField = Array.from(page().querySelectorAll('mat-form-field')).find((field) =>
+        field.textContent!.includes('Email'),
+      )!;
+
+      expect(emailField.querySelector('.mat-mdc-form-field-subscript-wrapper')!.classList).toContain(
+        'mat-mdc-form-field-subscript-dynamic-size',
+      );
+    });
+
     it('links back to the sign-in page', () => {
       const link = Array.from(page().querySelectorAll('a')).find((a) => a.textContent!.includes('Sign in'))!;
 

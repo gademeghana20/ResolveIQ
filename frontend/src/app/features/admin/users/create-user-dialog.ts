@@ -36,7 +36,7 @@ export const ROLES: Role[] = ['Employee', 'Manager', 'Admin'];
           }
         </mat-form-field>
 
-        <mat-form-field appearance="outline">
+        <mat-form-field appearance="outline" subscriptSizing="dynamic">
           <mat-label>Password</mat-label>
           <input matInput type="password" formControlName="password" autocomplete="new-password" />
           <mat-hint>{{ passwordHint }}</mat-hint>

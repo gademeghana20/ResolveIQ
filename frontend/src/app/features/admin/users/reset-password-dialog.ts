@@ -29,7 +29,7 @@ export interface ResetPasswordDialogData {
           >. They are signed out everywhere and must use the new password next time. Tell them what it is.
         </p>
 
-        <mat-form-field appearance="outline">
+        <mat-form-field appearance="outline" subscriptSizing="dynamic">
           <mat-label>New password</mat-label>
           <input matInput type="password" formControlName="newPassword" autocomplete="new-password" />
           <mat-hint>{{ passwordHint }}</mat-hint>

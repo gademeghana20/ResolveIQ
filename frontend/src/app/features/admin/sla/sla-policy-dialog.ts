@@ -30,7 +30,7 @@ export interface SlaPolicyDialogData {
           finished ones keep their result.
         </p>
 
-        <mat-form-field appearance="outline">
+        <mat-form-field appearance="outline" subscriptSizing="dynamic">
           <mat-label>Hours to resolve</mat-label>
           <input matInput type="number" inputmode="numeric" formControlName="hours" min="1" max="720" step="1" />
           <mat-hint>{{ hoursHint() }}</mat-hint>

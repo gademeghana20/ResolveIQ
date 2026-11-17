@@ -11,6 +11,10 @@ import { fakeToken } from '../../../testing/fake-token';
 import { UserSummary } from '../incident.models';
 import { IncidentList } from './incident-list';
 
+// These tests build the whole list page with dropdowns and menus, which is slow on a busy computer.
+// The default 5 seconds occasionally ran out for the first one, so give them room. (A wrong answer still fails at once.)
+vi.setConfig({ testTimeout: 20_000 });
+
 const emptyPage = { items: [], page: 1, pageSize: 20, totalCount: 0, totalPages: 0 };
 
 const people: UserSummary[] = [

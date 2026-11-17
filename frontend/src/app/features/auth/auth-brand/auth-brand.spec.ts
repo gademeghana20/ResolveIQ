@@ -14,24 +14,50 @@ describe('AuthBrand', () => {
     const panel = await create();
 
     expect(panel.querySelector('app-logo')).not.toBeNull();
-    expect(panel.textContent).toContain('Resolve incidents faster.');
+    expect(panel.querySelector('.headline')!.textContent).toContain('From reported to resolved, on time.');
   });
 
-  it('gives three reasons to use the app', async () => {
+  it('says in one sentence what the app is for', async () => {
     const panel = await create();
 
-    const points = Array.from(panel.querySelectorAll('.points li')).map((li) => li.textContent!);
-    expect(points.length).toBe(3);
-    expect(points[0]).toContain('Report a problem in seconds');
-    expect(points[1]).toContain('deadline');
-    expect(points[2]).toContain('history');
+    const lead = panel.querySelector('.lead')!.textContent!;
+    expect(lead).toContain('one place to report problems');
+    expect(lead).toContain('every deadline');
   });
 
-  it('keeps the decorative rings away from screen readers', async () => {
+  it('lists five benefits, each with a title and an explanation', async () => {
     const panel = await create();
 
-    const rings = Array.from(panel.querySelectorAll('.ring'));
-    expect(rings.length).toBe(2);
-    expect(rings.every((ring) => ring.getAttribute('aria-hidden') === 'true')).toBe(true);
+    const items = Array.from(panel.querySelectorAll('.points li'));
+    expect(items.map((li) => li.querySelector('strong')!.textContent)).toEqual([
+      'Report in seconds',
+      'Never miss a deadline',
+      'Know who is doing what',
+      'Every change on record',
+      'Private by design',
+    ]);
+    // An explanation sits under every title, so no benefit is just a slogan.
+    expect(items.every((li) => (li.querySelector('span')!.textContent ?? '').length > 30)).toBe(true);
+  });
+
+  it('only claims things the app really does: the SLA clock and who can see what', async () => {
+    const panel = await create();
+
+    expect(panel.textContent).toContain('starts when it is assigned, pauses when it is on hold');
+    expect(panel.textContent).toContain('Employees see only incidents they reported or work on');
+  });
+
+  it('keeps the decorative circles away from screen readers', async () => {
+    const panel = await create();
+
+    const halos = Array.from(panel.querySelectorAll('.halo'));
+    expect(halos.length).toBe(2);
+    expect(halos.every((halo) => halo.getAttribute('aria-hidden') === 'true')).toBe(true);
+  });
+
+  it('has no leftover ribbon shapes', async () => {
+    const panel = await create();
+
+    expect(panel.querySelectorAll('.ring').length).toBe(0);
   });
 });

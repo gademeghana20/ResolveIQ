@@ -3,7 +3,7 @@
   display: flex;
   flex-direction: column;
   gap: 32px;
-  padding: 40px 48px;
+  padding: 44px 56px;
   overflow: hidden;
   color: #ffffff;
   background:
@@ -11,46 +11,55 @@
     var(--app-sidebar-bg);
 }
 
+/* The name is large: it is the first thing a visitor reads. */
 .logo {
-  --logo-size: 40px;
+  --logo-size: 64px;
+  position: relative;
+  z-index: 1;
 }
 
 /* Centred in the space below the logo (the auto margins share the leftover room above and below). */
 .message {
   position: relative;
   z-index: 1;
-  max-width: 440px;
+  max-width: 520px;
   margin: auto 0;
-  padding-bottom: 80px;
 }
 
 .headline {
-  margin: 0 0 24px;
-  font-size: 2.25rem;
+  margin: 0 0 16px;
+  font-size: 2.6rem;
   font-weight: 700;
-  line-height: 1.15;
-  letter-spacing: -0.02em;
+  line-height: 1.1;
+  letter-spacing: -0.025em;
+  text-wrap: balance; /* splits the lines evenly, so a single word never sits alone on the last line */
+}
+
+.lead {
+  margin: 0 0 32px;
+  font-size: 1.1rem;
+  line-height: 1.55;
+  opacity: 0.92;
 }
 
 .points {
   display: flex;
   flex-direction: column;
-  gap: 14px;
+  gap: 20px;
   margin: 0;
   padding: 0;
   list-style: none;
-  font-size: 1.05rem;
 }
 
 .points li {
   display: flex;
-  align-items: center;
-  gap: 12px;
+  align-items: flex-start;
+  gap: 16px;
 }
 
 .points mat-icon {
   flex: none;
-  padding: 6px;
+  padding: 8px;
   width: 24px;
   height: 24px;
   box-sizing: content-box;
@@ -58,44 +67,59 @@
   background: rgba(255, 255, 255, 0.16);
 }
 
-/* Soft decorative rings, echoing the dashboard's donut charts. */
-.ring {
+.points div {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.points strong {
+  font-size: 1.05rem;
+  font-weight: 600;
+}
+
+.points span {
+  font-size: 0.95rem;
+  line-height: 1.45;
+  opacity: 0.85;
+}
+
+/* Big, faint circles that run off the panel's edge, a quiet backdrop that is clearly meant to bleed out. */
+.halo {
   position: absolute;
   border-radius: 50%;
-  border-style: solid;
+  background: rgba(255, 255, 255, 0.055);
   pointer-events: none;
 }
 
-/* Tucked into the bottom-right corner, well below and beside the text. */
-.ring-orange {
-  right: -80px;
-  bottom: -70px;
-  width: 200px;
-  height: 200px;
-  border-width: 26px;
-  border-color: rgba(246, 169, 59, 0.85);
-  border-top-color: transparent;
+.halo-top {
+  top: -180px;
+  right: -140px;
+  width: 420px;
+  height: 420px;
 }
 
-.ring-purple {
-  right: 110px;
-  bottom: -90px;
-  width: 140px;
-  height: 140px;
-  border-width: 20px;
-  border-color: rgba(176, 106, 214, 0.5);
-  border-top-color: transparent;
+.halo-bottom {
+  bottom: -220px;
+  left: -120px;
+  width: 520px;
+  height: 520px;
+  background: rgba(255, 255, 255, 0.04);
 }
 
 /* On a narrow screen the panel shrinks to a banner: logo and headline only. */
 @media (max-width: 900px) {
   :host {
     padding: 22px 24px;
-    gap: 12px;
+    gap: 10px;
   }
 
   .logo {
-    --logo-size: 32px;
+    --logo-size: 44px;
+  }
+
+  .message {
+    margin: 0;
   }
 
   .headline {
@@ -103,8 +127,34 @@
     font-size: 1.35rem;
   }
 
+  .lead,
   .points,
-  .ring {
+  .halo {
     display: none;
+  }
+}
+
+/* A short window: tighten things so the whole message still fits. */
+@media (max-height: 760px) and (min-width: 901px) {
+  :host {
+    padding-top: 28px;
+    padding-bottom: 28px;
+    gap: 20px;
+  }
+
+  .logo {
+    --logo-size: 52px;
+  }
+
+  .headline {
+    font-size: 2.1rem;
+  }
+
+  .lead {
+    margin-bottom: 20px;
+  }
+
+  .points {
+    gap: 14px;
   }
 }

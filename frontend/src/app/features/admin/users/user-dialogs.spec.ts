@@ -100,6 +100,12 @@ describe('CreateUserDialog', () => {
     expect(page().textContent).toContain('digit');
   });
 
+  it('gives the password rules room to wrap, so they never overlap the next box', () => {
+    const field = Array.from(page().querySelectorAll('mat-form-field')).find((f) => f.textContent!.includes('upper-case letter'))!;
+
+    expect(field.querySelector('.mat-mdc-form-field-subscript-wrapper')!.classList).toContain('mat-mdc-form-field-subscript-dynamic-size');
+  });
+
   it('creates the user with the chosen role, then closes with the new user', async () => {
     await fill();
     form().controls.role.setValue('Manager');
@@ -203,6 +209,12 @@ describe('ResetPasswordDialog', () => {
   it('says whose password it is, and what will happen', () => {
     expect(page().textContent).toContain('friend1@example.com');
     expect(page().textContent).toContain('signed out everywhere');
+  });
+
+  it('gives the password rules room to wrap, so they never overlap the next box', () => {
+    const field = Array.from(page().querySelectorAll('mat-form-field')).find((f) => f.textContent!.includes('upper-case letter'))!;
+
+    expect(field.querySelector('.mat-mdc-form-field-subscript-wrapper')!.classList).toContain('mat-mdc-form-field-subscript-dynamic-size');
   });
 
   it('does not save when the two boxes differ, so a typing slip cannot lock someone out', async () => {

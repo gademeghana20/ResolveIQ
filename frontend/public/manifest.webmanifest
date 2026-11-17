@@ -1,0 +1,14 @@
+{
+  "name": "ResolveIQ",
+  "short_name": "ResolveIQ",
+  "description": "Report, assign and track incidents against their deadlines.",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#2b7a62",
+  "theme_color": "#2b7a62",
+  "icons": [
+    { "src": "icon-192.png", "sizes": "192x192", "type": "image/png" },
+    { "src": "apple-touch-icon.png", "sizes": "180x180", "type": "image/png" },
+    { "src": "favicon.svg", "sizes": "any", "type": "image/svg+xml" }
+  ]
+}
