@@ -56,6 +56,14 @@ describe('Login', () => {
     expect(page().querySelector('button')?.textContent).toContain('Sign in');
   });
 
+  it('has just the heading "Welcome back", with no extra tagline under it', async () => {
+    await setUp();
+
+    expect(page().textContent).toContain('Welcome back');
+    expect(page().textContent).not.toContain('Sign in to manage incidents');
+    expect(page().querySelector('mat-card-subtitle')).toBeNull();
+  });
+
   it('offers a way to create an account', async () => {
     await setUp();
 

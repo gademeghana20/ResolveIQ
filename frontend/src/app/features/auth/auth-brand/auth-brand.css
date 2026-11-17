@@ -11,9 +11,9 @@
     var(--app-sidebar-bg);
 }
 
-/* The name is large: it is the first thing a visitor reads. */
+/* The name is large: it is the first thing a visitor reads. (The name is 60% of this size, so 84px gives a ~50px name.) */
 .logo {
-  --logo-size: 64px;
+  --logo-size: 84px;
   position: relative;
   z-index: 1;
 }
@@ -117,7 +117,7 @@
   }
 
   .logo {
-    --logo-size: 44px;
+    --logo-size: 56px;
   }
 
   .message {
@@ -145,7 +145,7 @@
   }
 
   .logo {
-    --logo-size: 52px;
+    --logo-size: 68px;
   }
 
   .headline {
