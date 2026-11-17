@@ -29,7 +29,7 @@ function detail(overrides: Partial<IncidentDetailModel> = {}): IncidentDetailMod
     slaState: 'AtRisk',
     slaStartedAtUtc: '2026-11-16T18:30:00Z',
     slaDueAtUtc: '2026-11-17T02:30:00Z',
-    actions: { canAssign: false, canChangePriority: false, allowedStatusChanges: [] },
+    actions: { canAssign: false, canChangePriority: false, allowedStatusChanges: [], onBehalfOf: [] },
     ...overrides,
   };
 }
@@ -171,7 +171,7 @@ describe('IncidentDetail', () => {
   });
 
   it('after an action works, shows the updated incident and fetches the new history line', async () => {
-    answerDetail(detail({ status: 'Open', actions: { canAssign: false, canChangePriority: false, allowedStatusChanges: ['InProgress'] } }));
+    answerDetail(detail({ status: 'Open', actions: { canAssign: false, canChangePriority: false, allowedStatusChanges: ['InProgress'], onBehalfOf: [] } }));
     answerHistory([]);
     answerComments([]);
     await settle();
@@ -181,7 +181,7 @@ describe('IncidentDetail', () => {
     await settle();
 
     http.expectOne(`${API_URL}/incidents/${ID}/status`).flush(
-      detail({ status: 'InProgress', actions: { canAssign: false, canChangePriority: false, allowedStatusChanges: ['OnHold', 'Resolved'] } }),
+      detail({ status: 'InProgress', actions: { canAssign: false, canChangePriority: false, allowedStatusChanges: ['OnHold', 'Resolved'], onBehalfOf: [] } }),
     );
     await settle();
 
@@ -196,7 +196,7 @@ describe('IncidentDetail', () => {
   });
 
   it('reloads the whole page when an action finds it out of date', async () => {
-    answerDetail(detail({ actions: { canAssign: false, canChangePriority: false, allowedStatusChanges: ['Resolved'] } }));
+    answerDetail(detail({ actions: { canAssign: false, canChangePriority: false, allowedStatusChanges: ['Resolved'], onBehalfOf: [] } }));
     answerHistory([]);
     answerComments([]);
     await settle();

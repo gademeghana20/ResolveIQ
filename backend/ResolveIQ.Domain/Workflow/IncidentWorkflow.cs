@@ -42,6 +42,12 @@ namespace ResolveIQ.Domain.Workflow
             (IncidentStatus.Resolved, IncidentStatus.InProgress)
         };
 
+        /// <summary>True if this move normally belongs to the person working on the incident.</summary>
+        public static bool IsAssigneeMove(IncidentStatus from, IncidentStatus to) => AssigneeMoves.Contains((from, to));
+
+        /// <summary>True if this move normally belongs to the person who reported the incident.</summary>
+        public static bool IsReporterMove(IncidentStatus from, IncidentStatus to) => ReporterMoves.Contains((from, to));
+
         public static bool IsTransitionAllowed(IncidentStatus from, IncidentStatus to) =>
             Transitions.TryGetValue(from, out var next) && next.Contains(to);
 

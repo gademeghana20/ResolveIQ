@@ -15,7 +15,9 @@ namespace ResolveIQ.Tests.Workflow
         {
             Status = status,
             ReportedByUserId = Reporter,
-            AssignedToUserId = assigned ? Assignee : null
+            ReportedByEmail = "reporter@example.com",
+            AssignedToUserId = assigned ? Assignee : null,
+            AssignedToEmail = assigned ? "assignee@example.com" : null
         };
 
         private static IncidentActionsResponse For(IncidentDetailResponse incident, string user, string role) =>
@@ -108,6 +110,81 @@ namespace ResolveIQ.Tests.Workflow
                 Assert.Empty(actions.AllowedStatusChanges);
                 Assert.False(actions.CanAssign);
                 Assert.False(actions.CanChangePriority);
+            }
+        }
+
+        [Fact]
+        public void AManagerStartingWork_IsActingOnBehalfOfTheAssignee()
+        {
+            var actions = For(Incident(IncidentStatus.Open), Manager, RoleNames.Manager);
+
+            var onBehalf = Assert.Single(actions.OnBehalfOf);
+            Assert.Equal(IncidentStatus.InProgress, onBehalf.Status);
+            Assert.Equal("Assignee", onBehalf.Role);
+            Assert.Equal("assignee@example.com", onBehalf.Email);
+        }
+
+        [Fact]
+        public void AManagerClosingOrReopening_IsActingOnBehalfOfTheReporter()
+        {
+            var actions = For(Incident(IncidentStatus.Resolved), Manager, RoleNames.Manager);
+
+            Assert.Equal(2, actions.OnBehalfOf.Count);
+            Assert.All(actions.OnBehalfOf, o =>
+            {
+                Assert.Equal("Reporter", o.Role);
+                Assert.Equal("reporter@example.com", o.Email);
+            });
+            Assert.Equal(
+                new[] { IncidentStatus.InProgress, IncidentStatus.Closed },
+                actions.OnBehalfOf.Select(o => o.Status).OrderBy(s => s));
+        }
+
+        [Fact]
+        public void TheAssignee_IsNeverActingOnBehalfOfAnyone_ForTheirOwnMoves()
+        {
+            var actions = For(Incident(IncidentStatus.InProgress), Assignee, RoleNames.Employee);
+
+            Assert.NotEmpty(actions.AllowedStatusChanges);
+            Assert.Empty(actions.OnBehalfOf);
+        }
+
+        [Fact]
+        public void TheReporter_IsNeverActingOnBehalfOfAnyone_ForTheirOwnMoves()
+        {
+            var actions = For(Incident(IncidentStatus.Resolved), Reporter, RoleNames.Employee);
+
+            Assert.NotEmpty(actions.AllowedStatusChanges);
+            Assert.Empty(actions.OnBehalfOf);
+        }
+
+        [Fact]
+        public void AManagerWhoIsTheAssignee_IsDoingTheirOwnWork_NotActingForSomeoneElse()
+        {
+            // The same person holds both roles here: manager, and assigned to the incident.
+            var actions = For(Incident(IncidentStatus.InProgress), Assignee, RoleNames.Manager);
+
+            Assert.NotEmpty(actions.AllowedStatusChanges);
+            Assert.Empty(actions.OnBehalfOf);
+        }
+
+        [Fact]
+        public void AManagerWhoIsTheReporter_ClosesTheirOwnIncident_NotOnSomeonesBehalf()
+        {
+            var actions = For(Incident(IncidentStatus.Resolved), Reporter, RoleNames.Manager);
+
+            Assert.Contains(IncidentStatus.Closed, actions.AllowedStatusChanges);
+            Assert.Empty(actions.OnBehalfOf);
+        }
+
+        [Fact]
+        public void OnBehalfOf_OnlyEverNamesMovesThatAreActuallyOffered()
+        {
+            foreach (var status in Enum.GetValues<IncidentStatus>())
+            {
+                var actions = For(Incident(status), Manager, RoleNames.Manager);
+
+                Assert.All(actions.OnBehalfOf, o => Assert.Contains(o.Status, actions.AllowedStatusChanges));
             }
         }
 

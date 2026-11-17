@@ -37,6 +37,10 @@ export class IncidentService {
     return this.http.get<IncidentComment[]>(`${API_URL}/incidents/${id}/comments`);
   }
 
+  createIncident(title: string, description: string, categoryId?: string): Observable<IncidentDetail> {
+    return this.http.post<IncidentDetail>(`${API_URL}/incidents`, { title, description, categoryId });
+  }
+
   changeStatus(id: string, status: IncidentStatus, reason?: string): Observable<IncidentDetail> {
     return this.http.put<IncidentDetail>(`${API_URL}/incidents/${id}/status`, { status, reason });
   }

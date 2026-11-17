@@ -56,6 +56,14 @@ export interface IncidentActions {
   canAssign: boolean;
   canChangePriority: boolean;
   allowedStatusChanges: IncidentStatus[];
+  /** Moves a manager or admin may make only by stepping in for the assignee or the reporter. */
+  onBehalfOf: StatusChangeOnBehalf[];
+}
+
+export interface StatusChangeOnBehalf {
+  status: IncidentStatus;
+  role: 'Assignee' | 'Reporter';
+  email: string | null;
 }
 
 /** A person who can be picked as an assignee. */

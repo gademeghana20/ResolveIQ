@@ -81,6 +81,35 @@ namespace ResolveIQ.Tests.Api
         }
 
         [Fact]
+        public async Task AManagerStartingSomeoneElsesWork_IsToldTheyAreActingOnTheirBehalf()
+        {
+            var s = await Scenario.AssignedAsync(_factory);
+
+            var asManager = await s.Manager.GetIncidentAsync(s.Incident);
+            var onBehalf = Assert.Single(Actions(asManager).GetProperty("onBehalfOf").EnumerateArray());
+            Assert.Equal("InProgress", onBehalf.Str("status"));
+            Assert.Equal("Assignee", onBehalf.Str("role"));
+            Assert.Equal(s.Assignee.Email, onBehalf.Str("email"));
+
+            // The assignee doing their own job is not acting for anyone.
+            var asAssignee = await s.Assignee.GetIncidentAsync(s.Incident);
+            Assert.Empty(Actions(asAssignee).GetProperty("onBehalfOf").EnumerateArray());
+        }
+
+        [Fact]
+        public async Task TheHistory_RecordsTheManager_WhenTheyActForTheAssignee()
+        {
+            // "On behalf" does not hide who really made the change.
+            var s = await Scenario.AssignedAsync(_factory);
+
+            await s.Manager.SetStatusAsync(s.Incident, "InProgress").ExpectAsync(HttpStatusCode.OK);
+
+            var history = await s.HistoryAsync();
+            var change = history.EnumerateArray().Single(h => h.Str("fieldChanged") == "Status");
+            Assert.Equal(s.Manager.Email, change.Str("changedBy"));
+        }
+
+        [Fact]
         public async Task TheResponseToAnAssignment_AlreadyCarriesTheManagersActions()
         {
             var s = await Scenario.UnassignedAsync(_factory);

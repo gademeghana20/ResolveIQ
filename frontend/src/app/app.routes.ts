@@ -19,6 +19,12 @@ export const routes: Routes = [
         loadComponent: () =>
           import('./features/incidents/incident-list/incident-list').then((m) => m.IncidentList),
       },
+      // "new" must come before ":id", or "new" would be read as an incident id.
+      {
+        path: 'incidents/new',
+        loadComponent: () =>
+          import('./features/incidents/incident-create/incident-create').then((m) => m.IncidentCreate),
+      },
       {
         path: 'incidents/:id',
         loadComponent: () =>

@@ -31,7 +31,7 @@ function incident(actions: Partial<IncidentActionsModel> = {}, overrides: Partia
     slaState: 'OnTrack',
     slaStartedAtUtc: null,
     slaDueAtUtc: null,
-    actions: { canAssign: false, canChangePriority: false, allowedStatusChanges: [], ...actions },
+    actions: { canAssign: false, canChangePriority: false, allowedStatusChanges: [], onBehalfOf: [], ...actions },
     ...overrides,
   };
 }
@@ -101,6 +101,86 @@ describe('IncidentActions', () => {
   it('names each status move clearly', async () => {
     await setUp(incident({ allowedStatusChanges: ['InProgress', 'Closed'] }, { status: 'Resolved' }));
     expect(labels()).toEqual(['Reopen', 'Close incident…']);
+  });
+
+  describe('when a manager steps in for someone else', () => {
+    it('says whose job it really is, so the button does not suggest they are doing the work', async () => {
+      await setUp(
+        incident({
+          allowedStatusChanges: ['OnHold', 'Resolved'],
+          onBehalfOf: [
+            { status: 'OnHold', role: 'Assignee', email: 'dana@example.com' },
+            { status: 'Resolved', role: 'Assignee', email: 'dana@example.com' },
+          ],
+        }),
+      );
+
+      expect(labels()).toEqual([
+        'Put on hold… (on behalf of dana@example.com)',
+        'Mark resolved (on behalf of dana@example.com)',
+      ]);
+    });
+
+    it('names the reporter when closing or reopening for them', async () => {
+      await setUp(
+        incident(
+          {
+            allowedStatusChanges: ['InProgress', 'Closed'],
+            onBehalfOf: [
+              { status: 'InProgress', role: 'Reporter', email: 'reporter@example.com' },
+              { status: 'Closed', role: 'Reporter', email: 'reporter@example.com' },
+            ],
+          },
+          { status: 'Resolved' },
+        ),
+      );
+
+      expect(labels()).toEqual([
+        'Reopen (on behalf of reporter@example.com)',
+        'Close incident… (on behalf of reporter@example.com)',
+      ]);
+    });
+
+    it('falls back to the role when the person has no email', async () => {
+      await setUp(
+        incident({
+          allowedStatusChanges: ['Resolved'],
+          onBehalfOf: [{ status: 'Resolved', role: 'Assignee', email: null }],
+        }),
+      );
+
+      expect(labels()).toEqual(['Mark resolved (on behalf of the assignee)']);
+    });
+
+    it('only labels the moves that really are on someone\'s behalf', async () => {
+      // A manager who is the assignee: Resolve is their own work, Reopen would be the reporter's.
+      await setUp(
+        incident(
+          {
+            allowedStatusChanges: ['InProgress', 'Closed'],
+            onBehalfOf: [{ status: 'Closed', role: 'Reporter', email: 'reporter@example.com' }],
+          },
+          { status: 'Resolved' },
+        ),
+      );
+
+      expect(labels()).toEqual(['Reopen', 'Close incident… (on behalf of reporter@example.com)']);
+    });
+
+    it('still sends the normal status change when clicked', async () => {
+      await setUp(
+        incident({
+          allowedStatusChanges: ['Resolved'],
+          onBehalfOf: [{ status: 'Resolved', role: 'Assignee', email: 'dana@example.com' }],
+        }),
+      );
+
+      page().querySelector('button')!.click();
+
+      const request = http.expectOne(`${API_URL}/incidents/${ID}/status`);
+      expect(request.request.body).toMatchObject({ status: 'Resolved' });
+      request.flush(incident());
+    });
   });
 
   it('moves an incident with one click when no more information is needed', async () => {

@@ -31,8 +31,43 @@ namespace ResolveIQ.Application.DTOs.Incidents
             {
                 CanAssign = isManagerOrAdmin && !IncidentWorkflow.IsClosed(incident.Status),
                 CanChangePriority = isManagerOrAdmin && IncidentWorkflow.CanChangePriority(incident.Status),
-                AllowedStatusChanges = allowedStatuses
+                AllowedStatusChanges = allowedStatuses,
+                OnBehalfOf = allowedStatuses
+                    .Select(target => OnBehalf(incident, target, isManagerOrAdmin, isAssignee, isReporter))
+                    .OfType<StatusChangeOnBehalf>()
+                    .ToList()
             };
+        }
+
+        // A manager or admin may make any valid move, but if the move is really the assignee's or the
+        // reporter's job (and the user is not that person), they are stepping in on that person's behalf.
+        private static StatusChangeOnBehalf? OnBehalf(
+            IncidentDetailResponse incident,
+            IncidentStatus target,
+            bool isManagerOrAdmin,
+            bool isAssignee,
+            bool isReporter)
+        {
+            var from = incident.Status;
+            var isOwnMove = (isAssignee && IncidentWorkflow.IsAssigneeMove(from, target))
+                            || (isReporter && IncidentWorkflow.IsReporterMove(from, target));
+
+            if (!isManagerOrAdmin || isOwnMove)
+            {
+                return null;
+            }
+
+            if (IncidentWorkflow.IsAssigneeMove(from, target))
+            {
+                return new StatusChangeOnBehalf { Status = target, Role = "Assignee", Email = incident.AssignedToEmail };
+            }
+
+            if (IncidentWorkflow.IsReporterMove(from, target))
+            {
+                return new StatusChangeOnBehalf { Status = target, Role = "Reporter", Email = incident.ReportedByEmail };
+            }
+
+            return null;
         }
     }
 }

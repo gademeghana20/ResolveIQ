@@ -1,0 +1,25 @@
+.back {
+  margin-bottom: 8px;
+}
+
+.card {
+  max-width: 720px;
+}
+
+form {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin-top: 16px;
+}
+
+.buttons {
+  display: flex;
+  gap: 8px;
+  margin-top: 8px;
+}
+
+.form-error {
+  margin: 0 0 8px;
+  color: var(--mat-sys-error);
+}

@@ -60,5 +60,22 @@ namespace ResolveIQ.Application.DTOs.Incidents
 
         /// <summary>The statuses this user may move the incident to from its current one.</summary>
         public IList<IncidentStatus> AllowedStatusChanges { get; set; } = new List<IncidentStatus>();
+
+        /// <summary>
+        /// Status changes the user may make only because they are a Manager or Admin, which really
+        /// belong to the assignee or the reporter. Screens say "on behalf of" for these.
+        /// </summary>
+        public IList<StatusChangeOnBehalf> OnBehalfOf { get; set; } = new List<StatusChangeOnBehalf>();
+    }
+
+    public class StatusChangeOnBehalf
+    {
+        public IncidentStatus Status { get; set; }
+
+        /// <summary>Whose job this normally is: "Assignee" or "Reporter".</summary>
+        public string Role { get; set; } = string.Empty;
+
+        /// <summary>That person's email, if known.</summary>
+        public string? Email { get; set; }
     }
 }

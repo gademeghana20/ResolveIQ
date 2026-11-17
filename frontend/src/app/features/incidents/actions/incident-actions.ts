@@ -40,7 +40,11 @@ export class IncidentActions {
   protected readonly busy = signal(false);
 
   protected statusLabel(target: IncidentStatus): string {
-    return statusActionLabel(this.incident().status, target);
+    const label = statusActionLabel(this.incident().status, target);
+    const behalf = this.incident().actions.onBehalfOf.find((entry) => entry.status === target);
+
+    // A manager stepping in for someone else is told so, so the button never suggests they are doing the work.
+    return behalf ? `${label} (on behalf of ${behalf.email ?? `the ${behalf.role.toLowerCase()}`})` : label;
   }
 
   protected hasAnyAction(): boolean {
