@@ -24,6 +24,15 @@ export class AuthService {
   /** The logged-in person's roles (empty when logged out). */
   readonly roles = computed<Role[]>(() => this.session()?.roles ?? []);
 
+  /**
+   * The logged-in person's id, read from their token. Used to tell "this row is me" apart on screens such as
+   * the user list. It is for display only; the API always works out who you are from the token itself.
+   */
+  readonly userId = computed(() => {
+    const token = this.session()?.token;
+    return token ? (readPayload(token)?.sub ?? null) : null;
+  });
+
   login(request: LoginRequest): Observable<AuthResponse> {
     return this.http
       .post<AuthResponse>(`${API_URL}/auth/login`, request)
@@ -114,12 +123,17 @@ export class AuthService {
  * checks the signature itself, and that is the real security.
  */
 function isExpired(token: string): boolean {
+  const exp = readPayload(token)?.exp;
+  return typeof exp !== 'number' || exp * 1000 <= Date.now(); // an unreadable token counts as unusable
+}
+
+/** Reads the middle part of a token (the claims). It does not check the signature; the API does that. */
+function readPayload(token: string): { sub?: string; exp?: number } | null {
   try {
     const payload = token.split('.')[1];
     const json = atob(payload.replace(/-/g, '+').replace(/_/g, '/'));
-    const exp = (JSON.parse(json) as { exp?: number }).exp;
-    return typeof exp !== 'number' || exp * 1000 <= Date.now();
+    return JSON.parse(json) as { sub?: string; exp?: number };
   } catch {
-    return true; // not a readable token: treat as unusable
+    return null;
   }
 }

@@ -66,13 +66,8 @@ export interface StatusChangeOnBehalf {
   email: string | null;
 }
 
-/** A person who can be picked as an assignee. */
-export interface UserSummary {
-  id: string;
-  email: string | null;
-  roles: string[];
-  isActive: boolean;
-}
+// People are described in core (the admin screens use them too); re-exported here so incident code keeps working.
+export type { UserSummary } from '../../core/user.models';
 
 /** One line of an incident's audit trail: who changed what, and when. */
 export interface HistoryEntry {

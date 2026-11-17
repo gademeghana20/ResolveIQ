@@ -139,6 +139,19 @@ describe('AuthService', () => {
     expect(auth.hasRole('Admin')).toBe(false);
   });
 
+  it('knows who the signed-in person is, from their token', () => {
+    const auth = createService();
+    expect(auth.userId()).toBeNull();
+
+    auth.login({ email: 'x@example.com', password: 'p' }).subscribe();
+    http.expectOne(`${API_URL}/auth/login`).flush(response());
+
+    expect(auth.userId()).toBe('user-1');
+
+    auth.logout();
+    expect(auth.userId()).toBeNull();
+  });
+
   it('hasRole is false when logged out', () => {
     expect(createService().hasRole('Admin', 'Manager', 'Employee')).toBe(false);
   });

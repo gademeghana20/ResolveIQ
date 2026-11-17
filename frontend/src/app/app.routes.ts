@@ -1,6 +1,7 @@
 import { Routes } from '@angular/router';
 
 import { authGuard } from './core/auth/auth.guard';
+import { roleGuard } from './core/auth/role.guard';
 import { Shell } from './layout/shell/shell';
 
 // Pages use loadComponent so their code is downloaded only when someone visits them (lazy loading).
@@ -33,6 +34,18 @@ export const routes: Routes = [
         path: 'incidents/:id',
         loadComponent: () =>
           import('./features/incidents/incident-detail/incident-detail').then((m) => m.IncidentDetail),
+      },
+      // Admin area: only people with the Admin role may open it.
+      {
+        path: 'admin',
+        canActivate: [roleGuard('Admin')],
+        children: [
+          {
+            path: 'users',
+            loadComponent: () => import('./features/admin/users/users').then((m) => m.Users),
+          },
+          { path: '', pathMatch: 'full', redirectTo: 'users' },
+        ],
       },
       { path: '', pathMatch: 'full', redirectTo: 'incidents' },
     ],

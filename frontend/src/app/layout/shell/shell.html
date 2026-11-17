@@ -4,6 +4,9 @@
   <nav class="links" aria-label="Main">
     <a mat-button routerLink="/dashboard" routerLinkActive="active" ariaCurrentWhenActive="page">Dashboard</a>
     <a mat-button routerLink="/incidents" routerLinkActive="active" ariaCurrentWhenActive="page">Incidents</a>
+    @if (auth.hasRole('Admin')) {
+      <a mat-button routerLink="/admin" routerLinkActive="active" ariaCurrentWhenActive="page">Admin</a>
+    }
   </nav>
 
   <span class="spacer"></span>

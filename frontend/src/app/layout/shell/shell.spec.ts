@@ -11,11 +11,11 @@ describe('Shell', () => {
 
   const page = () => fixture.nativeElement as HTMLElement;
 
-  async function setUp() {
+  async function setUp(role = 'Manager') {
     localStorage.clear();
     localStorage.setItem(
       'resolveiq.session',
-      JSON.stringify({ token: fakeToken(), email: 'manager@example.com', roles: ['Manager'] }),
+      JSON.stringify({ token: fakeToken(), email: 'manager@example.com', roles: [role] }),
     );
 
     await TestBed.configureTestingModule({
@@ -36,6 +36,20 @@ describe('Shell', () => {
       ['Dashboard', '/dashboard'],
       ['Incidents', '/incidents'],
     ]);
+  });
+
+  it('shows the Admin link to an Admin', async () => {
+    await setUp('Admin');
+
+    const links = Array.from(page().querySelectorAll('nav a')).map((a) => a.textContent!.trim());
+    expect(links).toEqual(['Dashboard', 'Incidents', 'Admin']);
+  });
+
+  it.each(['Manager', 'Employee'])('does not show the Admin link to a %s', async (role) => {
+    await setUp(role);
+
+    const links = Array.from(page().querySelectorAll('nav a')).map((a) => a.textContent!.trim());
+    expect(links).not.toContain('Admin');
   });
 
   it('says who is signed in and with which role', async () => {

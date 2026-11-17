@@ -1,0 +1,60 @@
+.page-title {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 16px;
+}
+
+h1 {
+  font: var(--mat-sys-headline-medium);
+  margin: 0;
+}
+
+.search {
+  width: 100%;
+  max-width: 420px;
+}
+
+.table-wrap {
+  overflow-x: auto;
+}
+
+table {
+  width: 100%;
+}
+
+.email {
+  overflow-wrap: anywhere;
+}
+
+.you,
+.muted {
+  color: var(--mat-sys-on-surface-variant);
+}
+
+.actions-head,
+.actions {
+  width: 56px;
+  text-align: right;
+}
+
+.message {
+  padding: 24px 16px;
+  text-align: center;
+  color: var(--mat-sys-on-surface-variant);
+}
+
+.message.error {
+  color: var(--mat-sys-error);
+}
+
+.visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+}
