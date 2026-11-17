@@ -22,11 +22,12 @@ namespace ResolveIQ.Infrastructure.Data.Configurations
                 .IsRequired()
                 .HasMaxLength(100);
 
+            // As long as the longest thing that is recorded: an incident's description (4000 characters).
             builder.Property(h => h.OldValue)
-                .HasMaxLength(500);
+                .HasMaxLength(4000);
 
             builder.Property(h => h.NewValue)
-                .HasMaxLength(500);
+                .HasMaxLength(4000);
 
             // History belongs to its incident, so deleting an incident deletes its history.
             builder.HasOne<Incident>()

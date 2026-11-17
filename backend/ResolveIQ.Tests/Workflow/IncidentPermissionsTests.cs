@@ -189,6 +189,33 @@ namespace ResolveIQ.Tests.Workflow
         }
 
         [Fact]
+        public void OnlyTheReporter_MayEdit_TheirOwnWords()
+        {
+            Assert.True(For(Incident(IncidentStatus.Open), Reporter, RoleNames.Employee).CanEdit);
+            Assert.False(For(Incident(IncidentStatus.Open), Assignee, RoleNames.Employee).CanEdit);
+            Assert.False(For(Incident(IncidentStatus.Open), Manager, RoleNames.Manager).CanEdit);
+            Assert.False(For(Incident(IncidentStatus.Open), "admin", RoleNames.Admin).CanEdit);
+            Assert.False(For(Incident(IncidentStatus.Open), Stranger, RoleNames.Employee).CanEdit);
+        }
+
+        [Fact]
+        public void AManagerWhoIsTheReporter_MayEditTheirOwnIncident()
+        {
+            Assert.True(For(Incident(IncidentStatus.Open), Reporter, RoleNames.Manager).CanEdit);
+        }
+
+        [Theory]
+        [InlineData(IncidentStatus.Open, true)]
+        [InlineData(IncidentStatus.InProgress, true)]
+        [InlineData(IncidentStatus.OnHold, true)]
+        [InlineData(IncidentStatus.Resolved, true)]
+        [InlineData(IncidentStatus.Closed, false)]
+        public void EditingStopsOnlyWhenTheIncidentIsClosed(IncidentStatus status, bool expected)
+        {
+            Assert.Equal(expected, For(Incident(status), Reporter, RoleNames.Employee).CanEdit);
+        }
+
+        [Fact]
         public void AnAdmin_HasTheSamePowersAsAManager()
         {
             var admin = For(Incident(IncidentStatus.InProgress), "admin", RoleNames.Admin);

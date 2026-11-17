@@ -29,7 +29,7 @@ function detail(overrides: Partial<IncidentDetailModel> = {}): IncidentDetailMod
     slaState: 'AtRisk',
     slaStartedAtUtc: '2026-11-16T18:30:00Z',
     slaDueAtUtc: '2026-11-17T02:30:00Z',
-    actions: { canAssign: false, canChangePriority: false, allowedStatusChanges: [], onBehalfOf: [] },
+    actions: { canEdit: false, canAssign: false, canChangePriority: false, allowedStatusChanges: [], onBehalfOf: [] },
     ...overrides,
   };
 }
@@ -125,6 +125,54 @@ describe('IncidentDetail', () => {
     expect(text()).toContain('manager@example.com');
   });
 
+  describe('history of a reworded description', () => {
+    const longOld = 'Old wording. '.repeat(100); // well over the old 500-character cut-off
+    const longNew = 'New wording. '.repeat(100);
+
+    const descriptionEdit: HistoryEntry = {
+      fieldChanged: 'Description',
+      oldValue: longOld,
+      newValue: longNew,
+      changedBy: 'reporter@example.com',
+      changedAtUtc: '2026-11-16T20:00:00Z',
+    };
+
+    async function openWith(entries: HistoryEntry[]) {
+      answerDetail(detail());
+      answerHistory(entries);
+      answerComments([]);
+      await settle();
+    }
+
+    it('offers "Show what changed" on a description edit', async () => {
+      await openWith([descriptionEdit]);
+
+      expect(text()).toContain('Description edited');
+      expect(text()).toContain('Show what changed');
+    });
+
+    it('shows the full wording before and after, with nothing cut off', async () => {
+      await openWith([descriptionEdit]);
+
+      const versions = Array.from((fixture.nativeElement as HTMLElement).querySelectorAll('.changes .version'));
+      expect(versions.length).toBe(2);
+      expect(versions[0].textContent).toContain('Before');
+      expect(versions[0].querySelector('.text')!.textContent).toBe(longOld);
+      expect(versions[1].textContent).toContain('After');
+      expect(versions[1].querySelector('.text')!.textContent).toBe(longNew);
+    });
+
+    it('offers it for descriptions only: a title edit already says it all in the sentence', async () => {
+      await openWith([
+        { fieldChanged: 'Title', oldValue: 'Old title', newValue: 'New title', changedBy: 'reporter@example.com', changedAtUtc: '2026-11-16T20:00:00Z' },
+        ...history,
+      ]);
+
+      expect(text()).toContain('Title changed from "Old title" to "New title"');
+      expect((fixture.nativeElement as HTMLElement).querySelectorAll('.changes').length).toBe(0);
+    });
+  });
+
   it('shows the comments with their authors', async () => {
     answerDetail(detail());
     answerHistory([]);
@@ -171,7 +219,7 @@ describe('IncidentDetail', () => {
   });
 
   it('after an action works, shows the updated incident and fetches the new history line', async () => {
-    answerDetail(detail({ status: 'Open', actions: { canAssign: false, canChangePriority: false, allowedStatusChanges: ['InProgress'], onBehalfOf: [] } }));
+    answerDetail(detail({ status: 'Open', actions: { canEdit: false, canAssign: false, canChangePriority: false, allowedStatusChanges: ['InProgress'], onBehalfOf: [] } }));
     answerHistory([]);
     answerComments([]);
     await settle();
@@ -181,7 +229,7 @@ describe('IncidentDetail', () => {
     await settle();
 
     http.expectOne(`${API_URL}/incidents/${ID}/status`).flush(
-      detail({ status: 'InProgress', actions: { canAssign: false, canChangePriority: false, allowedStatusChanges: ['OnHold', 'Resolved'], onBehalfOf: [] } }),
+      detail({ status: 'InProgress', actions: { canEdit: false, canAssign: false, canChangePriority: false, allowedStatusChanges: ['OnHold', 'Resolved'], onBehalfOf: [] } }),
     );
     await settle();
 
@@ -196,7 +244,7 @@ describe('IncidentDetail', () => {
   });
 
   it('reloads the whole page when an action finds it out of date', async () => {
-    answerDetail(detail({ actions: { canAssign: false, canChangePriority: false, allowedStatusChanges: ['Resolved'], onBehalfOf: [] } }));
+    answerDetail(detail({ actions: { canEdit: false, canAssign: false, canChangePriority: false, allowedStatusChanges: ['Resolved'], onBehalfOf: [] } }));
     answerHistory([]);
     answerComments([]);
     await settle();

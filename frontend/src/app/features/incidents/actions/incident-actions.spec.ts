@@ -4,6 +4,7 @@ import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { MATERIAL_ANIMATIONS } from '@angular/material/core';
 import { MatDialog } from '@angular/material/dialog';
 import { MatSnackBar } from '@angular/material/snack-bar';
+import { of } from 'rxjs';
 
 import { API_URL } from '../../../core/api-config';
 import { IncidentActions as IncidentActionsModel, IncidentDetail } from '../incident.models';
@@ -31,7 +32,7 @@ function incident(actions: Partial<IncidentActionsModel> = {}, overrides: Partia
     slaState: 'OnTrack',
     slaStartedAtUtc: null,
     slaDueAtUtc: null,
-    actions: { canAssign: false, canChangePriority: false, allowedStatusChanges: [], onBehalfOf: [], ...actions },
+    actions: { canEdit: false, canAssign: false, canChangePriority: false, allowedStatusChanges: [], onBehalfOf: [], ...actions },
     ...overrides,
   };
 }
@@ -79,6 +80,10 @@ describe('IncidentActions', () => {
   }
 
   afterEach(() => TestBed.inject(MatDialog).closeAll());
+
+  /** Pretends the dialog was answered, instead of driving its own screen (the edit dialog has its own tests). */
+  const dialogOpens = (value: unknown) =>
+    vi.spyOn(TestBed.inject(MatDialog), 'open').mockReturnValue({ afterClosed: () => of(value) } as never);
 
   it('shows nothing at all when the person may do nothing', async () => {
     await setUp(incident());
@@ -180,6 +185,54 @@ describe('IncidentActions', () => {
       const request = http.expectOne(`${API_URL}/incidents/${ID}/status`);
       expect(request.request.body).toMatchObject({ status: 'Resolved' });
       request.flush(incident());
+    });
+  });
+
+  describe('editing', () => {
+    it('offers Edit only when the API says this person may edit', async () => {
+      await setUp(incident({ canEdit: true }));
+
+      expect(labels()).toEqual(['Edit title and description…']);
+    });
+
+    it('offers no Edit to anyone else, such as a manager', async () => {
+      await setUp(incident({ canEdit: false, canAssign: true }));
+
+      expect(labels()).not.toContain('Edit title and description…');
+    });
+
+    it('opens for this incident, and passes the updated incident on once saved', async () => {
+      await setUp(incident({ canEdit: true }));
+      const updated = incident({ canEdit: true }, { title: 'Reworded' });
+      const open$ = dialogOpens(updated);
+
+      buttonNamed('Edit title and description…').click();
+      await settle();
+
+      expect(open$.mock.calls[0][1]).toMatchObject({ data: { incident: { id: ID, title: 'Printer broken' } } });
+      expect(changed).toEqual([updated]);
+      expect(snack.mock.calls[0][0]).toBe('Your changes were saved.');
+    });
+
+    it('does nothing when the dialog is cancelled', async () => {
+      await setUp(incident({ canEdit: true }));
+      dialogOpens(undefined);
+
+      buttonNamed('Edit title and description…').click();
+      await settle();
+
+      expect(changed).toEqual([]);
+      expect(snack).not.toHaveBeenCalled();
+    });
+
+    it('cannot be clicked while another change is saving', async () => {
+      await setUp(incident({ canEdit: true, allowedStatusChanges: ['Resolved'] }));
+
+      buttonNamed('Mark resolved').click();
+      await settle();
+
+      expect(buttonNamed('Edit title and description…').disabled).toBe(true);
+      http.expectOne(`${API_URL}/incidents/${ID}/status`).flush(incident());
     });
   });
 

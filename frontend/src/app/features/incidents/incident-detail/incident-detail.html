@@ -115,6 +115,19 @@
                       <div class="meta">
                         {{ entry.changedBy ?? 'Unknown user' }} · {{ entry.changedAtUtc | date: 'medium' }}
                       </div>
+                      @if (entry.fieldChanged === 'Description') {
+                        <details class="changes">
+                          <summary>Show what changed</summary>
+                          <div class="version">
+                            <strong>Before</strong>
+                            <p class="text">{{ entry.oldValue }}</p>
+                          </div>
+                          <div class="version">
+                            <strong>After</strong>
+                            <p class="text">{{ entry.newValue }}</p>
+                          </div>
+                        </details>
+                      }
                     </li>
                   } @empty {
                     <li class="muted">No changes yet.</li>

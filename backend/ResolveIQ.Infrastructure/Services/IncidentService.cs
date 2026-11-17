@@ -17,8 +17,9 @@ namespace ResolveIQ.Infrastructure.Services
         private const string NextIncidentNumberSql =
             "SELECT NEXT VALUE FOR " + ApplicationDbContext.IncidentNumberSequence + " AS [Value]";
 
-        // History columns hold 500 characters.
-        private const int HistoryValueMaxLength = 500;
+        // History columns hold as many characters as a description can have (4000), so that editing a long
+        // description keeps its full old and new wording. Shorter values are never cut.
+        private const int HistoryValueMaxLength = 4000;
 
         private readonly ApplicationDbContext _db;
         private readonly TimeProvider _time;
@@ -393,7 +394,9 @@ namespace ResolveIQ.Infrastructure.Services
                 return new IncidentChangeResult(ChangeOutcome.NotFound);
             }
 
-            if (!IsManagerOrAdmin(roles) && incident.ReportedByUserId != userId)
+            // The title and description are the reporter's own account of the problem, so only the reporter
+            // may reword them. Managers and Admins can still comment, assign, prioritise and move the status.
+            if (incident.ReportedByUserId != userId)
             {
                 return new IncidentChangeResult(ChangeOutcome.Forbidden);
             }

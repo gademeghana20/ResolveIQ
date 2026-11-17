@@ -379,13 +379,50 @@ namespace ResolveIQ.Tests.Api
         }
 
         [Fact]
-        public async Task OnlyTheReporterOrAManagerMayEdit()
+        public async Task OnlyTheReporterMayEdit_NotTheAssignee_NotAManager_NotEvenAnAdmin()
         {
             var s = await Scenario.AssignedAsync(_factory);
+            var admin = await _factory.CreateUserAsync(RoleNames.Admin);
             var body = new { title = "Edited", description = "Edited" };
 
             await s.Assignee.Client.PutAsJsonAsync(s.Url, body).ExpectAsync(HttpStatusCode.Forbidden);
-            await s.Manager.Client.PutAsJsonAsync(s.Url, body).ExpectAsync(HttpStatusCode.OK);
+            await s.Manager.Client.PutAsJsonAsync(s.Url, body).ExpectAsync(HttpStatusCode.Forbidden);
+            await admin.Client.PutAsJsonAsync(s.Url, body).ExpectAsync(HttpStatusCode.Forbidden);
+
+            // Nothing changed, and nothing was recorded.
+            var after = await s.Reporter.GetIncidentAsync(s.Incident);
+            Assert.Equal(s.Incident.Str("title"), after.Str("title"));
+            Assert.Equal(s.Incident.Str("description"), after.Str("description"));
+            Assert.DoesNotContain((await s.HistoryAsync()).EnumerateArray(), r => r.Str("fieldChanged") is "Title" or "Description");
+
+            await s.Reporter.Client.PutAsJsonAsync(s.Url, body).ExpectAsync(HttpStatusCode.OK);
+        }
+
+        [Fact]
+        public async Task AManagerCanEditAnIncidentTheyReportedThemselves()
+        {
+            // Managers can raise incidents too; the rule is about whose words they are.
+            var manager = await _factory.CreateUserAsync(RoleNames.Manager);
+            var own = await manager.ReportIncidentAsync("Manager's own problem");
+
+            await manager.Client.PutAsJsonAsync($"/api/incidents/{own.GetGuid("id")}", new { title = "Reworded", description = "Reworded" })
+                .ExpectAsync(HttpStatusCode.OK);
+        }
+
+        [Fact]
+        public async Task EditingALongDescription_KeepsItsFullOldAndNewWordingInTheHistory()
+        {
+            var reporter = await _factory.CreateUserAsync();
+            var incident = await reporter.ReportIncidentAsync(description: new string('a', 4000));
+            var url = $"/api/incidents/{incident.GetGuid("id")}";
+
+            await reporter.Client.PutAsJsonAsync(url, new { title = incident.Str("title"), description = new string('b', 4000) })
+                .ExpectAsync(HttpStatusCode.OK);
+
+            var history = await (await reporter.Client.GetAsync($"{url}/history").ExpectAsync(HttpStatusCode.OK)).ReadJsonAsync();
+            var change = history.EnumerateArray().Single(r => r.Str("fieldChanged") == "Description");
+            Assert.Equal(new string('a', 4000), change.Str("oldValue"));   // nothing cut off at 500
+            Assert.Equal(new string('b', 4000), change.Str("newValue"));
         }
 
         [Fact]

@@ -11,6 +11,7 @@ import { statusActionLabel } from '../incident-display';
 import { IncidentDetail, IncidentPriority, IncidentStatus } from '../incident.models';
 import { IncidentService } from '../incident.service';
 import { AssignDialog, AssignDialogResult } from './assign-dialog';
+import { EditIncidentDialog, EditIncidentDialogData } from './edit-incident-dialog';
 import { HoldReasonDialog } from './hold-reason-dialog';
 import { PriorityDialog, PriorityDialogData } from './priority-dialog';
 
@@ -49,7 +50,7 @@ export class IncidentActions {
 
   protected hasAnyAction(): boolean {
     const { actions } = this.incident();
-    return actions.canAssign || actions.canChangePriority || actions.allowedStatusChanges.length > 0;
+    return actions.canEdit || actions.canAssign || actions.canChangePriority || actions.allowedStatusChanges.length > 0;
   }
 
   protected moveTo(target: IncidentStatus): void {
@@ -91,6 +92,21 @@ export class IncidentActions {
       })
       .afterClosed()
       .subscribe((result) => result && this.run(this.incidents.assign(incident.id, result.assigneeUserId, result.priority)));
+  }
+
+  /** The dialog saves by itself (so it can show the API's complaints inside it); here we only pass the result on. */
+  protected edit(): void {
+    this.dialog
+      .open<EditIncidentDialog, EditIncidentDialogData, IncidentDetail>(EditIncidentDialog, {
+        data: { incident: this.incident() },
+      })
+      .afterClosed()
+      .subscribe((updated) => {
+        if (updated) {
+          this.tell('Your changes were saved.');
+          this.changed.emit(updated);
+        }
+      });
   }
 
   protected changePriority(): void {

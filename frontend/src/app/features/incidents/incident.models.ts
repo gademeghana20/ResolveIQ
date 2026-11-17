@@ -7,6 +7,10 @@ export type SlaState = 'None' | 'NotStarted' | 'OnTrack' | 'AtRisk' | 'Paused' |
 export type IncidentSortField = 'CreatedAt' | 'Priority' | 'Status' | 'IncidentNumber' | 'Title';
 export type SortDirection = 'Asc' | 'Desc';
 
+/** The same limits the API enforces for an incident's text, so screens warn before the server has to. */
+export const MAX_TITLE_LENGTH = 200;
+export const MAX_DESCRIPTION_LENGTH = 4000;
+
 export const INCIDENT_STATUSES: IncidentStatus[] = ['Open', 'InProgress', 'OnHold', 'Resolved', 'Closed'];
 export const INCIDENT_PRIORITIES: IncidentPriority[] = ['Critical', 'High', 'Medium', 'Low'];
 export const SLA_STATES: SlaState[] = ['NotStarted', 'OnTrack', 'AtRisk', 'Paused', 'Breached', 'Met', 'None'];
@@ -53,6 +57,8 @@ export interface IncidentDetail {
 
 /** What the signed-in person may do with this incident right now. The API decides; the screen just follows. */
 export interface IncidentActions {
+  /** Only the person who reported the incident may reword it, and not once it is closed. */
+  canEdit: boolean;
   canAssign: boolean;
   canChangePriority: boolean;
   allowedStatusChanges: IncidentStatus[];

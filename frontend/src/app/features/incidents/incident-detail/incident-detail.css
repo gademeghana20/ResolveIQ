@@ -92,6 +92,27 @@ mat-card-content {
   padding: 0 0 14px 12px;
 }
 
+/* "Show what changed" under a description edit: the full old and new wording, one above the other. */
+.changes {
+  margin-top: 4px;
+}
+
+.changes summary {
+  cursor: pointer;
+  color: var(--mat-sys-primary);
+  font: var(--mat-sys-label-large);
+}
+
+.version {
+  margin-top: 8px;
+  padding-left: 8px;
+  border-left: 2px solid var(--mat-sys-outline-variant);
+}
+
+.version p {
+  margin: 2px 0 0;
+}
+
 .message {
   padding: 24px 16px;
   text-align: center;

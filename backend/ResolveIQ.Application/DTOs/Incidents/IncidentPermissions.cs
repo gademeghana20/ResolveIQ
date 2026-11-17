@@ -29,6 +29,7 @@ namespace ResolveIQ.Application.DTOs.Incidents
 
             return new IncidentActionsResponse
             {
+                CanEdit = isReporter && !IncidentWorkflow.IsClosed(incident.Status),
                 CanAssign = isManagerOrAdmin && !IncidentWorkflow.IsClosed(incident.Status),
                 CanChangePriority = isManagerOrAdmin && IncidentWorkflow.CanChangePriority(incident.Status),
                 AllowedStatusChanges = allowedStatuses,

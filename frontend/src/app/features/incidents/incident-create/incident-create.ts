@@ -13,12 +13,8 @@ import { catchError, of } from 'rxjs';
 
 import { fieldErrors } from '../../../core/api-error';
 import { notBlank } from '../../../core/validators';
-import { Category } from '../incident.models';
+import { Category, MAX_DESCRIPTION_LENGTH, MAX_TITLE_LENGTH } from '../incident.models';
 import { IncidentService } from '../incident.service';
-
-/** The same limits the API enforces, so the screen warns before the server has to. */
-export const MAX_TITLE_LENGTH = 200;
-export const MAX_DESCRIPTION_LENGTH = 4000;
 
 @Component({
   selector: 'app-incident-create',

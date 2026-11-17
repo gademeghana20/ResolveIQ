@@ -41,6 +41,11 @@ export class IncidentService {
     return this.http.post<IncidentDetail>(`${API_URL}/incidents`, { title, description, categoryId });
   }
 
+  /** Rewords an incident. The API only allows its reporter to do this. */
+  updateIncident(id: string, title: string, description: string): Observable<IncidentDetail> {
+    return this.http.put<IncidentDetail>(`${API_URL}/incidents/${id}`, { title, description });
+  }
+
   changeStatus(id: string, status: IncidentStatus, reason?: string): Observable<IncidentDetail> {
     return this.http.put<IncidentDetail>(`${API_URL}/incidents/${id}/status`, { status, reason });
   }

@@ -1,5 +1,6 @@
 using System.Net;
 using System.Text.Json;
+using ResolveIQ.Domain.Constants;
 
 namespace ResolveIQ.Tests.Api
 {
@@ -20,12 +21,13 @@ namespace ResolveIQ.Tests.Api
             Actions(incident).GetProperty("allowedStatusChanges").EnumerateArray().Select(s => s.GetString()!).Order().ToArray();
 
         [Fact]
-        public async Task ANewIncident_OffersNothingToItsReporter()
+        public async Task ANewIncident_OffersItsReporterNothingExceptEditingIt()
         {
             var reporter = await _factory.CreateUserAsync();
 
             var created = await reporter.ReportIncidentAsync();
 
+            Assert.True(Actions(created).GetProperty("canEdit").GetBoolean());
             Assert.False(Actions(created).GetProperty("canAssign").GetBoolean());
             Assert.False(Actions(created).GetProperty("canChangePriority").GetBoolean());
             Assert.Empty(Allowed(created));
@@ -64,6 +66,26 @@ namespace ResolveIQ.Tests.Api
 
             var asReporter = await s.Reporter.GetIncidentAsync(s.Incident);
             Assert.Equal(new[] { "Closed", "InProgress" }, Allowed(asReporter));          // the reporter decides
+        }
+
+        [Fact]
+        public async Task OnlyTheReporterIsOfferedEditing_AndNotOnceTheIncidentIsClosed()
+        {
+            var s = await Scenario.AssignedAsync(_factory);
+            var admin = await _factory.CreateUserAsync(RoleNames.Admin);
+            static bool CanEdit(JsonElement incident) => Actions(incident).GetProperty("canEdit").GetBoolean();
+
+            Assert.True(CanEdit(await s.Reporter.GetIncidentAsync(s.Incident)));
+            Assert.False(CanEdit(await s.Manager.GetIncidentAsync(s.Incident)));
+            Assert.False(CanEdit(await s.Assignee.GetIncidentAsync(s.Incident)));
+            Assert.False(CanEdit(await admin.GetIncidentAsync(s.Incident)));
+
+            await s.Assignee.SetStatusAsync(s.Incident, "InProgress").ExpectAsync(HttpStatusCode.OK);
+            await s.Assignee.SetStatusAsync(s.Incident, "Resolved").ExpectAsync(HttpStatusCode.OK);
+            Assert.True(CanEdit(await s.Reporter.GetIncidentAsync(s.Incident)));   // still editable while resolved
+
+            await s.Reporter.SetStatusAsync(s.Incident, "Closed").ExpectAsync(HttpStatusCode.OK);
+            Assert.False(CanEdit(await s.Reporter.GetIncidentAsync(s.Incident)));  // final
         }
 
         [Fact]

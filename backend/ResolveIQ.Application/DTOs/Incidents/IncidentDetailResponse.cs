@@ -54,6 +54,9 @@ namespace ResolveIQ.Application.DTOs.Incidents
     /// </summary>
     public class IncidentActionsResponse
     {
+        /// <summary>Only the person who reported the incident may reword it, and not once it is closed.</summary>
+        public bool CanEdit { get; set; }
+
         public bool CanAssign { get; set; }
 
         public bool CanChangePriority { get; set; }

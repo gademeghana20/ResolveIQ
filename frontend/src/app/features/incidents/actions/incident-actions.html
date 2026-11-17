@@ -21,5 +21,9 @@
     @if (incident().actions.canChangePriority) {
       <button mat-stroked-button type="button" [disabled]="busy()" (click)="changePriority()">Change priority…</button>
     }
+
+    @if (incident().actions.canEdit) {
+      <button mat-stroked-button type="button" [disabled]="busy()" (click)="edit()">Edit title and description…</button>
+    }
   </div>
 }
