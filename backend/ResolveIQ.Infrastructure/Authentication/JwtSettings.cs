@@ -10,6 +10,10 @@ namespace ResolveIQ.Infrastructure.Authentication
 
         public string Audience { get; set; } = string.Empty;
 
-        public int ExpiryMinutes { get; set; } = 60;
+        /// <summary>How long a login token lasts. Short on purpose; the refresh token renews it quietly.</summary>
+        public int ExpiryMinutes { get; set; } = 15;
+
+        /// <summary>How long a refresh token lasts, so how long someone can stay signed in without typing a password.</summary>
+        public int RefreshTokenDays { get; set; } = 7;
     }
 }

@@ -16,6 +16,8 @@ export interface RegisterRequest {
 /** What /api/auth/login and /api/auth/register return. */
 export interface AuthResponse {
   token: string;
+  /** A single-use ticket for getting a new token when this one expires. Missing in sessions saved by older versions. */
+  refreshToken?: string;
   email: string;
   roles: Role[];
 }

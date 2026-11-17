@@ -25,6 +25,8 @@ namespace ResolveIQ.Infrastructure.Data
 
         public DbSet<IncidentComment> IncidentComments { get; set; } = null!;
 
+        public DbSet<RefreshToken> RefreshTokens { get; set; } = null!;
+
         protected override void ConfigureConventions(ModelConfigurationBuilder configurationBuilder)
         {
             base.ConfigureConventions(configurationBuilder);

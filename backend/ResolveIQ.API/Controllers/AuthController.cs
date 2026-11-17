@@ -15,15 +15,18 @@ namespace ResolveIQ.API.Controllers
         private readonly UserManager<IdentityUser> _userManager;
         private readonly IJwtTokenService _tokenService;
         private readonly IPasswordService _passwords;
+        private readonly IRefreshTokenService _refreshTokens;
 
         public AuthController(
             UserManager<IdentityUser> userManager,
             IJwtTokenService tokenService,
-            IPasswordService passwords)
+            IPasswordService passwords,
+            IRefreshTokenService refreshTokens)
         {
             _userManager = userManager;
             _tokenService = tokenService;
             _passwords = passwords;
+            _refreshTokens = refreshTokens;
         }
 
         [HttpPost("register")]
@@ -77,6 +80,37 @@ namespace ResolveIQ.API.Controllers
             await _userManager.ResetAccessFailedCountAsync(user);
 
             return Ok(await BuildResponseAsync(user));
+        }
+
+        /// <summary>
+        /// Swaps a refresh token for a new login token and a new refresh token (the old one is used up).
+        /// Fails with 401 if the token is unknown, expired or already used, or the account was deactivated
+        /// or had its password or role changed since: the person must sign in again.
+        /// </summary>
+        [HttpPost("refresh-token")]
+        [ProducesResponseType(StatusCodes.Status200OK)]
+        [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+        public async Task<ActionResult<AuthResponse>> RefreshToken(
+            RefreshTokenRequest request,
+            CancellationToken cancellationToken)
+        {
+            var result = await _refreshTokens.RotateAsync(request.RefreshToken, cancellationToken);
+            if (!result.Succeeded)
+            {
+                return Unauthorized(new { message = "Please sign in again." });
+            }
+
+            var user = await _userManager.FindByIdAsync(result.UserId!);
+            return Ok(await BuildResponseAsync(user!, result.NewRefreshToken));
+        }
+
+        /// <summary>Signing out: cancels the refresh token so it cannot be used again. Always answers 204.</summary>
+        [HttpPost("logout")]
+        [ProducesResponseType(StatusCodes.Status204NoContent)]
+        public async Task<IActionResult> Logout(RefreshTokenRequest request, CancellationToken cancellationToken)
+        {
+            await _refreshTokens.RevokeAsync(request.RefreshToken, cancellationToken);
+            return NoContent();
         }
 
         /// <summary>Change your own password. You stay signed in (a fresh token comes back); other logins end.</summary>
@@ -147,13 +181,17 @@ namespace ResolveIQ.API.Controllers
             return ValidationProblem(ModelState);
         }
 
-        private async Task<AuthResponse> BuildResponseAsync(IdentityUser user)
+        // Builds what the app receives at sign-in: a short-lived login token plus a refresh token.
+        // A refresh that already made its replacement passes it in; every other sign-in gets a new one.
+        private async Task<AuthResponse> BuildResponseAsync(IdentityUser user, string? refreshToken = null)
         {
             var roles = await _userManager.GetRolesAsync(user);
+            var stamp = user.SecurityStamp ?? string.Empty;
 
             return new AuthResponse
             {
-                Token = _tokenService.CreateToken(user.Id, user.Email!, roles, user.SecurityStamp ?? string.Empty),
+                Token = _tokenService.CreateToken(user.Id, user.Email!, roles, stamp),
+                RefreshToken = refreshToken ?? await _refreshTokens.IssueAsync(user.Id, stamp),
                 Email = user.Email!,
                 Roles = roles
             };

@@ -42,6 +42,7 @@ builder.Services.Configure<AppSettings>(builder.Configuration.GetSection(AppSett
 // Development email: written to the log, not delivered. Swap this line for a real sender to send actual mail.
 builder.Services.AddScoped<IEmailSender, LoggingEmailSender>();
 builder.Services.AddScoped<IPasswordService, PasswordService>();
+builder.Services.AddScoped<IRefreshTokenService, RefreshTokenService>();
 
 // Configure JWT authentication: how the API validates incoming tokens.
 var jwtKey = builder.Configuration["Jwt:Key"]

@@ -1,6 +1,6 @@
 import { HttpClient } from '@angular/common/http';
 import { Injectable, computed, inject, signal } from '@angular/core';
-import { Observable, tap } from 'rxjs';
+import { Observable, catchError, finalize, of, shareReplay, tap, throwError } from 'rxjs';
 
 import { API_URL } from '../api-config';
 import { AuthResponse, LoginRequest, RegisterRequest, Role } from './auth.models';
@@ -17,6 +17,9 @@ export class AuthService {
 
   // The one source of truth. A signal is a value that the screen reacts to automatically when it changes.
   private readonly session = signal<AuthResponse | null>(this.readStoredSession());
+
+  // While a refresh is in flight, everyone who needs one shares it, so the single-use ticket is spent only once.
+  private refreshing: Observable<AuthResponse> | null = null;
 
   /** The logged-in person's email, or null. */
   readonly email = computed(() => this.session()?.email ?? null);
@@ -62,14 +65,61 @@ export class AuthService {
     return this.http.post<{ message: string }>(`${API_URL}/auth/reset-password`, { email, token, newPassword });
   }
 
+  /** True when a refresh token is held, so an expired login token can be renewed without the password. */
+  canRefresh(): boolean {
+    return !!this.session()?.refreshToken;
+  }
+
+  /**
+   * Swaps the refresh token for a new login token (and a new refresh token). The login token lasts only minutes;
+   * this keeps the person signed in quietly. Fails if the ticket is used up, expired or cancelled (for example the
+   * password was changed), and then the person must sign in again.
+   */
+  refresh(): Observable<AuthResponse> {
+    if (this.refreshing) {
+      return this.refreshing;
+    }
+
+    const used = this.session()?.refreshToken;
+    if (!used) {
+      return throwError(() => new Error('There is no refresh token.'));
+    }
+
+    this.refreshing = this.http.post<AuthResponse>(`${API_URL}/auth/refresh-token`, { refreshToken: used }).pipe(
+      tap((response) => this.startSession(response)),
+      catchError((error: unknown) => {
+        // Another tab of this browser may have used the same ticket a moment ago and saved a new one.
+        // If so, carry on with that one instead of signing out.
+        const saved = this.readStoredSession();
+        if (saved?.refreshToken && saved.refreshToken !== used) {
+          this.session.set(saved);
+          return of(saved);
+        }
+        return throwError(() => error);
+      }),
+      finalize(() => (this.refreshing = null)),
+      shareReplay(1),
+    );
+
+    return this.refreshing;
+  }
+
   logout(): void {
+    const refreshToken = this.session()?.refreshToken;
+
     this.session.set(null);
     this.storage()?.removeItem(STORAGE_KEY);
+
+    // Cancel the refresh token on the server too, so a copy of it is worthless. If this fails, nothing is lost:
+    // the person is signed out here either way.
+    if (refreshToken) {
+      this.http.post(`${API_URL}/auth/logout`, { refreshToken }).subscribe({ error: () => undefined });
+    }
   }
 
   /**
    * The token to send to the API, or null if nobody is logged in or it has run out.
-   * An expired token is cleaned up here, so the rest of the app never uses one.
+   * An expired token is never returned. With no refresh token to renew it, the login is cleaned up here too.
    */
   getValidToken(): string | null {
     const current = this.session();
@@ -78,15 +128,18 @@ export class AuthService {
     }
 
     if (isExpired(current.token)) {
-      this.logout();
-      return null;
+      if (!current.refreshToken) {
+        this.logout();
+      }
+      return null; // with a refresh token, the next call renews it quietly
     }
 
     return current.token;
   }
 
+  /** Signed in, even if the short-lived token has just run out but can be renewed. */
   isLoggedIn(): boolean {
-    return this.getValidToken() !== null;
+    return this.getValidToken() !== null || this.canRefresh();
   }
 
   /** True if the logged-in person has at least one of the given roles. */
@@ -111,9 +164,11 @@ export class AuthService {
       const looksValid =
         typeof parsed.token === 'string' &&
         typeof parsed.email === 'string' &&
-        Array.isArray(parsed.roles);
+        Array.isArray(parsed.roles) &&
+        (parsed.refreshToken === undefined || typeof parsed.refreshToken === 'string');
 
-      if (!looksValid || isExpired(parsed.token!)) {
+      // An expired token is fine to keep when a refresh token can renew it.
+      if (!looksValid || (isExpired(parsed.token!) && !parsed.refreshToken)) {
         this.storage()?.removeItem(STORAGE_KEY);
         return null;
       }

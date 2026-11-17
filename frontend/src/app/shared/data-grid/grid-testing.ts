@@ -3,6 +3,8 @@
  * data arrives, so tests wait for it and then read what is on screen (text, headings), as a person would.
  */
 
+import { vi } from 'vitest';
+
 // The first table in a test file has to load all of AG Grid, which can take longer than the default 5 seconds
 // on a busy computer. A longer limit stops those tests failing for being slow rather than wrong.
 vi.setConfig({ testTimeout: 30_000 });
