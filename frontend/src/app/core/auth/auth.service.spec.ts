@@ -79,6 +79,40 @@ describe('AuthService', () => {
     expect(auth.roles()).toEqual(['Employee']);
   });
 
+  it('changePassword sends both passwords, and the fresh login that comes back replaces the old one', () => {
+    const auth = createService();
+    auth.login({ email: 'manager@example.com', password: 'x' }).subscribe();
+    http.expectOne(`${API_URL}/auth/login`).flush(response());
+    const old = auth.getValidToken();
+
+    auth.changePassword('Old-Pass1!', 'New-Pass1!').subscribe();
+    const request = http.expectOne(`${API_URL}/auth/change-password`);
+    expect(request.request.method).toBe('POST');
+    expect(request.request.body).toEqual({ currentPassword: 'Old-Pass1!', newPassword: 'New-Pass1!' });
+
+    const fresh = fakeToken(7200);
+    request.flush(response({ token: fresh }));
+
+    expect(auth.getValidToken()).toBe(fresh);
+    expect(fresh).not.toBe(old);
+  });
+
+  it('forgotPassword and resetPassword call the API without signing anyone in', () => {
+    const auth = createService();
+
+    auth.forgotPassword('dana@example.com').subscribe();
+    const forgot = http.expectOne(`${API_URL}/auth/forgot-password`);
+    expect(forgot.request.body).toEqual({ email: 'dana@example.com' });
+    forgot.flush({ message: 'ok' });
+
+    auth.resetPassword('dana@example.com', 'tok', 'New-Pass1!').subscribe();
+    const reset = http.expectOne(`${API_URL}/auth/reset-password`);
+    expect(reset.request.body).toEqual({ email: 'dana@example.com', token: 'tok', newPassword: 'New-Pass1!' });
+    reset.flush({ message: 'ok' });
+
+    expect(auth.isLoggedIn()).toBe(false);
+  });
+
   it('logout forgets everything, including what was saved in the browser', () => {
     const auth = createService();
     auth.login({ email: 'x@example.com', password: 'p' }).subscribe();

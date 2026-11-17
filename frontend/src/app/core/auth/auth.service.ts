@@ -45,6 +45,23 @@ export class AuthService {
       .pipe(tap((response) => this.startSession(response)));
   }
 
+  /** Changes your own password. The API ends your old login and sends a fresh one, so you stay signed in. */
+  changePassword(currentPassword: string, newPassword: string): Observable<AuthResponse> {
+    return this.http
+      .post<AuthResponse>(`${API_URL}/auth/change-password`, { currentPassword, newPassword })
+      .pipe(tap((response) => this.startSession(response)));
+  }
+
+  /** "Forgot password": asks for a reset email. The answer is the same whether or not the address has an account. */
+  forgotPassword(email: string): Observable<{ message: string }> {
+    return this.http.post<{ message: string }>(`${API_URL}/auth/forgot-password`, { email });
+  }
+
+  /** Chooses a new password with the one-time token from the emailed link. It does not sign anyone in. */
+  resetPassword(email: string, token: string, newPassword: string): Observable<{ message: string }> {
+    return this.http.post<{ message: string }>(`${API_URL}/auth/reset-password`, { email, token, newPassword });
+  }
+
   logout(): void {
     this.session.set(null);
     this.storage()?.removeItem(STORAGE_KEY);

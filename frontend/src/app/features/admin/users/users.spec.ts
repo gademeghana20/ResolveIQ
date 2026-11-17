@@ -157,6 +157,7 @@ describe('Users', () => {
 
       expect(rowFor('zed@example.com')).toBeDefined();
       expect(snack.mock.calls[0][0]).toContain('zed@example.com was created as Manager');
+      expect(snack.mock.calls[0][0]).toContain('choose their own password');
     });
 
     it('changes nothing when the dialog is cancelled', async () => {
@@ -240,25 +241,45 @@ describe('Users', () => {
     });
   });
 
-  describe('resetting a password', () => {
-    it('opens for the right person, and confirms once saved', async () => {
+  describe('sending a password reset email', () => {
+    it('asks first, then emails that person, and says so', async () => {
       await open();
       const open$ = dialogReturns(true);
 
-      await chooseFromMenu('dana@example.com', 'Reset password');
+      await chooseFromMenu('dana@example.com', 'Send password reset email');
 
-      expect(open$.mock.calls[0][1]).toMatchObject({ data: { userId: 'u-dana', email: 'dana@example.com' } });
-      expect(snack.mock.calls[0][0]).toContain('The password for dana@example.com was changed');
-      http.expectNone(`${API_URL}/users/u-dana/password`); // the dialog itself does the saving
+      expect(open$.mock.calls[0][1]).toMatchObject({ data: { title: expect.stringContaining('dana@example.com') } });
+      const request = http.expectOne(`${API_URL}/users/u-dana/password-reset-email`);
+      expect(request.request.method).toBe('POST');
+      request.flush(dana);
+      await settle();
+
+      expect(snack.mock.calls[0][0]).toBe('An email was sent to dana@example.com.');
     });
 
-    it('says nothing when cancelled', async () => {
+    it('sends nothing when the question is answered "cancel"', async () => {
       await open();
       dialogReturns(undefined);
 
-      await chooseFromMenu('dana@example.com', 'Reset password');
+      await chooseFromMenu('dana@example.com', 'Send password reset email');
 
+      http.expectNone(`${API_URL}/users/u-dana/password-reset-email`);
       expect(snack).not.toHaveBeenCalled();
+    });
+
+    it('explains a refusal, for example a deactivated person who gets no email', async () => {
+      await open();
+      dialogReturns(true);
+
+      await chooseFromMenu('Lee@example.com', 'Send password reset email');
+      http.expectOne(`${API_URL}/users/u-lee/password-reset-email`).flush(
+        { errors: { Id: ['This person is deactivated, so no email was sent. Reactivate them first.'] } },
+        { status: 400, statusText: 'Bad Request' },
+      );
+      await settle();
+
+      expect(snack.mock.calls[0][0]).toContain('deactivated');
+      http.expectOne(`${API_URL}/users`).flush([dana, me, lee]); // the list reloads, as after any refusal
     });
   });
 

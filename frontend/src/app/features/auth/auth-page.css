@@ -49,6 +49,22 @@ form {
   font: var(--mat-sys-body-small);
 }
 
+.forgot {
+  align-self: flex-end;
+  margin: -4px 0 8px;
+  color: var(--mat-sys-primary);
+  font: var(--mat-sys-body-medium);
+  font-weight: 600;
+}
+
+.success {
+  margin: 16px 0 0;
+  padding: 12px 14px;
+  border-radius: 12px;
+  background: var(--mat-sys-primary-container);
+  color: var(--mat-sys-on-primary-container);
+}
+
 .switch {
   margin: 16px 0 0;
   text-align: center;

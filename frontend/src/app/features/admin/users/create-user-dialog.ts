@@ -9,7 +9,6 @@ import { MatSelectModule } from '@angular/material/select';
 
 import { fieldErrors } from '../../../core/api-error';
 import { Role } from '../../../core/auth/auth.models';
-import { PASSWORD_HINT } from '../../../core/password-rules';
 import { emailWithDomain } from '../../../core/validators';
 import { UserSummary } from '../../../core/user.models';
 import { AdminService } from '../admin.service';
@@ -24,6 +23,11 @@ export const ROLES: Role[] = ['Employee', 'Manager', 'Admin'];
     <h2 mat-dialog-title>New user</h2>
     <form [formGroup]="form" (ngSubmit)="save()" novalidate>
       <mat-dialog-content class="fields">
+        <p class="explain">
+          You do not choose a password. The new person is emailed a link to choose their own, so nobody else ever
+          knows it.
+        </p>
+
         <mat-form-field appearance="outline">
           <mat-label>Email</mat-label>
           <input matInput type="email" formControlName="email" autocomplete="off" />
@@ -32,17 +36,6 @@ export const ROLES: Role[] = ['Employee', 'Manager', 'Admin'];
           } @else if (form.controls.email.hasError('email')) {
             <mat-error>Enter a full email address, like name@example.com.</mat-error>
           } @else if (serverMessage('email'); as message) {
-            <mat-error>{{ message }}</mat-error>
-          }
-        </mat-form-field>
-
-        <mat-form-field appearance="outline" subscriptSizing="dynamic">
-          <mat-label>Password</mat-label>
-          <input matInput type="password" formControlName="password" autocomplete="new-password" />
-          <mat-hint>{{ passwordHint }}</mat-hint>
-          @if (form.controls.password.hasError('required')) {
-            <mat-error>A password is required.</mat-error>
-          } @else if (serverMessage('password'); as message) {
             <mat-error>{{ message }}</mat-error>
           }
         </mat-form-field>
@@ -73,6 +66,7 @@ export const ROLES: Role[] = ['Employee', 'Manager', 'Admin'];
   styles: `
     .fields { display: flex; flex-direction: column; gap: 4px; min-width: 320px; padding-top: 8px; }
     .error { color: var(--mat-sys-error); margin: 0; }
+    .explain { margin: 0 0 8px; max-width: 340px; color: var(--mat-sys-on-surface-variant); }
   `,
 })
 export class CreateUserDialog {
@@ -81,11 +75,9 @@ export class CreateUserDialog {
   private readonly formBuilder = inject(NonNullableFormBuilder);
 
   protected readonly roles = ROLES;
-  protected readonly passwordHint = PASSWORD_HINT;
 
   protected readonly form = this.formBuilder.group({
     email: ['', [Validators.required, emailWithDomain]],
-    password: ['', Validators.required],
     role: ['Employee' as Role, Validators.required],
   });
 
@@ -116,7 +108,7 @@ export class CreateUserDialog {
     const problems = fieldErrors(error);
     let placed = false;
 
-    for (const name of ['email', 'password', 'role'] as const) {
+    for (const name of ['email', 'role'] as const) {
       if (problems?.[name]) {
         this.form.controls[name].setErrors({ server: problems[name] });
         this.form.controls[name].markAsTouched();
@@ -133,7 +125,7 @@ export class CreateUserDialog {
     }
   }
 
-  protected serverMessage(name: 'email' | 'password' | 'role'): string | null {
+  protected serverMessage(name: 'email' | 'role'): string | null {
     const message = this.form.controls[name].errors?.['server'];
     return typeof message === 'string' ? message : null;
   }

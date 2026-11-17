@@ -59,6 +59,15 @@ describe('Shell', () => {
       expect(hrefs).toEqual(['/dashboard', '/incidents']);
     });
 
+    it('offers a Change password link, apart from the main navigation, for everyone', async () => {
+      await setUp();
+
+      const link = page().querySelector('a.account')!;
+      expect(link.getAttribute('href')).toBe('/account/password');
+      expect(link.textContent).toContain('Change password');
+      expect(link.closest('nav')).toBeNull();
+    });
+
     it('shows the Admin link to an Admin', async () => {
       await setUp({ role: 'Admin' });
 

@@ -32,8 +32,16 @@ builder.Services
     })
     .AddRoles<IdentityRole>()
     .AddEntityFrameworkStores<ApplicationDbContext>()
-    // Identity's password-reset needs these token providers (an Admin resetting a password uses it).
+    // Password-reset links need these token providers.
     .AddDefaultTokenProviders();
+
+// A password-reset link stops working after an hour (the default is a whole day).
+builder.Services.Configure<DataProtectionTokenProviderOptions>(options => options.TokenLifespan = TimeSpan.FromHours(1));
+
+builder.Services.Configure<AppSettings>(builder.Configuration.GetSection(AppSettings.SectionName));
+// Development email: written to the log, not delivered. Swap this line for a real sender to send actual mail.
+builder.Services.AddScoped<IEmailSender, LoggingEmailSender>();
+builder.Services.AddScoped<IPasswordService, PasswordService>();
 
 // Configure JWT authentication: how the API validates incoming tokens.
 var jwtKey = builder.Configuration["Jwt:Key"]

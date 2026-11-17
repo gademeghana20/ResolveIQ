@@ -79,19 +79,19 @@ namespace ResolveIQ.API.Controllers
             return result.Outcome == ChangeOutcome.Success ? Ok(result.User) : ToProblem(result);
         }
 
-        [HttpPut("{id}/password")]
+        // Sends the person an email with a link to choose a new password. The Admin never handles a password.
+        [HttpPost("{id}/password-reset-email")]
         [Authorize(Roles = RoleNames.Admin)]
         [ProducesResponseType(StatusCodes.Status200OK)]
         [ProducesResponseType(StatusCodes.Status400BadRequest)]
         [ProducesResponseType(StatusCodes.Status401Unauthorized)]
         [ProducesResponseType(StatusCodes.Status403Forbidden)]
         [ProducesResponseType(StatusCodes.Status404NotFound)]
-        public async Task<ActionResult<UserSummaryResponse>> ResetPassword(
+        public async Task<ActionResult<UserSummaryResponse>> SendPasswordResetEmail(
             string id,
-            ResetUserPasswordRequest request,
             CancellationToken cancellationToken)
         {
-            var result = await _userService.ResetPasswordAsync(id, request.NewPassword, cancellationToken);
+            var result = await _userService.SendPasswordResetEmailAsync(id, cancellationToken);
 
             return result.Outcome == ChangeOutcome.Success ? Ok(result.User) : ToProblem(result);
         }

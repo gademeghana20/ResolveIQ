@@ -11,7 +11,6 @@ import { SlaPolicy } from './sla/sla.models';
 
 export interface NewUser {
   email: string;
-  password: string;
   role: Role;
 }
 
@@ -36,8 +35,9 @@ export class AdminService {
     return this.http.put<UserSummary>(`${API_URL}/users/${id}/active`, { isActive });
   }
 
-  resetPassword(id: string, newPassword: string): Observable<UserSummary> {
-    return this.http.put<UserSummary>(`${API_URL}/users/${id}/password`, { newPassword });
+  /** Emails the person a link to choose a new password. The Admin never sees or types a password. */
+  sendPasswordResetEmail(id: string): Observable<UserSummary> {
+    return this.http.post<UserSummary>(`${API_URL}/users/${id}/password-reset-email`, {});
   }
 
   getSlaPolicies(): Observable<SlaPolicy[]> {

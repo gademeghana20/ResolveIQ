@@ -17,17 +17,16 @@ namespace ResolveIQ.Application.DTOs.Users
         public bool IsActive { get; set; } = true;
     }
 
-    /// <summary>What an Admin sends to create a user with a chosen role.</summary>
+    /// <summary>
+    /// What an Admin sends to create a user with a chosen role. There is no password: the new person is emailed
+    /// a link to choose their own, so nobody else ever knows it.
+    /// </summary>
     public class CreateUserRequest
     {
         [Required]
         [EmailWithDomain]
         [StringLength(256)]
         public string Email { get; set; } = string.Empty;
-
-        [Required]
-        [StringLength(100)]
-        public string Password { get; set; } = string.Empty;
 
         /// <summary>Admin, Manager or Employee.</summary>
         [Required]
@@ -41,14 +40,6 @@ namespace ResolveIQ.Application.DTOs.Users
         [Required]
         [StringLength(50)]
         public string Role { get; set; } = string.Empty;
-    }
-
-    /// <summary>What an Admin sends to give a user a new password (for example when it was forgotten).</summary>
-    public class ResetUserPasswordRequest
-    {
-        [Required]
-        [StringLength(100)]
-        public string NewPassword { get; set; } = string.Empty;
     }
 
     public class SetUserActiveRequest

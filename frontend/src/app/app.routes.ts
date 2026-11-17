@@ -7,6 +7,14 @@ import { roleGuard } from './core/auth/role.guard';
 // That keeps the first download small: the login page does not carry the incident table's code.
 export const routes: Routes = [
   { path: 'login', loadComponent: () => import('./features/auth/login/login').then((m) => m.Login) },
+  {
+    path: 'forgot-password',
+    loadComponent: () => import('./features/auth/forgot-password/forgot-password').then((m) => m.ForgotPassword),
+  },
+  {
+    path: 'reset-password',
+    loadComponent: () => import('./features/auth/reset-password/reset-password').then((m) => m.ResetPassword),
+  },
   { path: 'register', loadComponent: () => import('./features/auth/register/register').then((m) => m.Register) },
 
   // Everything signed-in people see lives inside the Shell (the sidebar frame) and behind the guard.
@@ -35,6 +43,10 @@ export const routes: Routes = [
         path: 'incidents/:id',
         loadComponent: () =>
           import('./features/incidents/incident-detail/incident-detail').then((m) => m.IncidentDetail),
+      },
+      {
+        path: 'account/password',
+        loadComponent: () => import('./features/account/change-password/change-password').then((m) => m.ChangePassword),
       },
       // Admin area: only people with the Admin role may open it.
       {

@@ -32,6 +32,10 @@
     </nav>
 
     <div class="bottom">
+      <a class="account" routerLink="/account/password" routerLinkActive="active" ariaCurrentWhenActive="page">
+        <mat-icon aria-hidden="true">lock_reset</mat-icon>
+        Change password
+      </a>
       <button type="button" class="logout" (click)="signOut()">
         <mat-icon aria-hidden="true">logout</mat-icon>
         Log out

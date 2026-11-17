@@ -1,6 +1,8 @@
 using Microsoft.AspNetCore.Identity;
+using System.Security.Cryptography;
 using Microsoft.EntityFrameworkCore;
 using ResolveIQ.Application.Abstractions;
+using ResolveIQ.Application.DTOs.Auth;
 using ResolveIQ.Application.DTOs.Common;
 using ResolveIQ.Application.DTOs.Incidents;
 using ResolveIQ.Application.DTOs.Users;
@@ -14,12 +16,18 @@ namespace ResolveIQ.Infrastructure.Services
         private readonly ApplicationDbContext _db;
         private readonly UserManager<IdentityUser> _userManager;
         private readonly TimeProvider _time;
+        private readonly IPasswordService _passwords;
 
-        public UserService(ApplicationDbContext db, UserManager<IdentityUser> userManager, TimeProvider time)
+        public UserService(
+            ApplicationDbContext db,
+            UserManager<IdentityUser> userManager,
+            TimeProvider time,
+            IPasswordService passwords)
         {
             _db = db;
             _userManager = userManager;
             _time = time;
+            _passwords = passwords;
         }
 
         public async Task<IReadOnlyList<UserSummaryResponse>> GetUsersAsync(
@@ -41,7 +49,9 @@ namespace ResolveIQ.Infrastructure.Services
 
             var user = new IdentityUser { UserName = request.Email, Email = request.Email };
 
-            var created = await _userManager.CreateAsync(user, request.Password);
+            // The account starts with a long random password that nobody (not even the Admin) ever sees. The person
+            // chooses their own through the emailed link, so until then the account cannot be signed in to.
+            var created = await _userManager.CreateAsync(user, UnknowablePassword());
             if (!created.Succeeded)
             {
                 return new UserChangeResult(
@@ -50,6 +60,7 @@ namespace ResolveIQ.Infrastructure.Services
             }
 
             await _userManager.AddToRoleAsync(user, role);
+            await _passwords.SendLinkAsync(user.Id, PasswordLinkKind.Invitation, cancellationToken);
 
             return await SuccessAsync(user.Id, cancellationToken);
         }
@@ -91,37 +102,19 @@ namespace ResolveIQ.Infrastructure.Services
             return await SuccessAsync(user.Id, cancellationToken);
         }
 
-        public async Task<UserChangeResult> ResetPasswordAsync(
+        public async Task<UserChangeResult> SendPasswordResetEmailAsync(
             string id,
-            string newPassword,
             CancellationToken cancellationToken = default)
         {
-            var user = await _userManager.FindByIdAsync(id);
-            if (user is null)
+            if (await _userManager.FindByIdAsync(id) is null)
             {
                 return new UserChangeResult(ChangeOutcome.NotFound);
             }
 
-            // Identity's own reset checks the password rules and also changes the security stamp,
-            // so every token the user already holds stops working straight away.
-            var token = await _userManager.GeneratePasswordResetTokenAsync(user);
-            var result = await _userManager.ResetPasswordAsync(user, token, newPassword);
-            if (!result.Succeeded)
-            {
-                return new UserChangeResult(
-                    ChangeOutcome.Invalid,
-                    Errors: result.Errors.Select(e => new FieldError("NewPassword", e.Description)).ToList());
-            }
-
-            // The person is about to log in with a fresh password, so forget earlier failed attempts and any
-            // short lock-out. A deactivated user is locked "until the end of time" and must stay that way.
-            await _userManager.ResetAccessFailedCountAsync(user);
-            if (user.LockoutEnd is { } lockedUntil && lockedUntil < DateTimeOffset.MaxValue)
-            {
-                await _userManager.SetLockoutEndDateAsync(user, null);
-            }
-
-            return await SuccessAsync(user.Id, cancellationToken);
+            // Sending changes nothing about the account; the person has to follow the link to choose a password.
+            return await _passwords.SendLinkAsync(id, PasswordLinkKind.AdminRequested, cancellationToken)
+                ? await SuccessAsync(id, cancellationToken)
+                : Invalid("Id", "This person is deactivated, so no email was sent. Reactivate them first.");
         }
 
         public async Task<UserChangeResult> SetActiveAsync(
@@ -160,6 +153,9 @@ namespace ResolveIQ.Infrastructure.Services
         }
 
         // ---- helpers ----
+
+        // Long and random, with every kind of character Identity asks for. Used only as a placeholder.
+        private static string UnknowablePassword() => Convert.ToBase64String(RandomNumberGenerator.GetBytes(33)) + "aA1!";
 
         private const string RoleMessage = "The role must be Admin, Manager or Employee.";
 

@@ -4,6 +4,7 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.Extensions.Time.Testing;
+using ResolveIQ.Application.Abstractions;
 using ResolveIQ.Infrastructure.Data;
 
 namespace ResolveIQ.Tests.Api
@@ -25,6 +26,9 @@ namespace ResolveIQ.Tests.Api
 
         /// <summary>The app's clock. Starts at the real current time; tests call Advance to move it.</summary>
         public FakeTimeProvider Time { get; } = new(DateTimeOffset.UtcNow);
+
+        /// <summary>Every email the app "sent" (nothing is really delivered in tests).</summary>
+        public CapturingEmailSender Emails { get; } = new();
 
         /// <summary>Whether the app is told to create a first Admin at startup.</summary>
         protected virtual bool SeedBootstrapAdmin => true;
@@ -51,6 +55,9 @@ namespace ResolveIQ.Tests.Api
             {
                 services.RemoveAll<TimeProvider>();
                 services.AddSingleton<TimeProvider>(Time);
+
+                services.RemoveAll<IEmailSender>();
+                services.AddSingleton<IEmailSender>(Emails);
             });
         }
 

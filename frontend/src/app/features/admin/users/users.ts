@@ -20,7 +20,6 @@ import { ConfirmDialog } from '../../../shared/confirm-dialog/confirm-dialog';
 import { AdminService } from '../admin.service';
 import { ChangeRoleDialog, ChangeRoleDialogData } from './change-role-dialog';
 import { CreateUserDialog } from './create-user-dialog';
-import { ResetPasswordDialog, ResetPasswordDialogData } from './reset-password-dialog';
 
 type LoadState = 'loading' | 'ready' | 'failed';
 
@@ -78,7 +77,7 @@ export class Users {
             ? []
             : [
                 { label: 'Change role…', run: (u) => this.changeRole(u) },
-                { label: 'Reset password…', run: (u) => this.resetPassword(u) },
+                { label: 'Send password reset email…', run: (u) => this.sendPasswordResetEmail(u) },
                 { label: user.isActive ? 'Deactivate…' : 'Reactivate', run: (u) => this.toggleActive(u) },
               ],
       },
@@ -138,7 +137,7 @@ export class Users {
       .subscribe((created) => {
         if (created) {
           this.users.update((list) => [...list, created]);
-          this.tell(`${created.email} was created as ${this.roleOf(created)}.`);
+          this.tell(`${created.email} was created as ${this.roleOf(created)}. An email was sent so they can choose their own password.`);
         }
       });
   }
@@ -156,15 +155,20 @@ export class Users {
       });
   }
 
-  protected resetPassword(user: UserSummary): void {
-    const data: ResetPasswordDialogData = { userId: user.id, email: user.email ?? 'this person' };
-
+  protected sendPasswordResetEmail(user: UserSummary): void {
     this.dialog
-      .open<ResetPasswordDialog, ResetPasswordDialogData, boolean>(ResetPasswordDialog, { data })
+      .open(ConfirmDialog, {
+        data: {
+          title: `Send ${user.email} a password reset email?`,
+          message:
+            'They get an email with a link to choose a new password. Nothing changes until they follow it, and you never see or type their password.',
+          confirmLabel: 'Send email',
+        },
+      })
       .afterClosed()
-      .subscribe((saved) => {
-        if (saved) {
-          this.tell(`The password for ${user.email} was changed. Tell them the new one.`);
+      .subscribe((confirmed) => {
+        if (confirmed) {
+          this.run(this.admin.sendPasswordResetEmail(user.id), `An email was sent to ${user.email}.`);
         }
       });
   }

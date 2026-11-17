@@ -106,10 +106,31 @@
   cursor: pointer;
 }
 
+/* A quiet text link above the Log out button, in the sidebar colours. */
+.account {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  margin-bottom: 10px;
+  padding: 8px 12px;
+  border-radius: 999px;
+  color: var(--app-sidebar-muted);
+  font-weight: 500;
+  text-decoration: none;
+}
+
+.account:hover,
+.account.active {
+  background: var(--app-sidebar-hover);
+  color: var(--app-sidebar-fg);
+}
+
 .logout:hover {
   filter: brightness(0.94);
 }
 
+.account:focus-visible,
 .new-incident:focus-visible,
 .link:focus-visible,
 .logout:focus-visible,

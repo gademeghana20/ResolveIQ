@@ -62,14 +62,21 @@ namespace ResolveIQ.Tests.Api
             var email = NewEmail();
 
             var response = await admin.Client.PostAsJsonAsync("/api/users",
-                new { email, password = ApiFactory.StandardPassword, role = typedRole }).ExpectAsync(HttpStatusCode.Created);
+                new { email, role = typedRole }).ExpectAsync(HttpStatusCode.Created);
             var created = await response.ReadJsonAsync();
 
             Assert.Equal(new[] { expectedRole }, Roles(created));
             Assert.True(created.GetProperty("isActive").GetBoolean());
             Assert.NotNull(response.Headers.Location);
 
-            // And that person can log in with the role they were given.
+            // The Admin chose no password. The new person got an email to choose their own...
+            var invitation = _factory.Emails.Latest(email);
+            Assert.Contains("set your password", invitation.Subject);
+
+            await _factory.CreateClient().PostAsJsonAsync("/api/auth/reset-password",
+                new { email, token = invitation.Token, newPassword = ApiFactory.StandardPassword }).ExpectAsync(HttpStatusCode.OK);
+
+            // ...and then they can log in with the role they were given.
             var login = await _factory.CreateClient().PostAsJsonAsync("/api/auth/login",
                 new { email, password = ApiFactory.StandardPassword }).ExpectAsync(HttpStatusCode.OK);
             Assert.Equal(new[] { expectedRole }, Roles(await login.ReadJsonAsync()));
@@ -83,12 +90,11 @@ namespace ResolveIQ.Tests.Api
 
             var badBodies = new object[]
             {
-                new { email = NewEmail(), password = ApiFactory.StandardPassword, role = "Boss" },
-                new { email = NewEmail(), password = ApiFactory.StandardPassword, role = "" },
-                new { email = NewEmail(), password = "abc", role = "Employee" },
-                new { email = "not-an-email", password = ApiFactory.StandardPassword, role = "Employee" },
-                new { email = taken.Email, password = ApiFactory.StandardPassword, role = "Employee" },
-                new { email = taken.Email.ToUpperInvariant(), password = ApiFactory.StandardPassword, role = "Employee" }
+                new { email = NewEmail(), role = "Boss" },
+                new { email = NewEmail(), role = "" },
+                new { email = "not-an-email", role = "Employee" },
+                new { email = taken.Email, role = "Employee" },
+                new { email = taken.Email.ToUpperInvariant(), role = "Employee" }
             };
 
             foreach (var body in badBodies)
@@ -98,15 +104,18 @@ namespace ResolveIQ.Tests.Api
         }
 
         [Fact]
-        public async Task ANewUserWithAWeakPassword_IsToldWhichRulesItBroke()
+        public async Task ANewUser_CannotSignInUntilTheyChooseAPassword_AndAnAdminCannotChooseOneForThem()
         {
             var admin = await _factory.CreateUserAsync(RoleNames.Admin);
+            var email = NewEmail();
 
+            // A password in the request is simply ignored; there is no field for it.
             var response = await admin.Client.PostAsJsonAsync("/api/users",
-                new { email = NewEmail(), password = "abc", role = "Employee" }).ExpectAsync(HttpStatusCode.BadRequest);
+                new { email, password = "Sneaky#Pass123", role = "Employee" }).ExpectAsync(HttpStatusCode.Created);
+            Assert.DoesNotContain("assword", await response.Content.ReadAsStringAsync());
 
-            var errors = (await response.ReadJsonAsync()).GetProperty("errors");
-            Assert.True(errors.GetProperty("Password").GetArrayLength() >= 1);
+            await _factory.CreateClient().PostAsJsonAsync("/api/auth/login",
+                new { email, password = "Sneaky#Pass123" }).ExpectAsync(HttpStatusCode.Unauthorized);
         }
 
         [Fact]
@@ -114,7 +123,7 @@ namespace ResolveIQ.Tests.Api
         {
             var manager = await _factory.CreateUserAsync(RoleNames.Manager);
             var employee = await _factory.CreateUserAsync();
-            var body = new { email = NewEmail(), password = ApiFactory.StandardPassword, role = "Employee" };
+            var body = new { email = NewEmail(), role = "Employee" };
 
             await manager.Client.PostAsJsonAsync("/api/users", body).ExpectAsync(HttpStatusCode.Forbidden);
             await employee.Client.PostAsJsonAsync("/api/users", body).ExpectAsync(HttpStatusCode.Forbidden);
