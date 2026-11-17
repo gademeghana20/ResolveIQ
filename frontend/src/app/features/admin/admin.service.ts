@@ -6,6 +6,8 @@ import { API_URL } from '../../core/api-config';
 import { Role } from '../../core/auth/auth.models';
 import { Category } from '../../core/category.models';
 import { UserSummary } from '../../core/user.models';
+import { IncidentPriority } from '../incidents/incident.models';
+import { SlaPolicy } from './sla/sla.models';
 
 export interface NewUser {
   email: string;
@@ -36,6 +38,14 @@ export class AdminService {
 
   resetPassword(id: string, newPassword: string): Observable<UserSummary> {
     return this.http.put<UserSummary>(`${API_URL}/users/${id}/password`, { newPassword });
+  }
+
+  getSlaPolicies(): Observable<SlaPolicy[]> {
+    return this.http.get<SlaPolicy[]>(`${API_URL}/sla/policies`);
+  }
+
+  updateSlaPolicy(priority: IncidentPriority, change: { resolutionTargetHours: number; isActive: boolean }): Observable<SlaPolicy> {
+    return this.http.put<SlaPolicy>(`${API_URL}/sla/policies/${priority}`, change);
   }
 
   /** Every category, including hidden ones (the normal list leaves those out). */

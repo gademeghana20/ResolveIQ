@@ -44,7 +44,6 @@ namespace ResolveIQ.Infrastructure.Services
             incidents = ApplyFilters(incidents, query, userId);
             var sorted = ApplySorting(incidents, query.SortBy, query.SortDirection);
 
-            var targets = await LoadTargetHoursAsync(cancellationToken);
             var now = Now();
 
             // The SLA state is worked out in code, not stored, so SQL cannot filter on it.
@@ -52,7 +51,7 @@ namespace ResolveIQ.Infrastructure.Services
             if (query.SlaState is SlaState wantedState)
             {
                 var matches = (await sorted.Include(i => i.Category).ToListAsync(cancellationToken))
-                    .Select(i => ToSummary(i, targets, now))
+                    .Select(i => ToSummary(i, now))
                     .Where(s => s.SlaState == wantedState)
                     .ToList();
 
@@ -77,7 +76,7 @@ namespace ResolveIQ.Infrastructure.Services
                 .Take(query.PageSize)
                 .ToListAsync(cancellationToken);
 
-            var items = page.Select(i => ToSummary(i, targets, now)).ToList();
+            var items = page.Select(i => ToSummary(i, now)).ToList();
             await AddEmailsAsync(items, cancellationToken);
 
             return new PagedResult<IncidentSummaryResponse>
@@ -104,7 +103,7 @@ namespace ResolveIQ.Infrastructure.Services
                 return null;
             }
 
-            var detail = ToDetail(incident, await LoadTargetHoursAsync(cancellationToken), Now());
+            var detail = ToDetail(incident, Now());
             await AddEmailsAsync(detail, cancellationToken);
             return detail;
         }
@@ -250,9 +249,11 @@ namespace ResolveIQ.Infrastructure.Services
             }
 
             // The first assignment starts the SLA clock. Later reassignments do not restart it.
+            // The hours are taken from today's policy and then kept on the incident for good.
             if (incident.SlaStartedAtUtc is null)
             {
                 incident.SlaStartedAtUtc = now;
+                incident.SlaTargetHours = TargetFor(incident.Priority, targets);
                 AddHistory(incident.Id, actingUserId, "SlaClock", null, "Started", now);
                 changed = true;
             }
@@ -550,7 +551,7 @@ namespace ResolveIQ.Infrastructure.Services
             DateTime now)
         {
             var oldPriority = incident.Priority;
-            var previousState = SlaCalculator.Evaluate(incident, TargetFor(oldPriority, targets), now).State;
+            var previousState = SlaCalculator.Evaluate(incident, now).State;
 
             incident.Priority = newPriority;
             AddHistory(incident.Id, changedByUserId, "Priority", oldPriority?.ToString(), newPriority.ToString(), now);
@@ -558,6 +559,7 @@ namespace ResolveIQ.Infrastructure.Services
             if (incident.SlaStartedAtUtc is not null)
             {
                 incident.SlaStartedAtUtc = now;
+                incident.SlaTargetHours = TargetFor(newPriority, targets); // the new priority's hours, as of now
                 incident.SlaPausedSeconds = 0;
                 incident.SlaPausedAtUtc = incident.Status == IncidentStatus.OnHold ? now : null;
                 AddHistory(incident.Id, changedByUserId, "SlaClock", previousState.ToString(), "Restarted", now);
@@ -614,7 +616,7 @@ namespace ResolveIQ.Infrastructure.Services
                 .Include(i => i.Category)
                 .SingleAsync(i => i.Id == id, cancellationToken);
 
-            var detail = ToDetail(incident, await LoadTargetHoursAsync(cancellationToken), Now());
+            var detail = ToDetail(incident, Now());
             await AddEmailsAsync(detail, cancellationToken);
             return detail;
         }
@@ -666,7 +668,8 @@ namespace ResolveIQ.Infrastructure.Services
 
         // ---- SLA and mapping ----
 
-        // The active resolution targets, by priority. There are only a handful of rows.
+        // Today's active resolution targets, by priority. They are only used when a clock starts or restarts,
+        // to decide the hours an incident is promised. After that the incident keeps those hours itself.
         private async Task<Dictionary<IncidentPriority, int>> LoadTargetHoursAsync(CancellationToken cancellationToken) =>
             await _db.SlaPolicies.AsNoTracking()
                 .Where(p => p.IsActive)
@@ -675,12 +678,9 @@ namespace ResolveIQ.Infrastructure.Services
         private static int? TargetFor(IncidentPriority? priority, IReadOnlyDictionary<IncidentPriority, int> targets) =>
             priority is IncidentPriority p && targets.TryGetValue(p, out var hours) ? hours : null;
 
-        private static IncidentSummaryResponse ToSummary(
-            Incident i,
-            IReadOnlyDictionary<IncidentPriority, int> targets,
-            DateTime now)
+        private static IncidentSummaryResponse ToSummary(Incident i, DateTime now)
         {
-            var sla = SlaCalculator.Evaluate(i, TargetFor(i.Priority, targets), now);
+            var sla = SlaCalculator.Evaluate(i, now);
 
             return new IncidentSummaryResponse
             {
@@ -698,12 +698,9 @@ namespace ResolveIQ.Infrastructure.Services
             };
         }
 
-        private static IncidentDetailResponse ToDetail(
-            Incident i,
-            IReadOnlyDictionary<IncidentPriority, int> targets,
-            DateTime now)
+        private static IncidentDetailResponse ToDetail(Incident i, DateTime now)
         {
-            var sla = SlaCalculator.Evaluate(i, TargetFor(i.Priority, targets), now);
+            var sla = SlaCalculator.Evaluate(i, now);
 
             return new IncidentDetailResponse
             {

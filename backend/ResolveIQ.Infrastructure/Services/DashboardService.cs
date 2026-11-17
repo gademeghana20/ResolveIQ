@@ -25,9 +25,8 @@ namespace ResolveIQ.Infrastructure.Services
             CancellationToken cancellationToken = default)
         {
             var incidents = await LoadVisibleIncidentsAsync(userId, roles, cancellationToken);
-            var targets = await LoadTargetHoursAsync(cancellationToken);
 
-            return DashboardCalculator.BuildSummary(incidents, targets, userId, Now());
+            return DashboardCalculator.BuildSummary(incidents, userId, Now());
         }
 
         public async Task<DashboardStatisticsResponse> GetStatisticsAsync(
@@ -37,7 +36,6 @@ namespace ResolveIQ.Infrastructure.Services
             CancellationToken cancellationToken = default)
         {
             var incidents = await LoadVisibleIncidentsAsync(userId, roles, cancellationToken);
-            var targets = await LoadTargetHoursAsync(cancellationToken);
 
             var categoryNames = await _db.Categories.AsNoTracking()
                 .ToDictionaryAsync(c => c.Id, c => c.Name, cancellationToken);
@@ -60,7 +58,7 @@ namespace ResolveIQ.Infrastructure.Services
             }
 
             return DashboardCalculator.BuildStatistics(
-                incidents, targets, categoryNames, userEmails, includeWorkload, days, Now());
+                incidents, categoryNames, userEmails, includeWorkload, days, Now());
         }
 
         private DateTime Now() => _time.GetUtcNow().UtcDateTime;
@@ -82,6 +80,7 @@ namespace ResolveIQ.Infrastructure.Services
                     i.CreatedAtUtc,
                     i.ResolvedAtUtc,
                     i.SlaStartedAtUtc,
+                    i.SlaTargetHours,
                     i.SlaPausedAtUtc,
                     i.SlaPausedSeconds
                 })
@@ -97,14 +96,10 @@ namespace ResolveIQ.Infrastructure.Services
                 CreatedAtUtc = r.CreatedAtUtc,
                 ResolvedAtUtc = r.ResolvedAtUtc,
                 SlaStartedAtUtc = r.SlaStartedAtUtc,
+                SlaTargetHours = r.SlaTargetHours,
                 SlaPausedAtUtc = r.SlaPausedAtUtc,
                 SlaPausedSeconds = r.SlaPausedSeconds
             }).ToList();
         }
-
-        private async Task<Dictionary<IncidentPriority, int>> LoadTargetHoursAsync(CancellationToken cancellationToken) =>
-            await _db.SlaPolicies.AsNoTracking()
-                .Where(p => p.IsActive)
-                .ToDictionaryAsync(p => p.Priority, p => p.ResolutionTargetHours, cancellationToken);
     }
 }

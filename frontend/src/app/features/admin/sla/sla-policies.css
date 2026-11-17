@@ -1,0 +1,57 @@
+h1 {
+  font: var(--mat-sys-headline-medium);
+  margin: 0 0 8px;
+}
+
+.explain,
+.note {
+  margin: 0 0 16px;
+  color: var(--mat-sys-on-surface-variant);
+}
+
+.note {
+  margin-top: 12px;
+}
+
+.table-wrap {
+  overflow-x: auto;
+}
+
+table {
+  width: 100%;
+}
+
+.deadline {
+  font-weight: 500;
+}
+
+/* A priority with its deadline switched off reads as set aside, though its badge says "Off" in words too. */
+.deadline.off {
+  color: var(--mat-sys-on-surface-variant);
+  text-decoration: line-through;
+}
+
+.actions-head,
+.actions {
+  text-align: right;
+  white-space: nowrap;
+}
+
+.message {
+  padding: 24px 16px;
+  text-align: center;
+  color: var(--mat-sys-on-surface-variant);
+}
+
+.message.error {
+  color: var(--mat-sys-error);
+}
+
+.visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+}

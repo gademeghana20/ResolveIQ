@@ -49,6 +49,10 @@ export const routes: Routes = [
             path: 'categories',
             loadComponent: () => import('./features/admin/categories/categories').then((m) => m.Categories),
           },
+          {
+            path: 'sla',
+            loadComponent: () => import('./features/admin/sla/sla-policies').then((m) => m.SlaPolicies),
+          },
           { path: '', pathMatch: 'full', redirectTo: 'users' },
         ],
       },

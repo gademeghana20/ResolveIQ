@@ -17,8 +17,12 @@ namespace ResolveIQ.Tests.Sla
             SlaPausedSeconds = pausedSeconds
         };
 
-        private static SlaResult Evaluate(Incident incident, int? hours, DateTime now) =>
-            SlaCalculator.Evaluate(incident, hours, now);
+        // The hours an incident was promised live on the incident itself (set when its clock started).
+        private static SlaResult Evaluate(Incident incident, int? hours, DateTime now)
+        {
+            incident.SlaTargetHours = hours;
+            return SlaCalculator.Evaluate(incident, now);
+        }
 
         [Fact]
         public void UnassignedIncidentHasNotStarted()

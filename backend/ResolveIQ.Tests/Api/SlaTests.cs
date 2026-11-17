@@ -266,49 +266,165 @@ namespace ResolveIQ.Tests.Api
             await admin.Client.PutAsJsonAsync("/api/sla/policies/Low", body).ExpectAsync(HttpStatusCode.OK);
         }
 
-        [Fact]
-        public async Task EditingAPolicy_ChangesTheDeadlineOfIncidentsAlreadyRunning()
+        // ---- a policy change only affects clocks that start afterwards ----
+        // An incident is promised the hours in force when its clock starts, and keeps them. Editing a policy
+        // must never move the deadline of an open incident or rewrite a finished incident's Met/Breached result.
+
+        // Every test below changes a policy and puts it back, because all tests share one database.
+        private async Task WithPolicyAsync(string priority, int hours, bool active, Func<Task> whileChanged)
         {
             var admin = await _factory.CreateUserAsync(RoleNames.Admin);
-            var s = await Scenario.AssignedAsync(_factory, "Critical");
-            var start = s.Incident.Time("slaStartedAtUtc");
+            var original = (await (await admin.Client.GetAsync("/api/sla/policies").ExpectAsync(HttpStatusCode.OK)).ReadJsonAsync())
+                .EnumerateArray().Single(p => p.Str("priority") == priority);
+            var (originalHours, originalActive) = (original.GetProperty("resolutionTargetHours").GetInt32(), original.GetProperty("isActive").GetBoolean());
 
+            await admin.Client.PutAsJsonAsync($"/api/sla/policies/{priority}", new { resolutionTargetHours = hours, isActive = active })
+                .ExpectAsync(HttpStatusCode.OK);
             try
             {
-                await admin.Client.PutAsJsonAsync("/api/sla/policies/Critical", new { resolutionTargetHours = 10, isActive = true })
-                    .ExpectAsync(HttpStatusCode.OK);
-
-                Assert.Equal(start.AddHours(10), (await s.RefreshAsync()).Time("slaDueAtUtc"));
+                await whileChanged();
             }
             finally
             {
-                await admin.Client.PutAsJsonAsync("/api/sla/policies/Critical", new { resolutionTargetHours = 4, isActive = true });
+                await admin.Client.PutAsJsonAsync($"/api/sla/policies/{priority}", new { resolutionTargetHours = originalHours, isActive = originalActive });
             }
-
-            Assert.Equal(start.AddHours(4), (await s.RefreshAsync()).Time("slaDueAtUtc"));
         }
 
         [Fact]
-        public async Task ADeactivatedPolicy_MeansNoSlaForThatPriority()
+        public async Task EditingAPolicy_DoesNotMoveTheDeadlineOfAnIncidentAlreadyRunning()
         {
-            var admin = await _factory.CreateUserAsync(RoleNames.Admin);
-            var s = await Scenario.AssignedAsync(_factory, "Low");
+            var s = await Scenario.AssignedAsync(_factory, "Critical");
+            var promisedDeadline = s.Incident.Time("slaStartedAtUtc").AddHours(4);
 
-            try
+            await WithPolicyAsync("Critical", hours: 10, active: true, async () =>
             {
-                await admin.Client.PutAsJsonAsync("/api/sla/policies/Low", new { resolutionTargetHours = 48, isActive = false })
-                    .ExpectAsync(HttpStatusCode.OK);
+                Assert.Equal(promisedDeadline, (await s.RefreshAsync()).Time("slaDueAtUtc"));
+            });
+
+            Assert.Equal(promisedDeadline, (await s.RefreshAsync()).Time("slaDueAtUtc"));
+        }
+
+        [Fact]
+        public async Task AnIncidentAssignedAfterAPolicyChange_GetsTheNewHours()
+        {
+            await WithPolicyAsync("Critical", hours: 10, active: true, async () =>
+            {
+                var s = await Scenario.AssignedAsync(_factory, "Critical");
+
+                Assert.Equal(TimeSpan.FromHours(10), s.Incident.Time("slaDueAtUtc") - s.Incident.Time("slaStartedAtUtc"));
+            });
+        }
+
+        [Fact]
+        public async Task AnIncidentNeverAssigned_TakesTheHoursInForceWhenItIsFinallyAssigned_NotWhenItWasReported()
+        {
+            var s = await Scenario.UnassignedAsync(_factory);   // reported while Medium is 24 hours
+
+            await WithPolicyAsync("Medium", hours: 30, active: true, async () =>
+            {
+                var assigned = await s.Manager.AssignAsync(s.Incident, s.Assignee, "Medium");
+
+                Assert.Equal(TimeSpan.FromHours(30), assigned.Time("slaDueAtUtc") - assigned.Time("slaStartedAtUtc"));
+            });
+        }
+
+        [Fact]
+        public async Task AMetResult_StaysMet_WhenThePolicyBecomesStricterAfterwards()
+        {
+            var s = await Scenario.AssignedAsync(_factory, "High");        // 8 hours
+            _factory.Time.Advance(TimeSpan.FromHours(2));
+            await s.Assignee.SetStatusAsync(s.Incident, "InProgress").ExpectAsync(HttpStatusCode.OK);
+            await s.Assignee.SetStatusAsync(s.Incident, "Resolved").ExpectAsync(HttpStatusCode.OK);
+            Assert.Equal("Met", (await s.RefreshAsync()).Str("slaState"));   // 2 hours of 8
+
+            await WithPolicyAsync("High", hours: 1, active: true, async () =>
+            {
+                Assert.Equal("Met", (await s.RefreshAsync()).Str("slaState"));
+            });
+        }
+
+        [Fact]
+        public async Task ABreachedResult_StaysBreached_WhenThePolicyBecomesMoreRelaxedAfterwards()
+        {
+            var s = await Scenario.AssignedAsync(_factory, "High");        // 8 hours
+            _factory.Time.Advance(TimeSpan.FromHours(9));
+            await s.Assignee.SetStatusAsync(s.Incident, "InProgress").ExpectAsync(HttpStatusCode.OK);
+            await s.Assignee.SetStatusAsync(s.Incident, "Resolved").ExpectAsync(HttpStatusCode.OK);
+            Assert.Equal("Breached", (await s.RefreshAsync()).Str("slaState"));
+
+            await WithPolicyAsync("High", hours: 48, active: true, async () =>
+            {
+                Assert.Equal("Breached", (await s.RefreshAsync()).Str("slaState"));
+            });
+        }
+
+        [Fact]
+        public async Task ADeactivatedPolicy_DoesNotTakeAwayADeadlineAnIncidentWasAlreadyPromised()
+        {
+            var s = await Scenario.AssignedAsync(_factory, "Low");
+            var promisedDeadline = s.Incident.Time("slaDueAtUtc");
+
+            await WithPolicyAsync("Low", hours: 48, active: false, async () =>
+            {
+                var existing = await s.RefreshAsync();
+                Assert.Equal("OnTrack", existing.Str("slaState"));
+                Assert.Equal(promisedDeadline, existing.Time("slaDueAtUtc"));
+            });
+        }
+
+        [Fact]
+        public async Task ADeactivatedPolicy_MeansNoSlaForIncidentsAssignedAfterwards()
+        {
+            await WithPolicyAsync("Low", hours: 48, active: false, async () =>
+            {
+                var s = await Scenario.AssignedAsync(_factory, "Low");
 
                 var incident = await s.RefreshAsync();
                 Assert.Equal("None", incident.Str("slaState"));
                 Assert.Null(incident.StrOrNull("slaDueAtUtc"));
-            }
-            finally
+            });
+        }
+
+        [Fact]
+        public async Task ChangingAnIncidentsPriority_RestartsItsClock_WithTheNewPrioritysHoursAsTheyAreNow()
+        {
+            var s = await Scenario.AssignedAsync(_factory, "High");
+
+            await WithPolicyAsync("Critical", hours: 6, active: true, async () =>
             {
-                await admin.Client.PutAsJsonAsync("/api/sla/policies/Low", new { resolutionTargetHours = 48, isActive = true });
+                var changed = await (await s.Manager.Client.PutAsJsonAsync($"{s.Url}/priority", new { priority = "Critical" })
+                    .ExpectAsync(HttpStatusCode.OK)).ReadJsonAsync();
+
+                Assert.Equal(TimeSpan.FromHours(6), changed.Time("slaDueAtUtc") - changed.Time("slaStartedAtUtc"));
+            });
+        }
+
+        [Fact]
+        public async Task TheDashboardCounts_DoNotChange_WhenAPolicyIsEdited()
+        {
+            var s = await Scenario.AssignedAsync(_factory, "High");
+            _factory.Time.Advance(TimeSpan.FromHours(2));
+            await s.Assignee.SetStatusAsync(s.Incident, "InProgress").ExpectAsync(HttpStatusCode.OK);
+            await s.Assignee.SetStatusAsync(s.Incident, "Resolved").ExpectAsync(HttpStatusCode.OK);
+
+            async Task<(int Met, int Breached, double? Compliance)> CountsAsync()
+            {
+                var summary = await (await s.Manager.Client.GetAsync("/api/dashboard/summary").ExpectAsync(HttpStatusCode.OK)).ReadJsonAsync();
+                var stats = await (await s.Manager.Client.GetAsync("/api/dashboard/incident-statistics?days=30").ExpectAsync(HttpStatusCode.OK)).ReadJsonAsync();
+                var compliance = stats.GetProperty("slaCompliancePercent");
+
+                return (
+                    summary.GetProperty("sla").GetProperty("met").GetInt32(),
+                    summary.GetProperty("sla").GetProperty("breached").GetInt32(),
+                    compliance.ValueKind == System.Text.Json.JsonValueKind.Null ? null : compliance.GetDouble());
             }
 
-            Assert.Equal("OnTrack", (await s.RefreshAsync()).Str("slaState"));
+            var before = await CountsAsync();
+
+            await WithPolicyAsync("High", hours: 1, active: true, async () =>
+            {
+                Assert.Equal(before, await CountsAsync());
+            });
         }
     }
 }

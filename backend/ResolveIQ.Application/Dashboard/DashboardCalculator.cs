@@ -18,14 +18,13 @@ namespace ResolveIQ.Application.Dashboard
 
         public static DashboardSummaryResponse BuildSummary(
             IReadOnlyList<Incident> incidents,
-            IReadOnlyDictionary<IncidentPriority, int> slaTargets,
             string currentUserId,
             DateTime nowUtc)
         {
             var sla = new SlaCounts();
             foreach (var incident in incidents)
             {
-                switch (StateOf(incident, slaTargets, nowUtc))
+                switch (StateOf(incident, nowUtc))
                 {
                     case SlaState.NotStarted: sla.NotStarted++; break;
                     case SlaState.OnTrack: sla.OnTrack++; break;
@@ -55,7 +54,6 @@ namespace ResolveIQ.Application.Dashboard
 
         public static DashboardStatisticsResponse BuildStatistics(
             IReadOnlyList<Incident> incidents,
-            IReadOnlyDictionary<IncidentPriority, int> slaTargets,
             IReadOnlyDictionary<Guid, string> categoryNames,
             IReadOnlyDictionary<string, string> userEmails,
             bool includeWorkload,
@@ -75,8 +73,8 @@ namespace ResolveIQ.Application.Dashboard
                 ? null
                 : Math.Round(resolvedInWindow.Average(i => (i.ResolvedAtUtc!.Value - i.CreatedAtUtc).TotalHours), 1);
 
-            var met = resolvedInWindow.Count(i => StateOf(i, slaTargets, nowUtc) == SlaState.Met);
-            var breached = resolvedInWindow.Count(i => StateOf(i, slaTargets, nowUtc) == SlaState.Breached);
+            var met = resolvedInWindow.Count(i => StateOf(i, nowUtc) == SlaState.Met);
+            var breached = resolvedInWindow.Count(i => StateOf(i, nowUtc) == SlaState.Breached);
             double? compliance = met + breached == 0
                 ? null
                 : Math.Round(100.0 * met / (met + breached), 1);
@@ -98,21 +96,16 @@ namespace ResolveIQ.Application.Dashboard
                     .Select(i => DateOnly.FromDateTime(i.ResolvedAtUtc!.Value))),
                 AverageResolutionHours = averageHours,
                 SlaCompliancePercent = compliance,
-                Workload = includeWorkload ? BuildWorkload(incidents, slaTargets, userEmails, nowUtc) : null
+                Workload = includeWorkload ? BuildWorkload(incidents, userEmails, nowUtc) : null
             };
         }
 
         private static bool IsActive(Incident i) =>
             i.Status is IncidentStatus.Open or IncidentStatus.InProgress or IncidentStatus.OnHold;
 
-        private static SlaState StateOf(
-            Incident incident,
-            IReadOnlyDictionary<IncidentPriority, int> targets,
-            DateTime nowUtc)
-        {
-            int? hours = incident.Priority is IncidentPriority p && targets.TryGetValue(p, out var h) ? h : null;
-            return SlaCalculator.Evaluate(incident, hours, nowUtc).State;
-        }
+        // The state comes from what each incident was promised, so changing a policy later cannot rewrite it.
+        private static SlaState StateOf(Incident incident, DateTime nowUtc) =>
+            SlaCalculator.Evaluate(incident, nowUtc).State;
 
         private static List<CountItem> BuildPriorityBreakdown(IReadOnlyList<Incident> incidents)
         {
@@ -155,7 +148,6 @@ namespace ResolveIQ.Application.Dashboard
 
         private static List<WorkloadItem> BuildWorkload(
             IReadOnlyList<Incident> incidents,
-            IReadOnlyDictionary<IncidentPriority, int> slaTargets,
             IReadOnlyDictionary<string, string> userEmails,
             DateTime nowUtc)
         {
@@ -167,7 +159,7 @@ namespace ResolveIQ.Application.Dashboard
                     UserId = g.Key,
                     Email = userEmails.GetValueOrDefault(g.Key),
                     ActiveIncidents = g.Count(),
-                    BreachedIncidents = g.Count(i => StateOf(i, slaTargets, nowUtc) == SlaState.Breached)
+                    BreachedIncidents = g.Count(i => StateOf(i, nowUtc) == SlaState.Breached)
                 })
                 .OrderByDescending(w => w.ActiveIncidents)
                 .ThenBy(w => w.Email)

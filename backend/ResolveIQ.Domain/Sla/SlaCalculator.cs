@@ -5,7 +5,7 @@ namespace ResolveIQ.Domain.Sla
 {
     public enum SlaState
     {
-        /// <summary>The incident has no SLA target (no priority yet, or no active policy).</summary>
+        /// <summary>The incident has no SLA target (no active policy applied when its clock started).</summary>
         None,
 
         /// <summary>The incident has not been assigned yet, so the clock has not started.</summary>
@@ -36,14 +36,19 @@ namespace ResolveIQ.Domain.Sla
         /// <summary>The "at risk" warning starts when this fraction of the target is left.</summary>
         public const double AtRiskFraction = 0.25;
 
-        public static SlaResult Evaluate(Incident incident, int? targetHours, DateTime nowUtc)
+        /// <summary>
+        /// Works out the state from what the incident itself remembers, including the hours it was promised.
+        /// It deliberately does not look at today's SLA policy: that only decides the hours of incidents
+        /// whose clock starts later.
+        /// </summary>
+        public static SlaResult Evaluate(Incident incident, DateTime nowUtc)
         {
             if (incident.SlaStartedAtUtc is not DateTime started)
             {
                 return new SlaResult(SlaState.NotStarted, null, null);
             }
 
-            if (targetHours is not int hours)
+            if (incident.SlaTargetHours is not int hours)
             {
                 return new SlaResult(SlaState.None, started, null);
             }

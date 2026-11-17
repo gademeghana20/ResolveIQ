@@ -40,6 +40,14 @@ namespace ResolveIQ.Domain.Entities
         public DateTime? SlaStartedAtUtc { get; set; }
 
         /// <summary>
+        /// The number of hours promised when the clock last started (the first assignment, or a priority
+        /// change), taken from the SLA policy of that moment. Later policy changes never touch it, so an
+        /// incident keeps the deadline it was given and a finished incident keeps its Met or Breached result.
+        /// Null while the clock has never started, or when no active policy applied (that means "no SLA").
+        /// </summary>
+        public int? SlaTargetHours { get; set; }
+
+        /// <summary>
         /// Set while the incident is OnHold (the clock is paused); null otherwise.
         /// </summary>
         public DateTime? SlaPausedAtUtc { get; set; }

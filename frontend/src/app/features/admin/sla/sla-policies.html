@@ -1,0 +1,68 @@
+<h1>SLA policies</h1>
+
+<p class="explain">
+  An SLA is the deadline for resolving an incident. Each priority gets its own number of hours. The clock starts when an
+  incident is first assigned, and it pauses while the incident is on hold.
+</p>
+
+@switch (state()) {
+  @case ('loading') {
+    <mat-progress-bar mode="indeterminate" aria-label="Loading SLA policies" />
+  }
+
+  @case ('failed') {
+    <p class="message error" role="alert">
+      The SLA policies could not be loaded.
+      <button mat-button type="button" (click)="load()">Try again</button>
+    </p>
+  }
+
+  @case ('ready') {
+    <div class="table-wrap">
+      <table mat-table [dataSource]="sorted()" aria-label="SLA policies">
+        <ng-container matColumnDef="priority">
+          <th mat-header-cell *matHeaderCellDef>Priority</th>
+          <td mat-cell *matCellDef="let policy">
+            <app-badge [label]="policy.priority" [tone]="priorityTone(policy.priority)" />
+          </td>
+        </ng-container>
+
+        <ng-container matColumnDef="deadline">
+          <th mat-header-cell *matHeaderCellDef>Time to resolve</th>
+          <td mat-cell *matCellDef="let policy" class="deadline" [class.off]="!policy.isActive">
+            {{ deadlineText(policy) }}
+          </td>
+        </ng-container>
+
+        <ng-container matColumnDef="status">
+          <th mat-header-cell *matHeaderCellDef>Deadline</th>
+          <td mat-cell *matCellDef="let policy">
+            <app-badge [label]="policy.isActive ? 'On' : 'Off'" [tone]="policy.isActive ? 'success' : 'neutral'" />
+          </td>
+        </ng-container>
+
+        <ng-container matColumnDef="actions">
+          <th mat-header-cell *matHeaderCellDef class="actions-head"><span class="visually-hidden">Actions</span></th>
+          <td mat-cell *matCellDef="let policy" class="actions">
+            <button mat-button type="button" [attr.aria-label]="'Edit the ' + policy.priority + ' deadline'" (click)="edit(policy)">
+              Edit
+            </button>
+          </td>
+        </ng-container>
+
+        <tr mat-header-row *matHeaderRowDef="columns"></tr>
+        <tr mat-row *matRowDef="let policy; columns: columns"></tr>
+      </table>
+
+      @if (policies().length === 0) {
+        <p class="message">There are no SLA policies.</p>
+      }
+    </div>
+
+    <p class="note">
+      A new deadline only applies to incidents whose clock starts afterwards: a first assignment, or a priority change.
+      Incidents already running keep the deadline they were given, and finished ones keep their result. A priority set
+      to Off gives new incidents no deadline: they show "No SLA" and can never be late.
+    </p>
+  }
+}

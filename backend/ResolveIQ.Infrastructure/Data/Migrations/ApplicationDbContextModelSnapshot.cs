@@ -300,6 +300,9 @@ namespace ResolveIQ.Infrastructure.Data.Migrations
                     b.Property<DateTime?>("SlaStartedAtUtc")
                         .HasColumnType("datetime2");
 
+                    b.Property<int?>("SlaTargetHours")
+                        .HasColumnType("int");
+
                     b.Property<int>("Status")
                         .HasColumnType("int");
 

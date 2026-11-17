@@ -39,7 +39,7 @@ namespace ResolveIQ.Tests.Dashboard
         // Nine incidents. Their SLA states, worked out by hand:
         //   a, b unassigned -> NotStarted     c -> AtRisk     d -> Breached   e -> Paused
         //   f, g resolved on time -> Met      h resolved late -> Breached     i -> OnTrack
-        private static List<Incident> Fixture() => new()
+        private static List<Incident> UnstampedFixture() => new()
         {
             new Incident { Status = IncidentStatus.Open, CategoryId = Hardware, CreatedAtUtc = Ago(5) },
             new Incident { Status = IncidentStatus.Open, CategoryId = Hardware, CreatedAtUtc = Ago(2) },
@@ -80,6 +80,22 @@ namespace ResolveIQ.Tests.Dashboard
             }
         };
 
+        // Every incident whose clock has started was promised the hours of its priority at that moment.
+        private static List<Incident> Fixture()
+        {
+            var incidents = UnstampedFixture();
+
+            foreach (var incident in incidents)
+            {
+                if (incident.SlaStartedAtUtc is not null && incident.Priority is IncidentPriority priority)
+                {
+                    incident.SlaTargetHours = Targets[priority];
+                }
+            }
+
+            return incidents;
+        }
+
         private static int CountOf(IEnumerable<ResolveIQ.Application.DTOs.Dashboard.CountItem> items, string name) =>
             items.Single(c => c.Name == name).Count;
 
@@ -88,7 +104,7 @@ namespace ResolveIQ.Tests.Dashboard
         [Fact]
         public void Summary_CountsTotalActiveAndAssignedToMe()
         {
-            var summary = DashboardCalculator.BuildSummary(Fixture(), Targets, "S", Now);
+            var summary = DashboardCalculator.BuildSummary(Fixture(), "S", Now);
 
             Assert.Equal(9, summary.TotalIncidents);
             Assert.Equal(6, summary.ActiveIncidents);   // a, b, c, d, e, i (f, g, h are resolved or closed)
@@ -98,7 +114,7 @@ namespace ResolveIQ.Tests.Dashboard
         [Fact]
         public void Summary_ReportsUnassignedAndHowLongTheOldestHasWaited()
         {
-            var summary = DashboardCalculator.BuildSummary(Fixture(), Targets, "S", Now);
+            var summary = DashboardCalculator.BuildSummary(Fixture(), "S", Now);
 
             Assert.Equal(2, summary.Unassigned);
             Assert.Equal(300, summary.OldestUnassignedWaitingMinutes); // incident a: 5 hours
@@ -107,7 +123,7 @@ namespace ResolveIQ.Tests.Dashboard
         [Fact]
         public void Summary_CountsEachSlaState_AndTheyAddUpToTheTotal()
         {
-            var sla = DashboardCalculator.BuildSummary(Fixture(), Targets, "S", Now).Sla;
+            var sla = DashboardCalculator.BuildSummary(Fixture(), "S", Now).Sla;
 
             Assert.Equal(2, sla.NotStarted);
             Assert.Equal(1, sla.OnTrack);
@@ -122,7 +138,7 @@ namespace ResolveIQ.Tests.Dashboard
         [Fact]
         public void Summary_ForSomeoneWithNoIncidents_IsAllZero()
         {
-            var summary = DashboardCalculator.BuildSummary(new List<Incident>(), Targets, "S", Now);
+            var summary = DashboardCalculator.BuildSummary(new List<Incident>(), "S", Now);
 
             Assert.Equal(0, summary.TotalIncidents);
             Assert.Equal(0, summary.ActiveIncidents);
@@ -132,12 +148,12 @@ namespace ResolveIQ.Tests.Dashboard
         }
 
         [Fact]
-        public void Summary_WithNoSlaPolicy_CountsAssignedIncidentsAsNone()
+        public void Summary_WhenNoHoursWerePromised_CountsStartedIncidentsAsNone()
         {
-            var summary = DashboardCalculator.BuildSummary(Fixture(), new Dictionary<IncidentPriority, int>(), "S", Now);
+            var summary = DashboardCalculator.BuildSummary(UnstampedFixture(), "S", Now);
 
             Assert.Equal(2, summary.Sla.NotStarted);  // still unassigned
-            Assert.Equal(7, summary.Sla.None);        // started, but no target to measure against
+            Assert.Equal(7, summary.Sla.None);        // started, but promised no hours: nothing to measure against
         }
 
         // ---- statistics ----
@@ -145,7 +161,7 @@ namespace ResolveIQ.Tests.Dashboard
         [Fact]
         public void Statistics_BreaksDownByStatus_InWorkflowOrder_WithZeros()
         {
-            var stats = DashboardCalculator.BuildStatistics(Fixture(), Targets, CategoryNames, Emails, true, 7, Now);
+            var stats = DashboardCalculator.BuildStatistics(Fixture(), CategoryNames, Emails, true, 7, Now);
 
             Assert.Equal(new[] { "Open", "InProgress", "OnHold", "Resolved", "Closed" }, stats.ByStatus.Select(s => s.Name));
             Assert.Equal(new[] { 2, 3, 1, 2, 1 }, stats.ByStatus.Select(s => s.Count));
@@ -154,7 +170,7 @@ namespace ResolveIQ.Tests.Dashboard
         [Fact]
         public void Statistics_BreaksDownByPriority_HighestFirst_WithAnUnprioritizedBucket()
         {
-            var stats = DashboardCalculator.BuildStatistics(Fixture(), Targets, CategoryNames, Emails, true, 7, Now);
+            var stats = DashboardCalculator.BuildStatistics(Fixture(), CategoryNames, Emails, true, 7, Now);
 
             Assert.Equal(new[] { "Critical", "High", "Medium", "Low", "Unprioritized" }, stats.ByPriority.Select(p => p.Name));
             Assert.Equal(new[] { 2, 2, 2, 1, 2 }, stats.ByPriority.Select(p => p.Count));
@@ -163,7 +179,7 @@ namespace ResolveIQ.Tests.Dashboard
         [Fact]
         public void Statistics_BreaksDownByCategory_BiggestFirst_WithAnUncategorizedBucket()
         {
-            var stats = DashboardCalculator.BuildStatistics(Fixture(), Targets, CategoryNames, Emails, true, 7, Now);
+            var stats = DashboardCalculator.BuildStatistics(Fixture(), CategoryNames, Emails, true, 7, Now);
 
             Assert.Equal(4, CountOf(stats.ByCategory, "Hardware"));
             Assert.Equal(2, CountOf(stats.ByCategory, "Network"));
@@ -176,7 +192,7 @@ namespace ResolveIQ.Tests.Dashboard
         [Fact]
         public void Statistics_CreatedPerDay_HasOneEntryPerDay_IncludingEmptyDays()
         {
-            var stats = DashboardCalculator.BuildStatistics(Fixture(), Targets, CategoryNames, Emails, true, 7, Now);
+            var stats = DashboardCalculator.BuildStatistics(Fixture(), CategoryNames, Emails, true, 7, Now);
 
             Assert.Equal(7, stats.CreatedPerDay.Count);
             Assert.Equal(new DateOnly(2026, 11, 14), stats.From);
@@ -187,7 +203,7 @@ namespace ResolveIQ.Tests.Dashboard
         [Fact]
         public void Statistics_ResolvedPerDay_CountsByTheDayItWasResolved()
         {
-            var stats = DashboardCalculator.BuildStatistics(Fixture(), Targets, CategoryNames, Emails, true, 7, Now);
+            var stats = DashboardCalculator.BuildStatistics(Fixture(), CategoryNames, Emails, true, 7, Now);
 
             // Nov 17: g, Nov 19: f, Nov 20: h
             Assert.Equal(new[] { 0, 0, 0, 1, 0, 1, 1 }, stats.ResolvedPerDay.Select(d => d.Count));
@@ -196,7 +212,7 @@ namespace ResolveIQ.Tests.Dashboard
         [Fact]
         public void Statistics_AverageResolutionTime_IsTheMeanOfCreationToResolution()
         {
-            var stats = DashboardCalculator.BuildStatistics(Fixture(), Targets, CategoryNames, Emails, true, 7, Now);
+            var stats = DashboardCalculator.BuildStatistics(Fixture(), CategoryNames, Emails, true, 7, Now);
 
             // f: 5 h, g: 13 h, h: 11 h  ->  29 / 3 = 9.67
             Assert.Equal(9.7, stats.AverageResolutionHours);
@@ -205,7 +221,7 @@ namespace ResolveIQ.Tests.Dashboard
         [Fact]
         public void Statistics_SlaCompliance_IsMetOutOfMetPlusBreached()
         {
-            var stats = DashboardCalculator.BuildStatistics(Fixture(), Targets, CategoryNames, Emails, true, 7, Now);
+            var stats = DashboardCalculator.BuildStatistics(Fixture(), CategoryNames, Emails, true, 7, Now);
 
             // f and g met, h breached -> 2 of 3
             Assert.Equal(66.7, stats.SlaCompliancePercent);
@@ -214,7 +230,7 @@ namespace ResolveIQ.Tests.Dashboard
         [Fact]
         public void Statistics_ANarrowerPeriodOnlyCountsWhatWasResolvedInsideIt()
         {
-            var stats = DashboardCalculator.BuildStatistics(Fixture(), Targets, CategoryNames, Emails, true, 1, Now);
+            var stats = DashboardCalculator.BuildStatistics(Fixture(), CategoryNames, Emails, true, 1, Now);
 
             Assert.Single(stats.CreatedPerDay);
             Assert.Equal(6, stats.CreatedPerDay[0].Count);
@@ -225,7 +241,7 @@ namespace ResolveIQ.Tests.Dashboard
         [Fact]
         public void Statistics_WorkloadListsActiveIncidentsPerPerson_BusiestFirst()
         {
-            var stats = DashboardCalculator.BuildStatistics(Fixture(), Targets, CategoryNames, Emails, true, 7, Now);
+            var stats = DashboardCalculator.BuildStatistics(Fixture(), CategoryNames, Emails, true, 7, Now);
 
             Assert.NotNull(stats.Workload);
             Assert.Equal(2, stats.Workload!.Count);
@@ -242,7 +258,7 @@ namespace ResolveIQ.Tests.Dashboard
         [Fact]
         public void Statistics_WorkloadIsLeftOutWhenNotAllowed()
         {
-            var stats = DashboardCalculator.BuildStatistics(Fixture(), Targets, CategoryNames, Emails, false, 7, Now);
+            var stats = DashboardCalculator.BuildStatistics(Fixture(), CategoryNames, Emails, false, 7, Now);
 
             Assert.Null(stats.Workload);
         }
@@ -251,7 +267,7 @@ namespace ResolveIQ.Tests.Dashboard
         public void Statistics_WithNoIncidents_GivesZerosAndEmptyAverages()
         {
             var stats = DashboardCalculator.BuildStatistics(
-                new List<Incident>(), Targets, CategoryNames, Emails, true, 5, Now);
+                new List<Incident>(), CategoryNames, Emails, true, 5, Now);
 
             Assert.Equal(5, stats.CreatedPerDay.Count);
             Assert.All(stats.CreatedPerDay, d => Assert.Equal(0, d.Count));
