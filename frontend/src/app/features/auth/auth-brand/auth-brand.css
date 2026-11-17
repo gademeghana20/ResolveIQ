@@ -3,7 +3,7 @@
   display: flex;
   flex-direction: column;
   gap: 32px;
-  padding: 44px 56px;
+  padding: 80px 56px 44px; /* extra room above the logo, so the name sits lower on the panel */
   overflow: hidden;
   color: #ffffff;
   background:
@@ -139,7 +139,7 @@
 /* A short window: tighten things so the whole message still fits. */
 @media (max-height: 760px) and (min-width: 901px) {
   :host {
-    padding-top: 28px;
+    padding-top: 52px;
     padding-bottom: 28px;
     gap: 20px;
   }
