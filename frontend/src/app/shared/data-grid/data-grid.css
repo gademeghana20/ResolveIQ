@@ -12,6 +12,36 @@ app-data-grid {
   color-scheme: inherit;
 }
 
+.data-grid {
+  position: relative;
+}
+
+/* With nothing to list, the table keeps some height and the message sits in the middle of it, under the headings. */
+.data-grid.is-empty {
+  min-height: 190px;
+}
+
+.data-grid .grid-empty {
+  position: absolute;
+  inset: 49px 0 0 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin: 0;
+  padding: 0 16px;
+  text-align: center;
+  color: var(--mat-sys-on-surface-variant);
+  pointer-events: none;
+}
+
+/* AG Grid keeps a minimum body height (150px) even for a table with one or two rows, which leaves a blank area
+   under them. The table should be exactly as tall as its rows. */
+.data-grid,
+.data-grid .ag-styled-root,
+.data-grid .ag-root-wrapper {
+  --ag-auto-height-min-body-height: 0px;
+}
+
 .data-grid .clickable-row {
   cursor: pointer;
 }
@@ -47,11 +77,13 @@ app-data-grid {
   text-decoration: underline;
 }
 
-/* A badge with something small beside it on the SAME line (for example "Breached  due Nov 17, 6:11 PM"). */
+/* A badge with a small note directly underneath it (for example "Breached" with "due Nov 17, 6:11 PM" below). */
 .data-grid .badge-with-note {
   display: inline-flex;
-  align-items: center;
-  gap: 10px;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 3px;
+  line-height: 1.2;
   white-space: nowrap;
 }
 
@@ -66,4 +98,13 @@ app-data-grid {
   align-items: center;
   gap: 4px;
   white-space: nowrap;
+}
+
+/* Cells that wrap their text (a long title): centre it in the row and keep lines close together. */
+.data-grid .ag-cell-wrap-text {
+  display: flex;
+  align-items: center;
+  line-height: 1.35;
+  padding-block: 8px;
+  word-break: normal;
 }

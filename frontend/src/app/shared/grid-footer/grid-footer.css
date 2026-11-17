@@ -23,9 +23,35 @@
   gap: 12px;
 }
 
-.size-select {
-  width: 64px;
-  color: var(--mat-sys-on-surface);
+/* A boxed dropdown, so it is clear the number can be clicked. Compact height to suit the bar. */
+.size-field {
+  width: 84px;
+  font-size: 13px;
+  --mat-form-field-container-height: 30px;
+  --mat-form-field-container-vertical-padding: 3px;
+  --mat-form-field-outlined-label-text-populated-size: 13px;
+}
+
+/* Tighter inside the box: less space left and right of the number and the arrow. */
+.size-field ::ng-deep .mat-mdc-form-field-infix {
+  min-height: 0;
+  padding-block: 4px !important;
+}
+
+.size-field ::ng-deep .mdc-text-field--outlined {
+  padding-inline: 8px !important;
+}
+
+.size-field ::ng-deep .mat-mdc-select {
+  font-size: 13px;
+}
+
+.size-field ::ng-deep .mat-mdc-select-arrow-wrapper {
+  height: 16px;
+}
+
+.size-field ::ng-deep .mat-mdc-form-field-subscript-wrapper {
+  display: none;
 }
 
 .range {
@@ -58,4 +84,10 @@
   .buttons {
     justify-content: center;
   }
+}
+
+/* The popup list is drawn outside this component, so it needs ::ng-deep. Same text size as the box, and compact rows. */
+::ng-deep .rows-panel .mat-mdc-option {
+  min-height: 34px;
+  font-size: 13px;
 }

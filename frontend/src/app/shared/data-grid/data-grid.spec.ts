@@ -77,6 +77,11 @@ describe('DataGrid', () => {
     expect(host.sorts).toEqual([]);
   });
 
+  it('shows the sort arrows beside a sortable heading all the time, not only on hover', () => {
+    const none = root().querySelector('.ag-header-cell[col-id="count"] .ag-sort-none-icon')!;
+    expect(none.classList.contains('ag-hidden')).toBe(false);
+  });
+
   it('follows the page when it changes the sort', async () => {
     host.sort.set({ column: 'count', direction: 'desc' });
     await draw();

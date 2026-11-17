@@ -72,7 +72,7 @@ export interface BadgeNoteCellParams<TRow = unknown> extends BadgeCellParams<TRo
   dueAt: (row: TRow) => string | null;
 }
 
-/** A badge with its due date beside it on the same line, so the row stays one line tall. */
+/** A badge with its due date directly underneath it. */
 @Component({
   selector: 'app-badge-note-cell',
   imports: [Badge, DatePipe],

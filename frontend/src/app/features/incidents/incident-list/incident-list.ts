@@ -33,10 +33,10 @@ import {
 } from '../incident.models';
 import { IncidentService } from '../incident.service';
 
-/** "Nov 16, 6:00 PM" this year; the year is added for older ones, so a list that spans years stays clear. */
+/** "Nov 16" this year; the year is added for older ones, so a list that spans years stays clear. The exact time is on the incident itself. */
 function createdText(iso: string): string {
   const sameYear = new Date(iso).getFullYear() === new Date().getFullYear();
-  return formatDate(iso, sameYear ? 'MMM d, h:mm a' : 'MMM d, y, h:mm a', 'en-US');
+  return formatDate(iso, sameYear ? 'MMM d' : 'MMM d, y', 'en-US');
 }
 
 type Scope = 'all' | 'assigned' | 'reported' | 'unassigned';
@@ -94,15 +94,15 @@ export class IncidentList {
   // The table's columns. Sorting is done by the API, so the grid's own comparators do nothing.
   // Only columns listed in SORT_FIELDS can be sorted.
   protected readonly columnDefs: ColDef<IncidentSummary>[] = [
-    { colId: 'incidentNumber', headerName: 'Number', field: 'incidentNumber', sortable: true, width: 115, cellClass: 'mono', comparator: () => 0 },
+    { colId: 'incidentNumber', headerName: 'Number', field: 'incidentNumber', sortable: true, cellClass: 'mono', comparator: () => 0 },
     {
       colId: 'title',
       headerName: 'Title',
       field: 'title',
-      tooltipField: 'title', // the full title on hover, for the long ones that are cut short
+      wrapText: true, // a long title wraps onto a second line instead of being cut off
+      autoHeight: true,
+      minWidth: 110,
       sortable: true,
-      flex: 3,
-      minWidth: 130,
       cellRenderer: LinkCell,
       cellRendererParams: { link: (row: IncidentSummary) => ['/incidents', row.id] },
       comparator: () => 0,
@@ -111,7 +111,6 @@ export class IncidentList {
       colId: 'priority',
       headerName: 'Priority',
       sortable: true,
-      width: 105,
       cellRenderer: BadgeCell,
       cellRendererParams: {
         label: (row: IncidentSummary) => priorityLabel(row.priority),
@@ -123,7 +122,6 @@ export class IncidentList {
       colId: 'status',
       headerName: 'Status',
       sortable: true,
-      width: 115,
       cellRenderer: BadgeCell,
       cellRendererParams: {
         label: (row: IncidentSummary) => statusLabel(row.status),
@@ -131,12 +129,10 @@ export class IncidentList {
       },
       comparator: () => 0,
     },
-    { colId: 'category', headerName: 'Category', flex: 0.8, minWidth: 90, valueGetter: (p) => p.data?.categoryName ?? '—' },
+    { colId: 'category', headerName: 'Category', valueGetter: (p) => p.data?.categoryName ?? '—' },
     {
       colId: 'assignee',
       headerName: 'Assignee',
-      flex: 1.2,
-      minWidth: 120,
       tooltipValueGetter: (p) => (p.data?.assignedToUserId ? (p.data.assignedToEmail ?? '') : ''),
       valueGetter: (p) => (p.data?.assignedToUserId ? (p.data.assignedToEmail ?? 'Assigned') : 'Unassigned'),
       cellClassRules: { muted: (p) => !p.data?.assignedToUserId },
@@ -144,7 +140,6 @@ export class IncidentList {
     {
       colId: 'sla',
       headerName: 'SLA',
-      width: 250,
       cellRenderer: BadgeNoteCell,
       cellRendererParams: {
         label: (row: IncidentSummary) => slaLabel(row.slaState),
@@ -156,7 +151,6 @@ export class IncidentList {
       colId: 'createdAt',
       headerName: 'Created',
       sortable: true,
-      width: 150,
       valueGetter: (p) => (p.data ? createdText(p.data.createdAtUtc) : ''),
       comparator: () => 0,
     },
@@ -227,6 +221,13 @@ export class IncidentList {
       .pipe(debounceTime(300), distinctUntilChanged(), takeUntilDestroyed())
       .subscribe((text) => this.applyFilter({ search: text }));
   }
+
+  protected readonly emptyText = computed(() => {
+    if (this.loading() || this.loadFailed() || this.result()?.items?.length !== 0) {
+      return null;
+    }
+    return this.hasFilters ? 'No incidents match your filters.' : 'There are no incidents yet.';
+  });
 
   protected get hasFilters(): boolean {
     const q = this.query();

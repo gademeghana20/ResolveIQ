@@ -41,7 +41,7 @@
   @if (canFilterByAssignee && people().length > 0) {
     <mat-form-field appearance="outline">
       <mat-label>Assignee</mat-label>
-      <mat-select [value]="query().assignedToUserId ?? ''" (selectionChange)="onAssignee($event.value)">
+      <mat-select panelWidth="360px" [value]="query().assignedToUserId ?? ''" (selectionChange)="onAssignee($event.value)">
         <mat-option value="">All</mat-option>
         @for (person of people(); track person.id) {
           <mat-option [value]="person.id">{{ person.email }}{{ person.isActive ? '' : ' (inactive)' }}</mat-option>
@@ -96,19 +96,10 @@
   [rowId]="rowId"
   [sort]="gridSort()"
   [clickableRows]="true"
+  [emptyText]="emptyText()"
   (sortChange)="onSort($event)"
   (rowClick)="open($event)"
 />
-
-@if (!loading() && !loadFailed() && result()?.items?.length === 0) {
-  <p class="message">
-    @if (hasFilters) {
-      No incidents match your filters.
-    } @else {
-      There are no incidents yet.
-    }
-  </p>
-}
 
 <app-grid-footer
   [total]="result()?.totalCount ?? 0"

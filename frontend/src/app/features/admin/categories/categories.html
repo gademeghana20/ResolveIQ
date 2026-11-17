@@ -21,11 +21,14 @@
   }
 
   @case ('ready') {
-    <app-data-grid ariaLabel="Categories" [rows]="sorted()" [columns]="columnDefs" [rowId]="rowId" />
+    <app-data-grid
+      ariaLabel="Categories"
+      [rows]="sorted()"
+      [columns]="columnDefs"
+      [rowId]="rowId"
+      [emptyText]="categories().length === 0 ? 'There are no categories yet. Create one so people can sort their incidents.' : null"
+    />
 
-    @if (categories().length === 0) {
-      <p class="message">There are no categories yet. Create one so people can sort their incidents.</p>
-    }
 
     @if (hiddenCount() > 0) {
       <p class="note">{{ hiddenCount() }} hidden {{ hiddenCount() === 1 ? 'category is' : 'categories are' }} not offered for new incidents.</p>

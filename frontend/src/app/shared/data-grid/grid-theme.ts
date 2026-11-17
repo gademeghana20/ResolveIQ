@@ -7,19 +7,22 @@ import { themeQuartz } from 'ag-grid-community';
  */
 export const resolveIqGridTheme = themeQuartz.withParams({
   fontFamily: 'inherit',
-  fontSize: 14,
+  fontSize: 13,
   foregroundColor: 'var(--mat-sys-on-surface)',
   backgroundColor: 'var(--mat-sys-surface-container-lowest)',
-  headerBackgroundColor: 'var(--mat-sys-surface-container)',
-  headerTextColor: 'var(--mat-sys-on-surface-variant)',
+  // The header uses the same teal green as the side panel, so every table matches the rest of the app.
+  headerBackgroundColor: 'var(--app-sidebar-bg)',
+  headerTextColor: 'var(--app-sidebar-fg)',
   headerFontWeight: 600,
   borderColor: 'var(--mat-sys-outline-variant)',
-  rowHoverColor: 'var(--mat-sys-surface-container-low)',
+  // Every other row is a soft grey, so the eye can follow a row across the table.
+  oddRowBackgroundColor: 'var(--mat-sys-surface-container)',
+  rowHoverColor: 'var(--mat-sys-surface-container-high)',
   accentColor: 'var(--mat-sys-primary)',
   wrapperBorderRadius: 16,
   borderRadius: 10,
   spacing: 8,
-  cellHorizontalPadding: 12,
+  cellHorizontalPadding: 10,
   headerColumnResizeHandleColor: 'transparent',
   columnBorder: false,
 });

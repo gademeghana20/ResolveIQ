@@ -1,5 +1,6 @@
 import { Component, computed, input, output } from '@angular/core';
 import { MatButtonModule } from '@angular/material/button';
+import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatIconModule } from '@angular/material/icon';
 import { MatSelectModule } from '@angular/material/select';
 
@@ -15,7 +16,7 @@ export interface PageChange {
  */
 @Component({
   selector: 'app-grid-footer',
-  imports: [MatButtonModule, MatIconModule, MatSelectModule],
+  imports: [MatButtonModule, MatFormFieldModule, MatIconModule, MatSelectModule],
   templateUrl: './grid-footer.html',
   styleUrl: './grid-footer.css',
 })

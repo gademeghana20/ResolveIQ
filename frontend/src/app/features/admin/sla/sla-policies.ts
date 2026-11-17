@@ -38,7 +38,9 @@ export class SlaPolicies {
     {
       colId: 'priority',
       headerName: 'Priority',
-      width: 150,
+      sortable: true,
+      valueGetter: (p) => (p.data ? PRIORITY_ORDER.indexOf(p.data.priority) : 0), // most urgent first, not A to Z
+      comparator: (a: number, b: number) => a - b,
       cellRenderer: BadgeCell,
       cellRendererParams: {
         label: (p: SlaPolicy) => p.priority,
@@ -48,15 +50,16 @@ export class SlaPolicies {
     {
       colId: 'deadline',
       headerName: 'Time to resolve',
-      flex: 2,
-      minWidth: 200,
+      sortable: true,
+      comparator: (_a: string, _b: string, x, y) => (x.data?.resolutionTargetHours ?? 0) - (y.data?.resolutionTargetHours ?? 0),
       valueGetter: (p) => (p.data ? this.deadlineText(p.data) : ''),
       cellClassRules: { muted: (p) => !p.data?.isActive },
     },
     {
       colId: 'status',
       headerName: 'Deadline',
-      width: 130,
+      sortable: true,
+      valueGetter: (p) => (p.data?.isActive ? 'On' : 'Off'),
       cellRenderer: BadgeCell,
       cellRendererParams: {
         label: (p: SlaPolicy) => (p.isActive ? 'On' : 'Off'),
@@ -66,7 +69,6 @@ export class SlaPolicies {
     {
       colId: 'actions',
       headerName: 'Actions',
-      width: 120,
       cellRenderer: ActionsCell,
       cellRendererParams: {
         mode: 'buttons',

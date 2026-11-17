@@ -18,11 +18,14 @@
   }
 
   @case ('ready') {
-    <app-data-grid ariaLabel="SLA policies" [rows]="sorted()" [columns]="columnDefs" [rowId]="rowId" />
+    <app-data-grid
+      ariaLabel="SLA policies"
+      [rows]="sorted()"
+      [columns]="columnDefs"
+      [rowId]="rowId"
+      [emptyText]="policies().length === 0 ? 'There are no SLA policies.' : null"
+    />
 
-    @if (policies().length === 0) {
-      <p class="message">There are no SLA policies.</p>
-    }
 
     <p class="note">
       A new deadline only applies to incidents whose clock starts afterwards: a first assignment, or a priority change.

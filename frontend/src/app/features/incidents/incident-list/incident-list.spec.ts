@@ -119,7 +119,7 @@ describe('IncidentList', () => {
     await load([incident({ slaState: 'OnTrack', slaDueAtUtc: '2026-11-17T18:11:00Z' })]);
 
     const sla = root().querySelector('.ag-cell[col-id="sla"]')!;
-    expect(sla.querySelector('.badge-with-note')).not.toBeNull(); // badge and date share one nowrap line
+    expect(sla.querySelector('.badge-with-note')).not.toBeNull(); // the badge and its date sit together in one cell
     expect(sla.textContent).toContain('On track');
     expect(sla.textContent).toContain('due Nov 17');
   });
@@ -178,6 +178,7 @@ describe('IncidentList', () => {
     await load([]);
 
     expect(text()).toContain('No incidents match your filters.');
+    expect(root().querySelector('app-data-grid .grid-empty')?.textContent).toContain('No incidents match your filters.'); // inside the table, not below it
     expect(text()).toContain('Clear filters');
   });
 

@@ -33,9 +33,8 @@ export class Categories {
     {
       colId: 'name',
       headerName: 'Name',
+      sortable: true,
       field: 'name',
-      flex: 1.2,
-      minWidth: 160,
       cellClass: 'strong',
       // A hidden category reads as set aside, though its status badge says so in words too.
       cellClassRules: { muted: (p) => !p.data?.isActive },
@@ -43,15 +42,15 @@ export class Categories {
     {
       colId: 'description',
       headerName: 'Description',
-      flex: 2.5,
-      minWidth: 220,
+      sortable: true,
       valueGetter: (p) => p.data?.description ?? '—',
       cellClass: 'muted',
     },
     {
       colId: 'status',
       headerName: 'Status',
-      width: 130,
+      sortable: true,
+      valueGetter: (p) => (p.data?.isActive ? 'Shown' : 'Hidden'),
       cellRenderer: BadgeCell,
       cellRendererParams: {
         label: (c: Category) => (c.isActive ? 'Shown' : 'Hidden'),
@@ -61,7 +60,6 @@ export class Categories {
     {
       colId: 'actions',
       headerName: 'Actions',
-      width: 170,
       cellRenderer: ActionsCell,
       cellRendererParams: {
         mode: 'buttons',

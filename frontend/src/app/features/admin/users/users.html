@@ -21,16 +21,12 @@
       <input matInput type="search" [formControl]="search" autocomplete="off" />
     </mat-form-field>
 
-    <app-data-grid ariaLabel="Users" [rows]="visible()" [columns]="columnDefs" [rowId]="rowId" />
-
-    @if (visible().length === 0) {
-      <p class="message">
-        @if (search.value) {
-          No one matches "{{ search.value }}".
-        } @else {
-          There are no users yet.
-        }
-      </p>
-    }
+    <app-data-grid
+      ariaLabel="Users"
+      [rows]="visible()"
+      [columns]="columnDefs"
+      [rowId]="rowId"
+      [emptyText]="visible().length === 0 ? (search.value ? 'No one matches &quot;' + search.value + '&quot;.' : 'There are no users yet.') : null"
+    />
   }
 }

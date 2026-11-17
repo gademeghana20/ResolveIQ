@@ -50,16 +50,15 @@ export class Users {
     {
       colId: 'email',
       headerName: 'Email',
-      flex: 2,
-      minWidth: 240,
+      sortable: true,
       valueGetter: (p) => (p.data ? p.data.email + (this.isMe(p.data) ? ' (you)' : '') : ''),
     },
-    { colId: 'role', headerName: 'Role', flex: 1, minWidth: 130, valueGetter: (p) => (p.data ? this.roleOf(p.data) : '') },
+    { colId: 'role', headerName: 'Role', sortable: true, valueGetter: (p) => (p.data ? this.roleOf(p.data) : '') },
     {
       colId: 'status',
       headerName: 'Status',
-      flex: 1,
-      minWidth: 120,
+      sortable: true,
+      valueGetter: (p) => (p.data?.isActive ? 'Active' : 'Inactive'),
       cellRenderer: BadgeCell,
       cellRendererParams: {
         label: (user: UserSummary) => (user.isActive ? 'Active' : 'Inactive'),
@@ -69,7 +68,6 @@ export class Users {
     {
       colId: 'actions',
       headerName: 'Actions',
-      width: 110,
       cellRenderer: ActionsCell,
       cellRendererParams: {
         mode: 'menu',

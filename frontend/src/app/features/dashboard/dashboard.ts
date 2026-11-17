@@ -48,9 +48,9 @@ export class Dashboard {
 
   protected readonly workloadRowId = (person: WorkloadItem) => person.userId;
   protected readonly workloadColumns: ColDef<WorkloadItem>[] = [
-    { colId: 'assignee', headerName: 'Assignee', flex: 3, minWidth: 200, valueGetter: (p) => p.data?.email ?? 'Unknown user' },
-    { colId: 'active', headerName: 'Active', field: 'activeIncidents', flex: 1, minWidth: 100, type: 'rightAligned', cellClass: 'numeric', headerClass: 'ag-right-aligned-header' },
-    { colId: 'breached', headerName: 'Breached', field: 'breachedIncidents', flex: 1, minWidth: 110, type: 'rightAligned', cellClass: 'numeric', headerClass: 'ag-right-aligned-header' },
+    { colId: 'assignee', headerName: 'Assignee', sortable: true, valueGetter: (p) => p.data?.email ?? 'Unknown user' },
+    { colId: 'active', headerName: 'Active', sortable: true, field: 'activeIncidents', cellClass: ['ag-right-aligned-cell', 'numeric'], headerClass: 'ag-right-aligned-header' },
+    { colId: 'breached', headerName: 'Breached', sortable: true, field: 'breachedIncidents', cellClass: ['ag-right-aligned-cell', 'numeric'], headerClass: 'ag-right-aligned-header' },
   ];
   protected readonly days = signal<number>(30);
 
