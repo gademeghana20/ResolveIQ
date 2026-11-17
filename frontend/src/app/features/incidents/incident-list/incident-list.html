@@ -39,6 +39,18 @@
     </mat-select>
   </mat-form-field>
 
+  @if (canFilterByAssignee && people().length > 0) {
+    <mat-form-field appearance="outline">
+      <mat-label>Assignee</mat-label>
+      <mat-select [value]="query().assignedToUserId ?? ''" (selectionChange)="onAssignee($event.value)">
+        <mat-option value="">All</mat-option>
+        @for (person of people(); track person.id) {
+          <mat-option [value]="person.id">{{ person.email }}{{ person.isActive ? '' : ' (inactive)' }}</mat-option>
+        }
+      </mat-select>
+    </mat-form-field>
+  }
+
   <mat-form-field appearance="outline">
     <mat-label>SLA</mat-label>
     <mat-select [value]="query().slaState ?? ''" (selectionChange)="onSla($event.value)">
@@ -59,6 +71,7 @@
     <mat-button-toggle value="all">All</mat-button-toggle>
     <mat-button-toggle value="assigned">Assigned to me</mat-button-toggle>
     <mat-button-toggle value="reported">Reported by me</mat-button-toggle>
+    <mat-button-toggle value="unassigned">Unassigned</mat-button-toggle>
   </mat-button-toggle-group>
 
   @if (hasFilters) {

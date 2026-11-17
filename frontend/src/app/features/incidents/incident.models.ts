@@ -106,9 +106,11 @@ export interface IncidentQuery {
   status?: IncidentStatus;
   priority?: IncidentPriority;
   categoryId?: string;
+  assignedToUserId?: string;
   slaState?: SlaState;
   assignedToMe?: boolean;
   reportedByMe?: boolean;
+  unassigned?: boolean;
   sortBy: IncidentSortField;
   sortDirection: SortDirection;
   page: number;

@@ -1,0 +1,15 @@
+@if (hasData()) {
+  <ul class="rows" [attr.aria-label]="ariaLabel()">
+    @for (row of rows(); track row.label) {
+      <li class="row" [title]="row.label + ': ' + row.value">
+        <span class="name">{{ row.label }}</span>
+        <span class="track">
+          <span class="bar" [style.width.%]="row.percent" [style.background]="row.color ?? 'var(--viz-series-1)'"></span>
+          <span class="value">{{ row.value }}</span>
+        </span>
+      </li>
+    }
+  </ul>
+} @else {
+  <p class="empty">{{ emptyText() }}</p>
+}

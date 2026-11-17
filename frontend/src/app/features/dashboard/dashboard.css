@@ -1,0 +1,109 @@
+h1 {
+  font: var(--mat-sys-headline-medium);
+  margin: 0 0 16px;
+}
+
+h2 {
+  font: var(--mat-sys-title-large);
+  margin: 0;
+}
+
+.section {
+  margin-bottom: 32px;
+}
+
+.section > h2 {
+  margin-bottom: 12px;
+}
+
+.section-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 12px;
+}
+
+.tiles {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(190px, 1fr));
+  gap: 12px;
+  margin-bottom: 16px;
+}
+
+/* The lead figure gets more room than the other tiles. */
+.hero-tile {
+  grid-column: span 2;
+}
+
+.card {
+  margin-bottom: 16px;
+}
+
+mat-card-content {
+  padding-top: 12px;
+}
+
+.breakdowns {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  gap: 16px;
+}
+
+.breakdowns .card {
+  margin-bottom: 0;
+}
+
+/* While newer numbers load, the old ones stay in place, dimmed, so nothing jumps. */
+.stats.stale {
+  opacity: 0.55;
+}
+
+.message {
+  padding: 16px 0;
+  color: var(--mat-sys-on-surface-variant);
+}
+
+.message.error {
+  color: var(--mat-sys-error);
+}
+
+.muted {
+  margin: 0;
+  color: var(--mat-sys-on-surface-variant);
+}
+
+.workload {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.workload th,
+.workload td {
+  text-align: left;
+  padding: 8px 12px 8px 0;
+  border-bottom: 1px solid var(--viz-grid);
+}
+
+.workload thead th {
+  color: var(--mat-sys-on-surface-variant);
+  font: var(--mat-sys-label-large);
+}
+
+.workload tbody th {
+  font-weight: normal;
+  overflow-wrap: anywhere;
+}
+
+/* Numbers in a column line up: right-aligned with equal-width digits. */
+.workload .number {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+
+@media (max-width: 600px) {
+  .hero-tile {
+    grid-column: auto;
+  }
+}

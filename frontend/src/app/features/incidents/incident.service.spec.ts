@@ -37,6 +37,16 @@ describe('toParams', () => {
     expect(params.has('reportedByMe')).toBe(false);
   });
 
+  it('can ask for one person\'s incidents', () => {
+    expect(toParams({ ...base, assignedToUserId: 'u-dana' }).get('assignedToUserId')).toBe('u-dana');
+    expect(toParams({ ...base, assignedToUserId: undefined }).has('assignedToUserId')).toBe(false);
+  });
+
+  it('can ask for only the unassigned incidents', () => {
+    expect(toParams({ ...base, unassigned: true }).get('unassigned')).toBe('true');
+    expect(toParams({ ...base, unassigned: false }).has('unassigned')).toBe(false);
+  });
+
   it('ignores a search that is only spaces, and trims the rest', () => {
     expect(toParams({ ...base, search: '   ' }).has('search')).toBe(false);
     expect(toParams({ ...base, search: '  vpn  ' }).get('search')).toBe('vpn');

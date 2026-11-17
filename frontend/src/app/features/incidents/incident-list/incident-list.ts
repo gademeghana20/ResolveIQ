@@ -11,9 +11,10 @@ import { MatProgressBarModule } from '@angular/material/progress-bar';
 import { MatSelectModule } from '@angular/material/select';
 import { MatSortModule, Sort } from '@angular/material/sort';
 import { MatTableModule } from '@angular/material/table';
-import { Router, RouterLink } from '@angular/router';
+import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { catchError, debounceTime, distinctUntilChanged, of, switchMap, tap } from 'rxjs';
 
+import { AuthService } from '../../../core/auth/auth.service';
 import { Badge } from '../../../shared/badge/badge';
 import { priorityLabel, priorityTone, slaLabel, slaTone, statusLabel, statusTone } from '../incident-display';
 import {
@@ -28,10 +29,11 @@ import {
   PagedResult,
   SLA_STATES,
   SlaState,
+  UserSummary,
 } from '../incident.models';
 import { IncidentService } from '../incident.service';
 
-type Scope = 'all' | 'assigned' | 'reported';
+type Scope = 'all' | 'assigned' | 'reported' | 'unassigned';
 
 const DEFAULT_QUERY: IncidentQuery = { sortBy: 'CreatedAt', sortDirection: 'Desc', page: 1, pageSize: 20 };
 
@@ -67,14 +69,21 @@ const SORT_FIELDS: Record<string, IncidentSortField> = {
 export class IncidentList {
   private readonly incidents = inject(IncidentService);
   private readonly router = inject(Router);
+  private readonly route = inject(ActivatedRoute);
+  private readonly auth = inject(AuthService);
 
   // What the person has asked for. Changing this signal is the only way to load new data.
-  protected readonly query = signal<IncidentQuery>({ ...DEFAULT_QUERY });
+  // It starts from the address, so a link such as /incidents?slaState=Breached opens already filtered.
+  protected readonly query = signal<IncidentQuery>(this.startingQuery());
 
   protected readonly result = signal<PagedResult<IncidentSummary> | null>(null);
   protected readonly loading = signal(true);
   protected readonly loadFailed = signal(false);
   protected readonly categories = signal<Category[]>([]);
+
+  // Only Managers and Admins may look up people, so only they get the Assignee filter.
+  protected readonly canFilterByAssignee = this.auth.hasRole('Manager', 'Admin');
+  protected readonly people = signal<UserSummary[]>([]);
 
   protected readonly searchControl = new FormControl('', { nonNullable: true });
 
@@ -126,6 +135,20 @@ export class IncidentList {
       )
       .subscribe((all) => this.categories.set(all.filter((c) => c.isActive)));
 
+    // The people to choose from. Deactivated people stay in the list, because incidents they handled
+    // are still worth finding; they are marked in the dropdown. If this fails, the filter simply is not offered.
+    if (this.canFilterByAssignee) {
+      this.incidents
+        .getUsers()
+        .pipe(
+          catchError(() => of([] as UserSummary[])),
+          takeUntilDestroyed(),
+        )
+        .subscribe((users) =>
+          this.people.set([...users].sort((a, b) => (a.email ?? '').localeCompare(b.email ?? '', undefined, { sensitivity: 'base' }))),
+        );
+    }
+
     // Search as you type, but wait for a short pause so we do not call the API on every keystroke.
     this.searchControl.valueChanges
       .pipe(debounceTime(300), distinctUntilChanged(), takeUntilDestroyed())
@@ -134,12 +157,44 @@ export class IncidentList {
 
   protected get hasFilters(): boolean {
     const q = this.query();
-    return !!(q.search || q.status || q.priority || q.categoryId || q.slaState || q.assignedToMe || q.reportedByMe);
+    return !!(
+      q.search ||
+      q.status ||
+      q.priority ||
+      q.categoryId ||
+      q.assignedToUserId ||
+      q.slaState ||
+      q.assignedToMe ||
+      q.reportedByMe ||
+      q.unassigned
+    );
   }
 
   protected get scope(): Scope {
     const q = this.query();
-    return q.assignedToMe ? 'assigned' : q.reportedByMe ? 'reported' : 'all';
+    return q.assignedToMe ? 'assigned' : q.reportedByMe ? 'reported' : q.unassigned ? 'unassigned' : 'all';
+  }
+
+  /**
+   * The filters named in the address. Anything that is not a value we know is ignored,
+   * so a hand-edited or outdated link can never break the page.
+   */
+  private startingQuery(): IncidentQuery {
+    const params = this.route.snapshot.queryParamMap;
+    const scope = params.get('scope') as Scope | null;
+    const slaState = params.get('slaState') as SlaState | null;
+    const status = params.get('status') as IncidentStatus | null;
+    const priority = params.get('priority') as IncidentPriority | null;
+
+    return {
+      ...DEFAULT_QUERY,
+      slaState: slaState && SLA_STATES.includes(slaState) ? slaState : undefined,
+      status: status && INCIDENT_STATUSES.includes(status) ? status : undefined,
+      priority: priority && INCIDENT_PRIORITIES.includes(priority) ? priority : undefined,
+      assignedToMe: scope === 'assigned' || undefined,
+      reportedByMe: scope === 'reported' || undefined,
+      unassigned: scope === 'unassigned' || undefined,
+    };
   }
 
   protected open(incident: IncidentSummary): void {
@@ -158,12 +213,27 @@ export class IncidentList {
     this.applyFilter({ categoryId: value || undefined });
   }
 
+  protected onAssignee(userId: string): void {
+    // "Assigned to Dana" cannot also be "unassigned" or "assigned to me", so choosing a person replaces those.
+    this.applyFilter({
+      assignedToUserId: userId || undefined,
+      assignedToMe: undefined,
+      unassigned: undefined,
+    });
+  }
+
   protected onSla(value: SlaState | ''): void {
     this.applyFilter({ slaState: value || undefined });
   }
 
   protected onScope(scope: Scope): void {
-    this.applyFilter({ assignedToMe: scope === 'assigned' || undefined, reportedByMe: scope === 'reported' || undefined });
+    // A scope and a chosen person would contradict each other, so choosing a scope clears the person.
+    this.applyFilter({
+      assignedToMe: scope === 'assigned' || undefined,
+      reportedByMe: scope === 'reported' || undefined,
+      unassigned: scope === 'unassigned' || undefined,
+      assignedToUserId: undefined,
+    });
   }
 
   protected onSort(sort: Sort): void {

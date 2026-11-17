@@ -1,1 +1,43 @@
 /* You can add global styles to this file, and also import other style files */
+
+/*
+ * Chart colours. Defined once here and used by the dashboard's charts by role (not by raw hex),
+ * so light and dark are swapped in one place. Series colours were checked with the palette validator
+ * (colour-blind separation and contrast) in both modes.
+ */
+:root {
+  --viz-surface: #fcfcfb;
+  --viz-series-1: #2a78d6; /* blue: the single hue for one measure; "created" in the trend chart */
+  --viz-series-2: #eb6834; /* orange: "resolved" in the trend chart */
+  --viz-ink: #0b0b0b;
+  --viz-ink-2: #52514e;
+  --viz-muted: #898781;
+  --viz-grid: #e1e0d9;
+  --viz-axis: #c3c2b7;
+  --viz-good: #0ca30c;
+  --viz-warning: #fab219;
+  --viz-critical: #d03b3b;
+  --viz-neutral: #898781;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:where(:not([data-theme='light'])) {
+    --viz-surface: #1a1a19;
+    --viz-series-1: #3987e5;
+    --viz-series-2: #d95926;
+    --viz-ink: #f0efec;
+    --viz-ink-2: #c3c2b7;
+    --viz-grid: #2c2c2a;
+    --viz-axis: #383835;
+  }
+}
+
+:root[data-theme='dark'] {
+  --viz-surface: #1a1a19;
+  --viz-series-1: #3987e5;
+  --viz-series-2: #d95926;
+  --viz-ink: #f0efec;
+  --viz-ink-2: #c3c2b7;
+  --viz-grid: #2c2c2a;
+  --viz-axis: #383835;
+}

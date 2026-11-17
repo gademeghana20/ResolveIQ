@@ -1,0 +1,165 @@
+<h1>Dashboard</h1>
+
+<section class="section" aria-labelledby="now-heading">
+  <h2 id="now-heading">Right now</h2>
+
+  @switch (summaryState()) {
+    @case ('loading') {
+      <mat-progress-bar mode="indeterminate" aria-label="Loading the current numbers" />
+    }
+
+    @case ('failed') {
+      <p class="message error" role="alert">
+        The current numbers could not be loaded.
+        <button mat-button type="button" (click)="retrySummary()">Try again</button>
+      </p>
+    }
+
+    @case ('ready') {
+      @if (summary(); as now) {
+        <div class="tiles">
+          <app-stat-tile
+            class="hero-tile"
+            label="Active incidents"
+            [value]="now.activeIncidents"
+            [note]="'of ' + now.totalIncidents + ' in total'"
+            [hero]="true"
+          />
+          <app-stat-tile label="Assigned to me" [value]="now.assignedToMe" note="active incidents" />
+          <app-stat-tile
+            label="Unassigned"
+            [value]="now.unassigned"
+            [note]="oldestWaiting()"
+            [link]="['/incidents']"
+            [queryParams]="{ scope: 'unassigned' }"
+          />
+          <app-stat-tile
+            label="SLA at risk"
+            [value]="now.sla.atRisk"
+            note="25% or less of the time left"
+            [link]="['/incidents']"
+            [queryParams]="{ slaState: 'AtRisk' }"
+          />
+          <app-stat-tile
+            label="SLA breached"
+            [value]="now.sla.breached"
+            note="past their deadline"
+            [link]="['/incidents']"
+            [queryParams]="{ slaState: 'Breached' }"
+          />
+        </div>
+
+        <mat-card class="card">
+          <mat-card-header><mat-card-title>Incidents by SLA state</mat-card-title></mat-card-header>
+          <mat-card-content>
+            <app-bar-list
+              [items]="slaRows()"
+              ariaLabel="Number of incidents in each SLA state"
+              emptyText="There are no incidents yet."
+            />
+          </mat-card-content>
+        </mat-card>
+      }
+    }
+  }
+</section>
+
+<section class="section" aria-labelledby="period-heading">
+  <div class="section-head">
+    <h2 id="period-heading">Last {{ days() }} days</h2>
+    <mat-button-toggle-group aria-label="Time period" [value]="days()" (change)="setDays($event.value)">
+      @for (period of periods; track period) {
+        <mat-button-toggle [value]="period">{{ period }} days</mat-button-toggle>
+      }
+    </mat-button-toggle-group>
+  </div>
+
+  @if (statsFailed()) {
+    <p class="message error" role="alert">
+      The statistics could not be loaded.
+      <button mat-button type="button" (click)="retryStats()">Try again</button>
+    </p>
+  }
+
+  @if (statsLoading()) {
+    <mat-progress-bar mode="indeterminate" aria-label="Loading statistics" />
+  }
+
+  @if (stats(); as period) {
+    <div class="stats" [class.stale]="statsLoading()">
+      <div class="tiles">
+        <app-stat-tile label="Created" [value]="createdTotal()" />
+        <app-stat-tile label="Resolved" [value]="resolvedTotal()" />
+        <app-stat-tile label="Average time to resolve" [value]="averageResolution()" note="from creation to resolved" />
+        <app-stat-tile
+          label="Resolved within SLA"
+          [value]="slaCompliance()"
+          note="of incidents resolved in this period"
+        />
+      </div>
+
+      <mat-card class="card">
+        <mat-card-header><mat-card-title>Created and resolved per day</mat-card-title></mat-card-header>
+        <mat-card-content>
+          <app-trend-chart
+            [series]="trend()"
+            [ariaLabel]="'Incidents created and resolved per day over the last ' + period.days + ' days'"
+          />
+        </mat-card-content>
+      </mat-card>
+
+      <div class="breakdowns">
+        <mat-card class="card">
+          <mat-card-header><mat-card-title>By status</mat-card-title></mat-card-header>
+          <mat-card-content>
+            <app-bar-list [items]="statusRows()" ariaLabel="Incidents by status" />
+          </mat-card-content>
+        </mat-card>
+
+        <mat-card class="card">
+          <mat-card-header><mat-card-title>By priority</mat-card-title></mat-card-header>
+          <mat-card-content>
+            <app-bar-list [items]="priorityRows()" ariaLabel="Incidents by priority" />
+          </mat-card-content>
+        </mat-card>
+
+        <mat-card class="card">
+          <mat-card-header><mat-card-title>By category</mat-card-title></mat-card-header>
+          <mat-card-content>
+            <app-bar-list [items]="categoryRows()" ariaLabel="Incidents by category" />
+          </mat-card-content>
+        </mat-card>
+      </div>
+
+      @if (period.workload; as people) {
+        <mat-card class="card">
+          <mat-card-header><mat-card-title>Workload by assignee</mat-card-title></mat-card-header>
+          <mat-card-content>
+            @if (people.length === 0) {
+              <p class="muted">Nobody has active incidents assigned.</p>
+            } @else {
+              <table class="workload">
+                <thead>
+                  <tr>
+                    <th scope="col">Assignee</th>
+                    <th scope="col" class="number">Active</th>
+                    <th scope="col" class="number">Breached</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  @for (person of people; track person.userId) {
+                    <tr>
+                      <th scope="row">{{ person.email ?? 'Unknown user' }}</th>
+                      <td class="number">{{ person.activeIncidents }}</td>
+                      <td class="number">{{ person.breachedIncidents }}</td>
+                    </tr>
+                  }
+                </tbody>
+              </table>
+            }
+          </mat-card-content>
+        </mat-card>
+      }
+    </div>
+  }
+</section>

@@ -1,0 +1,45 @@
+:host {
+  display: block;
+}
+
+.tile {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  height: 100%;
+  box-sizing: border-box;
+  padding: 16px;
+  border-radius: 12px;
+  background: var(--mat-sys-surface-container-low);
+  border: 1px solid var(--mat-sys-outline-variant);
+  color: var(--mat-sys-on-surface);
+  text-decoration: none;
+}
+
+.clickable:hover,
+.clickable:focus-visible {
+  background: var(--mat-sys-surface-container);
+  border-color: var(--mat-sys-outline);
+}
+
+.label {
+  font: var(--mat-sys-label-large);
+  color: var(--mat-sys-on-surface-variant);
+}
+
+/* Large figures use the normal proportional digits; tabular digits would look loose at this size. */
+.value {
+  font: var(--mat-sys-headline-medium);
+  font-weight: 600;
+  line-height: 1.1;
+}
+
+.value.hero {
+  font-size: 3.25rem; /* 52px: the one lead number on the page */
+  line-height: 1;
+}
+
+.note {
+  font: var(--mat-sys-body-small);
+  color: var(--mat-sys-on-surface-variant);
+}

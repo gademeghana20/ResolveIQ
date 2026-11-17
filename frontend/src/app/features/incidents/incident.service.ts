@@ -88,6 +88,9 @@ export function toParams(query: IncidentQuery): HttpParams {
   if (query.categoryId) {
     params = params.set('categoryId', query.categoryId);
   }
+  if (query.assignedToUserId) {
+    params = params.set('assignedToUserId', query.assignedToUserId);
+  }
   if (query.slaState) {
     params = params.set('slaState', query.slaState);
   }
@@ -96,6 +99,9 @@ export function toParams(query: IncidentQuery): HttpParams {
   }
   if (query.reportedByMe) {
     params = params.set('reportedByMe', true);
+  }
+  if (query.unassigned) {
+    params = params.set('unassigned', true);
   }
 
   return params;

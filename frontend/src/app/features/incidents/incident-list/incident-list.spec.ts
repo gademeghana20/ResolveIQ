@@ -108,6 +108,21 @@ describe('IncidentList', () => {
     expect(text()).toContain('Not set'); // no priority yet
   });
 
+  it('offers an Unassigned view, and asks the API for it', async () => {
+    await load([incident()]);
+
+    const toggle = Array.from((fixture.nativeElement as HTMLElement).querySelectorAll('mat-button-toggle')).find((t) =>
+      t.textContent!.includes('Unassigned'),
+    )!;
+    (toggle.querySelector('button') as HTMLButtonElement).click();
+    await settle();
+
+    const request = http.expectOne(isIncidentsCall);
+    expect(request.request.params.get('unassigned')).toBe('true');
+    expect(request.request.params.has('assignedToMe')).toBe(false);
+    request.flush(page([incident()]));
+  });
+
   it('opens an incident when its row is clicked', async () => {
     await load([incident({ id: 'abc' })]);
     const navigate = vi.spyOn(TestBed.inject(Router), 'navigate').mockResolvedValue(true);

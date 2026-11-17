@@ -1,0 +1,49 @@
+.rows {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.row {
+  display: grid;
+  grid-template-columns: minmax(90px, 140px) 1fr;
+  align-items: center;
+  gap: 12px;
+}
+
+.name {
+  color: var(--mat-sys-on-surface);
+  font: var(--mat-sys-body-medium);
+  overflow-wrap: anywhere;
+}
+
+/* The baseline: bars grow from this hairline. */
+.track {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  border-left: 1px solid var(--viz-axis);
+  min-height: 16px;
+}
+
+.bar {
+  display: block;
+  height: 12px;
+  /* Square where it meets the baseline, rounded at the data end. */
+  border-radius: 0 4px 4px 0;
+  min-width: 0;
+}
+
+.value {
+  color: var(--viz-ink-2);
+  font: var(--mat-sys-label-large);
+  white-space: nowrap;
+}
+
+.empty {
+  margin: 0;
+  color: var(--mat-sys-on-surface-variant);
+}

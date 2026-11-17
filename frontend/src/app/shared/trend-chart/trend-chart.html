@@ -1,0 +1,107 @@
+@if (series().length > 1) {
+  <ul class="legend">
+    @for (line of lines(); track line.name) {
+      <li><span class="key" [style.background]="line.color"></span>{{ line.name }}</li>
+    }
+  </ul>
+}
+
+@if (showTable()) {
+  <div class="table-wrap">
+    <table>
+      <caption class="visually-hidden">{{ ariaLabel() }}</caption>
+      <thead>
+        <tr>
+          <th scope="col">Date</th>
+          @for (line of lines(); track line.name) {
+            <th scope="col">{{ line.name }}</th>
+          }
+        </tr>
+      </thead>
+      <tbody>
+        @for (row of tableRows(); track row.date) {
+          <tr>
+            <th scope="row">{{ row.date }}</th>
+            @for (value of row.values; track $index) {
+              <td>{{ value }}</td>
+            }
+          </tr>
+        }
+      </tbody>
+    </table>
+  </div>
+} @else {
+  <div
+    class="chart"
+    tabindex="0"
+    role="group"
+    [attr.aria-label]="ariaLabel() + '. Use the left and right arrow keys to read each day.'"
+    (focus)="onFocus()"
+    (blur)="clearHover()"
+    (keydown)="onKeydown($event)"
+  >
+    <svg
+      [attr.viewBox]="'0 0 ' + width + ' ' + height"
+      aria-hidden="true"
+      (pointermove)="onPointerMove($event)"
+      (pointerleave)="clearHover()"
+    >
+      @for (tick of yTicks(); track tick.value) {
+        <line class="grid" [attr.x1]="plotLeft" [attr.x2]="plotRight" [attr.y1]="tick.y" [attr.y2]="tick.y" />
+        <text class="axis-text" [attr.x]="plotLeft - 8" [attr.y]="tick.y + 4" text-anchor="end">{{ tick.value }}</text>
+      }
+
+      <line class="baseline" [attr.x1]="plotLeft" [attr.x2]="plotRight" [attr.y1]="plotBottom" [attr.y2]="plotBottom" />
+
+      @for (label of xLabels(); track label.x) {
+        <text class="axis-text" [attr.x]="label.x" [attr.y]="height - 8" text-anchor="middle">{{ label.text }}</text>
+      }
+
+      @for (line of lines(); track line.name) {
+        <path class="line" [attr.d]="line.path" [attr.stroke]="line.color" />
+      }
+
+      @for (line of lines(); track line.name) {
+        @if (line.hasEnd) {
+          <circle class="dot" [attr.cx]="line.endX" [attr.cy]="line.endY" r="4" [attr.fill]="line.color" />
+        }
+      }
+
+      @if (hovered(); as point) {
+        <line class="crosshair" [attr.x1]="point.x" [attr.x2]="point.x" [attr.y1]="plotTop" [attr.y2]="plotBottom" />
+        @for (value of point.values; track value.name) {
+          <circle class="dot" [attr.cx]="point.x" [attr.cy]="value.y" r="4" [attr.fill]="value.color" />
+        }
+      }
+
+      <!-- A wide, invisible area that catches the pointer, so hovering does not need pixel accuracy. -->
+      <rect
+        class="catcher"
+        [attr.x]="plotLeft"
+        [attr.y]="plotTop"
+        [attr.width]="plotRight - plotLeft"
+        [attr.height]="plotBottom - plotTop"
+      />
+    </svg>
+
+    @if (hovered(); as point) {
+      <div
+        class="tooltip"
+        role="status"
+        [class.flip]="point.percent > 65"
+        [style.left.%]="point.percent"
+      >
+        <strong>{{ point.date }}</strong>
+        @for (value of point.values; track value.name) {
+          <div class="tooltip-row">
+            <span class="key" [style.background]="value.color"></span>{{ value.name }}: {{ value.value }}
+          </div>
+        }
+      </div>
+    }
+  </div>
+}
+
+<button type="button" class="switch" (click)="toggleTable()">
+  {{ showTable() ? 'View as chart' : 'View as table' }}
+</button>
