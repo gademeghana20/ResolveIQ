@@ -1,0 +1,70 @@
+.page-title {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 8px;
+}
+
+h1 {
+  font: var(--mat-sys-headline-medium);
+  margin: 0;
+}
+
+.explain,
+.note {
+  margin: 0 0 16px;
+  color: var(--mat-sys-on-surface-variant);
+}
+
+.note {
+  margin-top: 12px;
+}
+
+.table-wrap {
+  overflow-x: auto;
+}
+
+table {
+  width: 100%;
+}
+
+.name {
+  font-weight: 500;
+}
+
+/* A hidden category reads as set aside, though its status badge says so in words too. */
+.hidden-row {
+  color: var(--mat-sys-on-surface-variant);
+}
+
+.description {
+  overflow-wrap: anywhere;
+  color: var(--mat-sys-on-surface-variant);
+}
+
+.actions-head,
+.actions {
+  white-space: nowrap;
+  text-align: right;
+}
+
+.message {
+  padding: 24px 16px;
+  text-align: center;
+  color: var(--mat-sys-on-surface-variant);
+}
+
+.message.error {
+  color: var(--mat-sys-error);
+}
+
+.visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+}

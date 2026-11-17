@@ -112,9 +112,5 @@ export interface IncidentQuery {
   pageSize: number;
 }
 
-export interface Category {
-  id: string;
-  name: string;
-  description: string | null;
-  isActive: boolean;
-}
+// Categories are described in core (the Admin screens use them too); re-exported here so incident code keeps working.
+export type { Category } from '../../core/category.models';

@@ -39,10 +39,15 @@ export const routes: Routes = [
       {
         path: 'admin',
         canActivate: [roleGuard('Admin')],
+        loadComponent: () => import('./features/admin/admin-layout/admin-layout').then((m) => m.AdminLayout),
         children: [
           {
             path: 'users',
             loadComponent: () => import('./features/admin/users/users').then((m) => m.Users),
+          },
+          {
+            path: 'categories',
+            loadComponent: () => import('./features/admin/categories/categories').then((m) => m.Categories),
           },
           { path: '', pathMatch: 'full', redirectTo: 'users' },
         ],

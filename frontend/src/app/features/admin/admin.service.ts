@@ -1,9 +1,10 @@
-import { HttpClient } from '@angular/common/http';
+import { HttpClient, HttpParams } from '@angular/common/http';
 import { Injectable, inject } from '@angular/core';
 import { Observable } from 'rxjs';
 
 import { API_URL } from '../../core/api-config';
 import { Role } from '../../core/auth/auth.models';
+import { Category } from '../../core/category.models';
 import { UserSummary } from '../../core/user.models';
 
 export interface NewUser {
@@ -35,5 +36,19 @@ export class AdminService {
 
   resetPassword(id: string, newPassword: string): Observable<UserSummary> {
     return this.http.put<UserSummary>(`${API_URL}/users/${id}/password`, { newPassword });
+  }
+
+  /** Every category, including hidden ones (the normal list leaves those out). */
+  getCategories(): Observable<Category[]> {
+    return this.http.get<Category[]>(`${API_URL}/categories`, { params: new HttpParams().set('includeInactive', true) });
+  }
+
+  createCategory(name: string, description: string | null): Observable<Category> {
+    return this.http.post<Category>(`${API_URL}/categories`, { name, description });
+  }
+
+  /** The API replaces all three fields at once, so hiding a category also sends its current name and description. */
+  updateCategory(id: string, change: { name: string; description: string | null; isActive: boolean }): Observable<Category> {
+    return this.http.put<Category>(`${API_URL}/categories/${id}`, change);
   }
 }
