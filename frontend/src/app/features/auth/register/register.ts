@@ -11,7 +11,7 @@ import { Router, RouterLink } from '@angular/router';
 import { allFieldMessages } from '../../../core/api-error';
 import { AuthService } from '../../../core/auth/auth.service';
 import { PASSWORD_HINT } from '../../../core/password-rules';
-import { fieldsMatch, mismatchErrorMatcher } from '../../../core/validators';
+import { emailWithDomain, fieldsMatch, mismatchErrorMatcher } from '../../../core/validators';
 
 type Problems = { email: string[]; password: string[]; other: string[] };
 
@@ -32,7 +32,7 @@ export class Register {
 
   protected readonly form = this.formBuilder.group(
     {
-      email: ['', [Validators.required, Validators.email]],
+      email: ['', [Validators.required, emailWithDomain]],
       password: ['', Validators.required],
       confirm: ['', Validators.required],
     },

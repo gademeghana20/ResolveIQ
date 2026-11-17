@@ -1,11 +1,12 @@
 using System.ComponentModel.DataAnnotations;
+using ResolveIQ.Application.Validation;
 
 namespace ResolveIQ.Application.DTOs.Auth
 {
     public class RegisterRequest
     {
         [Required]
-        [EmailAddress]
+        [EmailWithDomain]
         [StringLength(256)]
         public string Email { get; set; } = string.Empty;
 

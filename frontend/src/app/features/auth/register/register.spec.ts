@@ -101,7 +101,25 @@ describe('Register', () => {
       await submit();
 
       http.expectNone(URL);
-      expect(text()).toContain('Enter a valid email address.');
+      expect(text()).toContain('Enter a full email address, like name@example.com.');
+    });
+
+    it.each(['test1@example', 'sam@gmail', 'name@example.', 'name@example.c'])(
+      'rejects %s, an address without a full domain, and sends nothing',
+      async (email) => {
+        await fill(email, GOOD_PASSWORD);
+        await submit();
+
+        http.expectNone(URL);
+        expect(text()).toContain('like name@example.com');
+      },
+    );
+
+    it('accepts a full address', async () => {
+      await fill('name@example.com', GOOD_PASSWORD);
+      await submit();
+
+      http.expectOne(URL).flush({ token: fakeToken(), email: 'name@example.com', roles: ['Employee'] });
     });
 
     it('does not send when the two passwords differ, so a typing slip cannot lock someone out', async () => {

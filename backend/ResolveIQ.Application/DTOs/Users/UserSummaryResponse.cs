@@ -1,4 +1,5 @@
 using System.ComponentModel.DataAnnotations;
+using ResolveIQ.Application.Validation;
 using ResolveIQ.Application.DTOs.Common;
 using ResolveIQ.Application.DTOs.Incidents;
 
@@ -20,7 +21,7 @@ namespace ResolveIQ.Application.DTOs.Users
     public class CreateUserRequest
     {
         [Required]
-        [EmailAddress]
+        [EmailWithDomain]
         [StringLength(256)]
         public string Email { get; set; } = string.Empty;
 

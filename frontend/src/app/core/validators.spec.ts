@@ -1,6 +1,6 @@
 import { FormControl, FormGroup } from '@angular/forms';
 
-import { fieldsMatch, mismatchErrorMatcher, notBlank } from './validators';
+import { emailWithDomain, fieldsMatch, mismatchErrorMatcher, notBlank } from './validators';
 
 describe('notBlank', () => {
   it('accepts text', () => {
@@ -13,6 +13,51 @@ describe('notBlank', () => {
 
   it('refuses nothing at all', () => {
     expect(notBlank(new FormControl(null))).toEqual({ required: true });
+  });
+});
+
+describe('emailWithDomain', () => {
+  const check = (value: string | null) => emailWithDomain(new FormControl(value));
+
+  it.each([
+    'name@example.com',
+    'first.last@example.com',
+    'name+tag@example.com',
+    'name@mail.example.com',
+    'name@example.co.uk',
+    'n@e.co',
+    '  name@example.com  ', // surrounding spaces are ignored; the screens trim before sending
+  ])('accepts %j', (value) => {
+    expect(check(value)).toBeNull();
+  });
+
+  it.each([
+    'test1@example', // no ending: the case that slipped through
+    'name@localhost',
+    'name@gmail',
+    'name@example.',
+    'name@.com',
+    'name@example..com',
+    'name@example.c',
+    '@example.com',
+    'name@',
+    'name',
+    'na me@example.com',
+    'name@@example.com',
+  ])('refuses %j, with the same "email" error the built-in check uses', (value) => {
+    expect(check(value)).toEqual({ email: true });
+  });
+
+  it('leaves an empty box to the "required" check', () => {
+    expect(check('')).toBeNull();
+    expect(check('   ')).toBeNull();
+    expect(check(null)).toBeNull();
+  });
+
+  it('agrees with the API on the cases that matter, so a screen never accepts what the API would refuse', () => {
+    // The same table is in the API's tests (EmailWithDomainTests). Keep the two in step.
+    expect(check('someone@example')).not.toBeNull();
+    expect(check('someone@example.com')).toBeNull();
   });
 });
 

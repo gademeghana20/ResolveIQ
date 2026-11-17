@@ -84,7 +84,15 @@ describe('CreateUserDialog', () => {
     await submit();
 
     http.expectNone(`${API_URL}/users`);
-    expect(page().textContent).toContain('Enter a valid email address.');
+    expect(page().textContent).toContain('Enter a full email address, like name@example.com.');
+  });
+
+  it('rejects an address without a full domain, which the API would refuse too', async () => {
+    await fill('test1@example');
+    await submit();
+
+    http.expectNone(`${API_URL}/users`);
+    expect(page().textContent).toContain('like name@example.com');
   });
 
   it('tells the person the password rules up front', () => {

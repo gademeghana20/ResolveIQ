@@ -13,7 +13,7 @@
           @if (form.controls.email.hasError('required')) {
             <mat-error>Email is required.</mat-error>
           } @else if (form.controls.email.hasError('email')) {
-            <mat-error>Enter a valid email address.</mat-error>
+            <mat-error>Enter a full email address, like name@example.com.</mat-error>
           } @else {
             @for (message of serverMessages('email'); track message) {
               <mat-error>{{ message }}</mat-error>

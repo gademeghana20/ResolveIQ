@@ -6,6 +6,21 @@ export function notBlank(control: AbstractControl<string | null>): ValidationErr
   return (control.value ?? '').trim().length > 0 ? null : { required: true };
 }
 
+// Something, an @, then at least one "label." and an ending of two or more characters. No spaces, no empty parts.
+// The API applies the same rule, so what the screen accepts is what the API accepts.
+const EMAIL_WITH_DOMAIN = /^[^\s@]+@([^\s@.]+\.)+[^\s@.]{2,}$/;
+
+/**
+ * A full email address such as name@example.com. Angular's built-in Validators.email also accepts
+ * "name@example" (no ending), which on the public internet is nearly always a typo. Use this where an address
+ * is first accepted (sign-up, creating a user), and keep the built-in one on sign-in so older accounts still work.
+ * An empty box is left to the "required" check. The error is called "email", like the built-in one.
+ */
+export function emailWithDomain(control: AbstractControl<string | null>): ValidationErrors | null {
+  const value = (control.value ?? '').trim();
+  return value === '' || EMAIL_WITH_DOMAIN.test(value) ? null : { email: true };
+}
+
 /**
  * For a form group: the two named fields must hold the same text (a password and its repeat).
  * The group gets the error { mismatch: true }.

@@ -10,6 +10,7 @@ import { MatSelectModule } from '@angular/material/select';
 import { fieldErrors } from '../../../core/api-error';
 import { Role } from '../../../core/auth/auth.models';
 import { PASSWORD_HINT } from '../../../core/password-rules';
+import { emailWithDomain } from '../../../core/validators';
 import { UserSummary } from '../../../core/user.models';
 import { AdminService } from '../admin.service';
 
@@ -29,7 +30,7 @@ export const ROLES: Role[] = ['Employee', 'Manager', 'Admin'];
           @if (form.controls.email.hasError('required')) {
             <mat-error>An email is required.</mat-error>
           } @else if (form.controls.email.hasError('email')) {
-            <mat-error>Enter a valid email address.</mat-error>
+            <mat-error>Enter a full email address, like name@example.com.</mat-error>
           } @else if (serverMessage('email'); as message) {
             <mat-error>{{ message }}</mat-error>
           }
@@ -83,7 +84,7 @@ export class CreateUserDialog {
   protected readonly passwordHint = PASSWORD_HINT;
 
   protected readonly form = this.formBuilder.group({
-    email: ['', [Validators.required, Validators.email]],
+    email: ['', [Validators.required, emailWithDomain]],
     password: ['', Validators.required],
     role: ['Employee' as Role, Validators.required],
   });
