@@ -1,5 +1,5 @@
-<main class="login-page">
-  <mat-card class="login-card">
+<main class="auth-page">
+  <mat-card class="auth-card">
     <mat-card-header>
       <mat-card-title>ResolveIQ</mat-card-title>
       <mat-card-subtitle>Sign in to manage incidents</mat-card-subtitle>
@@ -33,6 +33,8 @@
           {{ submitting() ? 'Signing in…' : 'Sign in' }}
         </button>
       </form>
+
+      <p class="switch">New here? <a routerLink="/register">Create an account</a></p>
     </mat-card-content>
   </mat-card>
 </main>

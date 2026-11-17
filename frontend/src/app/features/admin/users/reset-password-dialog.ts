@@ -1,24 +1,19 @@
 import { HttpErrorResponse } from '@angular/common/http';
 import { Component, inject, signal } from '@angular/core';
-import { AbstractControl, NonNullableFormBuilder, ReactiveFormsModule, ValidationErrors, Validators } from '@angular/forms';
+import { NonNullableFormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { MatButtonModule } from '@angular/material/button';
-import { ErrorStateMatcher } from '@angular/material/core';
 import { MAT_DIALOG_DATA, MatDialogModule, MatDialogRef } from '@angular/material/dialog';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatInputModule } from '@angular/material/input';
 
 import { fieldErrors } from '../../../core/api-error';
+import { PASSWORD_HINT } from '../../../core/password-rules';
+import { fieldsMatch, mismatchErrorMatcher } from '../../../core/validators';
 import { AdminService } from '../admin.service';
-import { PASSWORD_HINT } from './create-user-dialog';
 
 export interface ResetPasswordDialogData {
   userId: string;
   email: string;
-}
-
-// The second box must repeat the first, so a typing slip does not lock the person out.
-function passwordsMatch(group: AbstractControl): ValidationErrors | null {
-  return group.get('newPassword')?.value === group.get('confirm')?.value ? null : { mismatch: true };
 }
 
 /** Gives a person a new password. Closes with true once it is saved. */
@@ -83,18 +78,15 @@ export class ResetPasswordDialog {
 
   protected readonly passwordHint = PASSWORD_HINT;
 
-  // The mismatch is an error of the whole form, but it should show on the second box. A Material field
-  // only shows an error when its own control is invalid, so this tells it to count the form's mismatch too.
-  protected readonly mismatchMatcher: ErrorStateMatcher = {
-    isErrorState: (control) => !!control && control.touched && !!control.parent?.hasError('mismatch'),
-  };
+  // Lets the second box show the form's "do not match" error (see mismatchErrorMatcher).
+  protected readonly mismatchMatcher = mismatchErrorMatcher;
 
   protected readonly form = this.formBuilder.group(
     {
       newPassword: ['', Validators.required],
       confirm: ['', Validators.required],
     },
-    { validators: passwordsMatch },
+    { validators: fieldsMatch('newPassword', 'confirm') }, // a typing slip must not lock the person out
   );
 
   protected readonly saving = signal(false);

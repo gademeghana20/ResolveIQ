@@ -8,6 +8,7 @@ import { Shell } from './layout/shell/shell';
 // That keeps the first download small: the login page does not carry the incident table's code.
 export const routes: Routes = [
   { path: 'login', loadComponent: () => import('./features/auth/login/login').then((m) => m.Login) },
+  { path: 'register', loadComponent: () => import('./features/auth/register/register').then((m) => m.Register) },
 
   // Everything signed-in people see lives inside the Shell (the top bar) and behind the guard.
   {

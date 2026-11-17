@@ -9,12 +9,11 @@ import { MatSelectModule } from '@angular/material/select';
 
 import { fieldErrors } from '../../../core/api-error';
 import { Role } from '../../../core/auth/auth.models';
+import { PASSWORD_HINT } from '../../../core/password-rules';
 import { UserSummary } from '../../../core/user.models';
 import { AdminService } from '../admin.service';
 
 export const ROLES: Role[] = ['Employee', 'Manager', 'Admin'];
-
-export const PASSWORD_HINT = 'At least 8 characters, with an upper-case letter, a lower-case letter, a digit and a symbol.';
 
 /** Creates a person with a chosen role. Closes with the new user, or nothing if cancelled. */
 @Component({

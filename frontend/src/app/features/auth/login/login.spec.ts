@@ -56,6 +56,13 @@ describe('Login', () => {
     expect(page().querySelector('button')?.textContent).toContain('Sign in');
   });
 
+  it('offers a way to create an account', async () => {
+    await setUp();
+
+    const link = Array.from(page().querySelectorAll('a')).find((a) => a.textContent!.includes('Create an account'))!;
+    expect(link.getAttribute('href')).toBe('/register');
+  });
+
   it('does not call the API when the form is empty, and says what is missing', async () => {
     await setUp();
 
