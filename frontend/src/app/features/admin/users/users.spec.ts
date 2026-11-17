@@ -8,6 +8,7 @@ import { provideRouter } from '@angular/router';
 import { of } from 'rxjs';
 
 import { API_URL } from '../../../core/api-config';
+import { drawGrid } from '../../../shared/data-grid/grid-testing';
 import { UserSummary } from '../../../core/user.models';
 import { fakeToken } from '../../../testing/fake-token';
 import { Users } from './users';
@@ -25,13 +26,14 @@ describe('Users', () => {
 
   const page = () => fixture.nativeElement as HTMLElement;
   const text = () => page().textContent ?? '';
-  const rows = () => Array.from(page().querySelectorAll('tr[mat-row]'));
+  const rows = () => Array.from(page().querySelectorAll('.ag-row'));
   const rowFor = (email: string) => rows().find((r) => r.textContent!.includes(email)) as HTMLElement;
 
   async function settle() {
     fixture.detectChanges();
     await fixture.whenStable();
     fixture.detectChanges();
+    await drawGrid(() => fixture.detectChanges());
   }
 
   async function open(users: UserSummary[] = [dana, me, lee]) {
@@ -78,7 +80,7 @@ describe('Users', () => {
     it('shows everyone, alphabetically, with role and status', async () => {
       await open();
 
-      expect(rows().map((r) => r.querySelector('.email')!.textContent!.replace('(you)', '').trim())).toEqual([
+      expect(rows().map((r) => r.querySelector('.ag-cell[col-id="email"]')!.textContent!.replace('(you)', '').trim())).toEqual([
         'admin@example.com',
         'dana@example.com',
         'Lee@example.com',

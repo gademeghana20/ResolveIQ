@@ -4,10 +4,11 @@ import { MatButtonModule } from '@angular/material/button';
 import { MatDialog } from '@angular/material/dialog';
 import { MatProgressBarModule } from '@angular/material/progress-bar';
 import { MatSnackBar } from '@angular/material/snack-bar';
-import { MatTableModule } from '@angular/material/table';
+import { ColDef } from 'ag-grid-community';
 
 import { formatHours } from '../../../shared/format';
-import { Badge } from '../../../shared/badge/badge';
+import { ActionsCell, BadgeCell, RowAction } from '../../../shared/data-grid/cell-renderers';
+import { DataGrid } from '../../../shared/data-grid/data-grid';
 import { priorityTone } from '../../incidents/incident-display';
 import { IncidentPriority } from '../../incidents/incident.models';
 import { AdminService } from '../admin.service';
@@ -21,7 +22,7 @@ const PRIORITY_ORDER: IncidentPriority[] = ['Critical', 'High', 'Medium', 'Low']
 
 @Component({
   selector: 'app-sla-policies',
-  imports: [MatTableModule, MatButtonModule, MatProgressBarModule, Badge],
+  imports: [MatButtonModule, MatProgressBarModule, DataGrid],
   templateUrl: './sla-policies.html',
   styleUrl: './sla-policies.css',
 })
@@ -31,7 +32,50 @@ export class SlaPolicies {
   private readonly snackBar = inject(MatSnackBar);
   private readonly destroyRef = inject(DestroyRef);
 
-  protected readonly columns = ['priority', 'deadline', 'status', 'actions'];
+  protected readonly rowId = (policy: SlaPolicy) => policy.priority;
+
+  protected readonly columnDefs: ColDef<SlaPolicy>[] = [
+    {
+      colId: 'priority',
+      headerName: 'Priority',
+      width: 150,
+      cellRenderer: BadgeCell,
+      cellRendererParams: {
+        label: (p: SlaPolicy) => p.priority,
+        tone: (p: SlaPolicy) => priorityTone(p.priority),
+      },
+    },
+    {
+      colId: 'deadline',
+      headerName: 'Time to resolve',
+      flex: 2,
+      minWidth: 200,
+      valueGetter: (p) => (p.data ? this.deadlineText(p.data) : ''),
+      cellClassRules: { muted: (p) => !p.data?.isActive },
+    },
+    {
+      colId: 'status',
+      headerName: 'Deadline',
+      width: 130,
+      cellRenderer: BadgeCell,
+      cellRendererParams: {
+        label: (p: SlaPolicy) => (p.isActive ? 'On' : 'Off'),
+        tone: (p: SlaPolicy) => (p.isActive ? 'success' : 'neutral'),
+      },
+    },
+    {
+      colId: 'actions',
+      headerName: 'Actions',
+      width: 120,
+      cellRenderer: ActionsCell,
+      cellRendererParams: {
+        mode: 'buttons',
+        actions: (p: SlaPolicy): RowAction<SlaPolicy>[] => [
+          { label: 'Edit', ariaLabel: 'Edit the ' + p.priority + ' deadline', run: (row) => this.edit(row) },
+        ],
+      },
+    },
+  ];
 
   protected readonly state = signal<LoadState>('loading');
   protected readonly policies = signal<SlaPolicy[]>([]);

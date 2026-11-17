@@ -36,7 +36,7 @@ describe('IncidentList assignee filter', () => {
     fixture.detectChanges();
   }
 
-  async function open(role: 'Manager' | 'Admin' | 'Employee', usersReply: UserSummary[] | 'fail' = people) {
+  async function open(role: 'Manager' | 'Admin' | 'Employee', usersReply: UserSummary[] | 'fail' = people, totalCount = 0) {
     localStorage.clear();
     localStorage.setItem('resolveiq.session', JSON.stringify({ token: fakeToken(), email: 'me@example.com', roles: [role] }));
 
@@ -54,7 +54,7 @@ describe('IncidentList assignee filter', () => {
     fixture = TestBed.createComponent(IncidentList);
     await settle();
 
-    http.expectOne(isList).flush(emptyPage);
+    http.expectOne(isList).flush({ ...emptyPage, totalCount, totalPages: Math.ceil(totalCount / 20) });
     http.expectOne(`${API_URL}/categories`).flush([]);
 
     if (role !== 'Employee') {
@@ -138,8 +138,8 @@ describe('IncidentList assignee filter', () => {
     });
 
     it('goes back to page 1', async () => {
-      await open('Manager');
-      fixture.debugElement.query(By.css('mat-paginator')).triggerEventHandler('page', { pageIndex: 2, pageSize: 20, length: 60 });
+      await open('Manager', people, 60);
+      (fixture.nativeElement as HTMLElement).querySelector<HTMLButtonElement>('button[aria-label="Last page"]')!.click();
       await settle();
       http.expectOne(isList).flush({ ...emptyPage, totalCount: 60, totalPages: 3 });
       await settle();

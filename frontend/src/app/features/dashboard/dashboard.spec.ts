@@ -6,6 +6,7 @@ import { MatButtonToggleGroup } from '@angular/material/button-toggle';
 import { provideRouter } from '@angular/router';
 
 import { API_URL } from '../../core/api-config';
+import { drawGrid, gridHeadings, gridRows } from '../../shared/data-grid/grid-testing';
 import { DashboardStatistics, DashboardSummary } from './dashboard.models';
 import { Dashboard } from './dashboard';
 
@@ -92,6 +93,7 @@ describe('Dashboard', () => {
     summaryRequest().flush(summary);
     statsRequest().flush(stats);
     await settle();
+    await drawGrid(() => fixture.detectChanges());
   }
 
   it('asks for the current numbers, and for the last 30 days', async () => {
@@ -266,10 +268,8 @@ describe('Dashboard', () => {
     it('shows each assignee to a manager or admin', async () => {
       await loadBoth();
 
-      const rows = Array.from(page().querySelectorAll('.workload tbody tr')).map((row) =>
-        Array.from(row.querySelectorAll('th, td')).map((cell) => cell.textContent!.trim()),
-      );
-      expect(rows).toEqual([
+      expect(gridHeadings(page())).toEqual(['Assignee', 'Active', 'Breached']);
+      expect(gridRows(page())).toEqual([
         ['dana@example.com', '5', '1'],
         ['lee@example.com', '2', '0'],
       ]);

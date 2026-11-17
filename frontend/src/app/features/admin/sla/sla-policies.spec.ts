@@ -7,6 +7,7 @@ import { MatSnackBar } from '@angular/material/snack-bar';
 import { of } from 'rxjs';
 
 import { API_URL } from '../../../core/api-config';
+import { drawGrid } from '../../../shared/data-grid/grid-testing';
 import { SlaPolicies } from './sla-policies';
 import { SlaPolicy } from './sla.models';
 
@@ -26,7 +27,7 @@ describe('SlaPolicies', () => {
 
   const page = () => fixture.nativeElement as HTMLElement;
   const text = () => page().textContent ?? '';
-  const rows = () => Array.from(page().querySelectorAll('tr[mat-row]')) as HTMLElement[];
+  const rows = () => Array.from(page().querySelectorAll('.ag-row')) as HTMLElement[];
   const rowFor = (priority: string) => rows().find((r) => r.querySelector('app-badge')!.textContent!.trim() === priority)!;
   const listRequest = () => http.expectOne(`${API_URL}/sla/policies`);
 
@@ -34,6 +35,7 @@ describe('SlaPolicies', () => {
     fixture.detectChanges();
     await fixture.whenStable();
     fixture.detectChanges();
+    await drawGrid(() => fixture.detectChanges());
   }
 
   async function create() {

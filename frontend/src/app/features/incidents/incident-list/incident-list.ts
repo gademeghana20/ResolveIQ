@@ -1,21 +1,21 @@
-import { DatePipe } from '@angular/common';
-import { Component, inject, signal } from '@angular/core';
+import { formatDate } from '@angular/common';
+import { Component, computed, inject, signal } from '@angular/core';
 import { takeUntilDestroyed, toObservable } from '@angular/core/rxjs-interop';
 import { FormControl, ReactiveFormsModule } from '@angular/forms';
 import { MatButtonModule } from '@angular/material/button';
 import { MatButtonToggleModule } from '@angular/material/button-toggle';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatInputModule } from '@angular/material/input';
-import { MatPaginatorModule, PageEvent } from '@angular/material/paginator';
 import { MatProgressBarModule } from '@angular/material/progress-bar';
 import { MatSelectModule } from '@angular/material/select';
-import { MatSortModule, Sort } from '@angular/material/sort';
-import { MatTableModule } from '@angular/material/table';
-import { ActivatedRoute, Router, RouterLink } from '@angular/router';
+import { ActivatedRoute, Router } from '@angular/router';
+import { ColDef } from 'ag-grid-community';
 import { catchError, debounceTime, distinctUntilChanged, of, switchMap, tap } from 'rxjs';
 
 import { AuthService } from '../../../core/auth/auth.service';
-import { Badge } from '../../../shared/badge/badge';
+import { BadgeCell, BadgeNoteCell, LinkCell } from '../../../shared/data-grid/cell-renderers';
+import { DataGrid, GridSort } from '../../../shared/data-grid/data-grid';
+import { GridFooter, PageChange } from '../../../shared/grid-footer/grid-footer';
 import { priorityLabel, priorityTone, slaLabel, slaTone, statusLabel, statusTone } from '../incident-display';
 import {
   Category,
@@ -33,6 +33,12 @@ import {
 } from '../incident.models';
 import { IncidentService } from '../incident.service';
 
+/** "Nov 16, 6:00 PM" this year; the year is added for older ones, so a list that spans years stays clear. */
+function createdText(iso: string): string {
+  const sameYear = new Date(iso).getFullYear() === new Date().getFullYear();
+  return formatDate(iso, sameYear ? 'MMM d, h:mm a' : 'MMM d, y, h:mm a', 'en-US');
+}
+
 type Scope = 'all' | 'assigned' | 'reported' | 'unassigned';
 
 const DEFAULT_QUERY: IncidentQuery = { sortBy: 'CreatedAt', sortDirection: 'Desc', page: 1, pageSize: 20 };
@@ -49,19 +55,15 @@ const SORT_FIELDS: Record<string, IncidentSortField> = {
 @Component({
   selector: 'app-incident-list',
   imports: [
-    DatePipe,
     ReactiveFormsModule,
-    MatTableModule,
-    MatSortModule,
-    MatPaginatorModule,
     MatFormFieldModule,
     MatInputModule,
     MatSelectModule,
     MatButtonModule,
     MatButtonToggleModule,
     MatProgressBarModule,
-    RouterLink,
-    Badge,
+    DataGrid,
+    GridFooter,
   ],
   templateUrl: './incident-list.html',
   styleUrl: './incident-list.css',
@@ -87,7 +89,78 @@ export class IncidentList {
 
   protected readonly searchControl = new FormControl('', { nonNullable: true });
 
-  protected readonly columns = ['incidentNumber', 'title', 'priority', 'status', 'category', 'assignee', 'sla', 'createdAt'];
+  protected readonly rowId = (row: IncidentSummary) => row.id;
+
+  // The table's columns. Sorting is done by the API, so the grid's own comparators do nothing.
+  // Only columns listed in SORT_FIELDS can be sorted.
+  protected readonly columnDefs: ColDef<IncidentSummary>[] = [
+    { colId: 'incidentNumber', headerName: 'Number', field: 'incidentNumber', sortable: true, width: 115, cellClass: 'mono', comparator: () => 0 },
+    {
+      colId: 'title',
+      headerName: 'Title',
+      field: 'title',
+      tooltipField: 'title', // the full title on hover, for the long ones that are cut short
+      sortable: true,
+      flex: 3,
+      minWidth: 130,
+      cellRenderer: LinkCell,
+      cellRendererParams: { link: (row: IncidentSummary) => ['/incidents', row.id] },
+      comparator: () => 0,
+    },
+    {
+      colId: 'priority',
+      headerName: 'Priority',
+      sortable: true,
+      width: 105,
+      cellRenderer: BadgeCell,
+      cellRendererParams: {
+        label: (row: IncidentSummary) => priorityLabel(row.priority),
+        tone: (row: IncidentSummary) => priorityTone(row.priority),
+      },
+      comparator: () => 0,
+    },
+    {
+      colId: 'status',
+      headerName: 'Status',
+      sortable: true,
+      width: 115,
+      cellRenderer: BadgeCell,
+      cellRendererParams: {
+        label: (row: IncidentSummary) => statusLabel(row.status),
+        tone: (row: IncidentSummary) => statusTone(row.status),
+      },
+      comparator: () => 0,
+    },
+    { colId: 'category', headerName: 'Category', flex: 0.8, minWidth: 90, valueGetter: (p) => p.data?.categoryName ?? '—' },
+    {
+      colId: 'assignee',
+      headerName: 'Assignee',
+      flex: 1.2,
+      minWidth: 120,
+      tooltipValueGetter: (p) => (p.data?.assignedToUserId ? (p.data.assignedToEmail ?? '') : ''),
+      valueGetter: (p) => (p.data?.assignedToUserId ? (p.data.assignedToEmail ?? 'Assigned') : 'Unassigned'),
+      cellClassRules: { muted: (p) => !p.data?.assignedToUserId },
+    },
+    {
+      colId: 'sla',
+      headerName: 'SLA',
+      width: 250,
+      cellRenderer: BadgeNoteCell,
+      cellRendererParams: {
+        label: (row: IncidentSummary) => slaLabel(row.slaState),
+        tone: (row: IncidentSummary) => slaTone(row.slaState),
+        dueAt: (row: IncidentSummary) => row.slaDueAtUtc ?? null,
+      },
+    },
+    {
+      colId: 'createdAt',
+      headerName: 'Created',
+      sortable: true,
+      width: 150,
+      valueGetter: (p) => (p.data ? createdText(p.data.createdAtUtc) : ''),
+      comparator: () => 0,
+    },
+  ];
   protected readonly statuses = INCIDENT_STATUSES;
   protected readonly priorities = INCIDENT_PRIORITIES;
   protected readonly slaStates = SLA_STATES;
@@ -236,17 +309,17 @@ export class IncidentList {
     });
   }
 
-  protected onSort(sort: Sort): void {
-    const field = SORT_FIELDS[sort.active];
+  protected onSort(sort: GridSort): void {
+    const field = SORT_FIELDS[sort.column];
     this.query.update((q) =>
-      field && sort.direction
+      field
         ? { ...q, sortBy: field, sortDirection: sort.direction === 'asc' ? 'Asc' : 'Desc', page: 1 }
         : { ...q, sortBy: DEFAULT_QUERY.sortBy, sortDirection: DEFAULT_QUERY.sortDirection, page: 1 },
     );
   }
 
-  protected onPage(event: PageEvent): void {
-    this.query.update((q) => ({ ...q, page: event.pageIndex + 1, pageSize: event.pageSize }));
+  protected onPage(change: PageChange): void {
+    this.query.update((q) => ({ ...q, page: change.page, pageSize: change.pageSize }));
   }
 
   protected clearFilters(): void {
@@ -264,8 +337,11 @@ export class IncidentList {
   }
 
   /** The sort arrow shown on the header matches the query. */
-  protected sortColumn(): string {
+  protected readonly gridSort = computed<GridSort>(() => {
     const q = this.query();
-    return Object.keys(SORT_FIELDS).find((key) => SORT_FIELDS[key] === q.sortBy) ?? 'createdAt';
-  }
+    return {
+      column: Object.keys(SORT_FIELDS).find((key) => SORT_FIELDS[key] === q.sortBy) ?? 'createdAt',
+      direction: q.sortDirection === 'Asc' ? 'asc' : 'desc',
+    };
+  });
 }

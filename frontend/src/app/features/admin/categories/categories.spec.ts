@@ -7,6 +7,7 @@ import { MatSnackBar } from '@angular/material/snack-bar';
 import { of } from 'rxjs';
 
 import { API_URL } from '../../../core/api-config';
+import { drawGrid } from '../../../shared/data-grid/grid-testing';
 import { Category } from '../../../core/category.models';
 import { Categories } from './categories';
 
@@ -22,8 +23,8 @@ describe('Categories', () => {
 
   const page = () => fixture.nativeElement as HTMLElement;
   const text = () => page().textContent ?? '';
-  const rows = () => Array.from(page().querySelectorAll('tr[mat-row]')) as HTMLElement[];
-  const rowFor = (name: string) => rows().find((r) => r.querySelector('.name')!.textContent!.trim() === name)!;
+  const rows = () => Array.from(page().querySelectorAll('.ag-row')) as HTMLElement[];
+  const rowFor = (name: string) => rows().find((r) => r.querySelector('.ag-cell[col-id="name"]')!.textContent!.trim() === name)!;
   const buttonIn = (row: HTMLElement, label: string) =>
     Array.from(row.querySelectorAll('button')).find((b) => b.textContent!.trim() === label) as HTMLButtonElement;
   const listRequest = () => http.expectOne((r) => r.url === `${API_URL}/categories` && r.method === 'GET');
@@ -32,6 +33,7 @@ describe('Categories', () => {
     fixture.detectChanges();
     await fixture.whenStable();
     fixture.detectChanges();
+    await drawGrid(() => fixture.detectChanges());
   }
 
   async function open(categories: Category[] = [network, legacy, hardware]) {
@@ -75,7 +77,7 @@ describe('Categories', () => {
     it('shows the shown ones first, A to Z, then the hidden ones', async () => {
       await open();
 
-      expect(rows().map((r) => r.querySelector('.name')!.textContent!.trim())).toEqual(['Hardware', 'Network', 'Archive']);
+      expect(rows().map((r) => r.querySelector('.ag-cell[col-id="name"]')!.textContent!.trim())).toEqual(['Hardware', 'Network', 'Archive']);
     });
 
     it('says in words whether each is shown or hidden', async () => {
@@ -213,7 +215,7 @@ describe('Categories', () => {
       http.expectOne(`${API_URL}/categories/c-n`).flush({ ...network, isActive: false });
       await settle();
 
-      const order = rows().map((r) => r.querySelector('.name')!.textContent!.trim());
+      const order = rows().map((r) => r.querySelector('.ag-cell[col-id="name"]')!.textContent!.trim());
       expect(order.indexOf('Hardware')).toBeLessThan(order.indexOf('Network'));
       expect(buttonIn(rowFor('Network'), 'Show')).toBeDefined();
     });
@@ -233,14 +235,15 @@ describe('Categories', () => {
       expect(snack.mock.calls[0][0]).toContain('can be chosen for new incidents again');
     });
 
-    it('cannot be clicked again while the change is saving', async () => {
+    it('ignores a second click while the change is saving', async () => {
       await open();
 
       buttonIn(rowFor('Network'), 'Hide').click();
       await settle();
+      buttonIn(rowFor('Hardware'), 'Hide').click(); // pressed while the first change is still on its way
+      await settle();
 
-      expect(buttonIn(rowFor('Hardware'), 'Hide').disabled).toBe(true);
-      expect(buttonIn(rowFor('Network'), 'Edit').disabled).toBe(true);
+      http.expectNone(`${API_URL}/categories/c-h`); // only the first change was sent
       http.expectOne(`${API_URL}/categories/c-n`).flush({ ...network, isActive: false });
     });
 

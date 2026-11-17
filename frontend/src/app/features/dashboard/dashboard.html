@@ -138,24 +138,13 @@
             @if (people.length === 0) {
               <p class="muted">Nobody has active incidents assigned.</p>
             } @else {
-              <table class="workload">
-                <thead>
-                  <tr>
-                    <th scope="col">Assignee</th>
-                    <th scope="col" class="number">Active</th>
-                    <th scope="col" class="number">Breached</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  @for (person of people; track person.userId) {
-                    <tr>
-                      <th scope="row">{{ person.email ?? 'Unknown user' }}</th>
-                      <td class="number">{{ person.activeIncidents }}</td>
-                      <td class="number">{{ person.breachedIncidents }}</td>
-                    </tr>
-                  }
-                </tbody>
-              </table>
+              <app-data-grid
+                ariaLabel="Workload by assignee"
+                [rows]="people"
+                [columns]="workloadColumns"
+                [rowId]="workloadRowId"
+                [rowHeight]="48"
+              />
             }
           </mat-card-content>
         </mat-card>

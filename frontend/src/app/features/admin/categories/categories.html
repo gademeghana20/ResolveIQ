@@ -21,61 +21,11 @@
   }
 
   @case ('ready') {
-    <div class="table-wrap">
-      <table mat-table [dataSource]="sorted()" aria-label="Categories">
-        <ng-container matColumnDef="name">
-          <th mat-header-cell *matHeaderCellDef>Name</th>
-          <td mat-cell *matCellDef="let category" class="name" [class.hidden-row]="!category.isActive">
-            {{ category.name }}
-          </td>
-        </ng-container>
+    <app-data-grid ariaLabel="Categories" [rows]="sorted()" [columns]="columnDefs" [rowId]="rowId" />
 
-        <ng-container matColumnDef="description">
-          <th mat-header-cell *matHeaderCellDef>Description</th>
-          <td mat-cell *matCellDef="let category" class="description">
-            {{ category.description ?? '—' }}
-          </td>
-        </ng-container>
-
-        <ng-container matColumnDef="status">
-          <th mat-header-cell *matHeaderCellDef>Status</th>
-          <td mat-cell *matCellDef="let category">
-            <app-badge [label]="category.isActive ? 'Shown' : 'Hidden'" [tone]="category.isActive ? 'success' : 'neutral'" />
-          </td>
-        </ng-container>
-
-        <ng-container matColumnDef="actions">
-          <th mat-header-cell *matHeaderCellDef class="actions-head"><span class="visually-hidden">Actions</span></th>
-          <td mat-cell *matCellDef="let category" class="actions">
-            <button
-              mat-button
-              type="button"
-              [attr.aria-label]="'Edit ' + category.name"
-              [disabled]="busy()"
-              (click)="edit(category)"
-            >
-              Edit
-            </button>
-            <button
-              mat-button
-              type="button"
-              [attr.aria-label]="(category.isActive ? 'Hide ' : 'Show ') + category.name"
-              [disabled]="busy()"
-              (click)="toggleVisible(category)"
-            >
-              {{ category.isActive ? 'Hide' : 'Show' }}
-            </button>
-          </td>
-        </ng-container>
-
-        <tr mat-header-row *matHeaderRowDef="columns"></tr>
-        <tr mat-row *matRowDef="let category; columns: columns"></tr>
-      </table>
-
-      @if (categories().length === 0) {
-        <p class="message">There are no categories yet. Create one so people can sort their incidents.</p>
-      }
-    </div>
+    @if (categories().length === 0) {
+      <p class="message">There are no categories yet. Create one so people can sort their incidents.</p>
+    }
 
     @if (hiddenCount() > 0) {
       <p class="note">{{ hiddenCount() }} hidden {{ hiddenCount() === 1 ? 'category is' : 'categories are' }} not offered for new incidents.</p>

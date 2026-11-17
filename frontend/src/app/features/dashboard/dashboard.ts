@@ -4,15 +4,17 @@ import { MatButtonModule } from '@angular/material/button';
 import { MatButtonToggleModule } from '@angular/material/button-toggle';
 import { MatCardModule } from '@angular/material/card';
 import { MatProgressBarModule } from '@angular/material/progress-bar';
+import { ColDef } from 'ag-grid-community';
 import { EMPTY, catchError, switchMap, tap } from 'rxjs';
 
 import { formatDuration, formatHours, formatPercent } from '../../shared/format';
+import { DataGrid } from '../../shared/data-grid/data-grid';
 import { BarItem, BarList } from '../../shared/bar-list/bar-list';
 import { StatTile } from '../../shared/stat-tile/stat-tile';
 import { TrendChart, TrendSeries } from '../../shared/trend-chart/trend-chart';
 import { slaLabel, statusLabel } from '../incidents/incident-display';
 import { IncidentStatus, SlaState } from '../incidents/incident.models';
-import { DashboardStatistics, DashboardSummary, PERIOD_CHOICES } from './dashboard.models';
+import { DashboardStatistics, DashboardSummary, PERIOD_CHOICES, WorkloadItem } from './dashboard.models';
 import { DashboardService } from './dashboard.service';
 
 type SummaryState = 'loading' | 'ready' | 'failed';
@@ -35,7 +37,7 @@ const SLA_ROWS: { state: SlaState; key: keyof DashboardSummary['sla']; color: st
 
 @Component({
   selector: 'app-dashboard',
-  imports: [MatButtonModule, MatButtonToggleModule, MatCardModule, MatProgressBarModule, StatTile, BarList, TrendChart],
+  imports: [MatButtonModule, MatButtonToggleModule, MatCardModule, MatProgressBarModule, StatTile, BarList, TrendChart, DataGrid],
   templateUrl: './dashboard.html',
   styleUrl: './dashboard.css',
 })
@@ -43,6 +45,13 @@ export class Dashboard {
   private readonly dashboard = inject(DashboardService);
 
   protected readonly periods = PERIOD_CHOICES;
+
+  protected readonly workloadRowId = (person: WorkloadItem) => person.userId;
+  protected readonly workloadColumns: ColDef<WorkloadItem>[] = [
+    { colId: 'assignee', headerName: 'Assignee', flex: 3, minWidth: 200, valueGetter: (p) => p.data?.email ?? 'Unknown user' },
+    { colId: 'active', headerName: 'Active', field: 'activeIncidents', flex: 1, minWidth: 100, type: 'rightAligned', cellClass: 'numeric', headerClass: 'ag-right-aligned-header' },
+    { colId: 'breached', headerName: 'Breached', field: 'breachedIncidents', flex: 1, minWidth: 110, type: 'rightAligned', cellClass: 'numeric', headerClass: 'ag-right-aligned-header' },
+  ];
   protected readonly days = signal<number>(30);
 
   protected readonly summary = signal<DashboardSummary | null>(null);

@@ -4,11 +4,12 @@ import { MatButtonModule } from '@angular/material/button';
 import { MatDialog } from '@angular/material/dialog';
 import { MatProgressBarModule } from '@angular/material/progress-bar';
 import { MatSnackBar } from '@angular/material/snack-bar';
-import { MatTableModule } from '@angular/material/table';
+import { ColDef } from 'ag-grid-community';
 
 import { fieldErrors } from '../../../core/api-error';
 import { Category } from '../../../core/category.models';
-import { Badge } from '../../../shared/badge/badge';
+import { ActionsCell, BadgeCell, RowAction } from '../../../shared/data-grid/cell-renderers';
+import { DataGrid } from '../../../shared/data-grid/data-grid';
 import { AdminService } from '../admin.service';
 import { CategoryDialog, CategoryDialogData } from './category-dialog';
 
@@ -16,7 +17,7 @@ type LoadState = 'loading' | 'ready' | 'failed';
 
 @Component({
   selector: 'app-categories',
-  imports: [MatTableModule, MatButtonModule, MatProgressBarModule, Badge],
+  imports: [MatButtonModule, MatProgressBarModule, DataGrid],
   templateUrl: './categories.html',
   styleUrl: './categories.css',
 })
@@ -26,7 +27,62 @@ export class Categories {
   private readonly snackBar = inject(MatSnackBar);
   private readonly destroyRef = inject(DestroyRef);
 
-  protected readonly columns = ['name', 'description', 'status', 'actions'];
+  protected readonly rowId = (category: Category) => category.id;
+
+  protected readonly columnDefs: ColDef<Category>[] = [
+    {
+      colId: 'name',
+      headerName: 'Name',
+      field: 'name',
+      flex: 1.2,
+      minWidth: 160,
+      cellClass: 'strong',
+      // A hidden category reads as set aside, though its status badge says so in words too.
+      cellClassRules: { muted: (p) => !p.data?.isActive },
+    },
+    {
+      colId: 'description',
+      headerName: 'Description',
+      flex: 2.5,
+      minWidth: 220,
+      valueGetter: (p) => p.data?.description ?? '—',
+      cellClass: 'muted',
+    },
+    {
+      colId: 'status',
+      headerName: 'Status',
+      width: 130,
+      cellRenderer: BadgeCell,
+      cellRendererParams: {
+        label: (c: Category) => (c.isActive ? 'Shown' : 'Hidden'),
+        tone: (c: Category) => (c.isActive ? 'success' : 'neutral'),
+      },
+    },
+    {
+      colId: 'actions',
+      headerName: 'Actions',
+      width: 170,
+      cellRenderer: ActionsCell,
+      cellRendererParams: {
+        mode: 'buttons',
+        actions: (c: Category): RowAction<Category>[] => [
+          { label: 'Edit', ariaLabel: 'Edit ' + c.name, run: (row) => this.guarded(() => this.edit(row)) },
+          {
+            label: c.isActive ? 'Hide' : 'Show',
+            ariaLabel: (c.isActive ? 'Hide ' : 'Show ') + c.name,
+            run: (row) => this.guarded(() => this.toggleVisible(row)),
+          },
+        ],
+      },
+    },
+  ];
+
+  /** The table's buttons are not disabled while a change is in flight, so a second click is ignored here instead. */
+  private guarded(action: () => void): void {
+    if (!this.busy()) {
+      action();
+    }
+  }
 
   protected readonly state = signal<LoadState>('loading');
   protected readonly categories = signal<Category[]>([]);

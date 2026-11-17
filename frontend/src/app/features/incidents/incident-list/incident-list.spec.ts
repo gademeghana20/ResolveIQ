@@ -4,11 +4,10 @@ import { DebugElement } from '@angular/core';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { By } from '@angular/platform-browser';
 import { Router, provideRouter } from '@angular/router';
-import { MatPaginator } from '@angular/material/paginator';
-import { MatSort } from '@angular/material/sort';
 import { MatSelect } from '@angular/material/select';
 
 import { API_URL } from '../../../core/api-config';
+import { clickHeading, drawGrid, gridRows, sortOf } from '../../../shared/data-grid/grid-testing';
 import { IncidentSummary, PagedResult } from '../incident.models';
 import { IncidentList } from './incident-list';
 
@@ -42,7 +41,17 @@ describe('IncidentList', () => {
   const isIncidentsCall = (r: { url: string }) => r.url === `${API_URL}/incidents`;
   const text = () => (fixture.nativeElement as HTMLElement).textContent ?? '';
 
+  const root = () => fixture.nativeElement as HTMLElement;
+
   async function settle() {
+    fixture.detectChanges();
+    await fixture.whenStable();
+    fixture.detectChanges();
+    await drawGrid(() => fixture.detectChanges());
+  }
+
+  /** Like settle, but without waiting for the table to draw (a wait that long would outlast the search pause). */
+  async function settleQuickly() {
     fixture.detectChanges();
     await fixture.whenStable();
     fixture.detectChanges();
@@ -87,9 +96,8 @@ describe('IncidentList', () => {
   it('marks the Created column as the active sort, newest first', async () => {
     await load([incident()]);
 
-    const sort = fixture.debugElement.query(By.directive(MatSort)).injector.get(MatSort);
-    expect(sort.active).toBe('createdAt');
-    expect(sort.direction).toBe('desc');
+    expect(sortOf(root(), 'Created')).toBe('descending');
+    expect(sortOf(root(), 'Title')).toBe('none');
   });
 
   it('shows each incident as a row, with friendly labels', async () => {
@@ -98,14 +106,37 @@ describe('IncidentList', () => {
       incident({ id: 'id-2', incidentNumber: 'INC-000002', title: 'VPN down', priority: null, status: 'InProgress', assignedToUserId: 'u2', assignedToEmail: 'dana@example.com' }),
     ]);
 
-    const rows = fixture.nativeElement.querySelectorAll('tr[mat-row]');
-    expect(rows.length).toBe(2);
+    expect(gridRows(root()).length).toBe(2);
     expect(text()).toContain('INC-000001');
     expect(text()).toContain('Printer broken');
     expect(text()).toContain('Unassigned');
     expect(text()).toContain('dana@example.com'); // the assignee is named, not just "Assigned"
     expect(text()).toContain('In progress');
     expect(text()).toContain('Not set'); // no priority yet
+  });
+
+  it('keeps the SLA state and its due date together in one cell', async () => {
+    await load([incident({ slaState: 'OnTrack', slaDueAtUtc: '2026-11-17T18:11:00Z' })]);
+
+    const sla = root().querySelector('.ag-cell[col-id="sla"]')!;
+    expect(sla.querySelector('.badge-with-note')).not.toBeNull(); // badge and date share one nowrap line
+    expect(sla.textContent).toContain('On track');
+    expect(sla.textContent).toContain('due Nov 17');
+  });
+
+  it('has no New incident button of its own (the side menu has one)', async () => {
+    await load([incident()]);
+
+    expect(Array.from(root().querySelectorAll('a, button')).some((el) => el.textContent?.includes('New incident'))).toBe(false);
+  });
+
+  it('shows the page range and total in a footer of its own', async () => {
+    await load([incident()], 57);
+
+    const footer = root().querySelector('app-grid-footer')!;
+    expect(footer.textContent).toContain('1–20 of 57');
+    expect(footer.textContent).toContain('Page 1 of 3');
+    expect(root().querySelector('app-data-grid')!.contains(footer)).toBe(false); // separate from the table
   });
 
   it('offers an Unassigned view, and asks the API for it', async () => {
@@ -127,7 +158,8 @@ describe('IncidentList', () => {
     await load([incident({ id: 'abc' })]);
     const navigate = vi.spyOn(TestBed.inject(Router), 'navigate').mockResolvedValue(true);
 
-    (fixture.nativeElement as HTMLElement).querySelector<HTMLElement>('tr[mat-row]')!.click();
+    (fixture.nativeElement as HTMLElement).querySelector<HTMLElement>('.ag-cell[col-id="category"]')!.click();
+    await settle();
 
     expect(navigate).toHaveBeenCalledWith(['/incidents', 'abc']);
   });
@@ -153,7 +185,7 @@ describe('IncidentList', () => {
     await load([incident()], 60);
 
     // Move to page 3 first.
-    fixture.debugElement.query(By.directive(MatPaginator)).triggerEventHandler('page', { pageIndex: 2, pageSize: 20, length: 60 });
+    root().querySelector<HTMLButtonElement>('button[aria-label="Last page"]')!.click();
     await settle();
     const onPage3 = http.expectOne(isIncidentsCall);
     expect(onPage3.request.params.get('page')).toBe('3');
@@ -186,7 +218,7 @@ describe('IncidentList', () => {
   it('asks the API to sort when a column header is clicked', async () => {
     await load([incident()]);
 
-    fixture.debugElement.query(By.directive(MatSort)).triggerEventHandler('matSortChange', { active: 'priority', direction: 'asc' });
+    clickHeading(root(), 'Priority');
     await settle();
 
     const request = http.expectOne(isIncidentsCall);
@@ -203,7 +235,7 @@ describe('IncidentList', () => {
     input.dispatchEvent(new Event('input'));
     input.value = 'printer';
     input.dispatchEvent(new Event('input'));
-    await settle();
+    await settleQuickly();
     http.expectNone(isIncidentsCall); // nothing sent while still typing
 
     await new Promise((resolve) => setTimeout(resolve, 400));
@@ -216,7 +248,7 @@ describe('IncidentList', () => {
 
   it('shows an error with a retry when the API fails, and recovers', async () => {
     await load([incident()]);
-    fixture.debugElement.query(By.directive(MatSort)).triggerEventHandler('matSortChange', { active: 'title', direction: 'asc' });
+    clickHeading(root(), 'Title');
     await settle();
 
     http.expectOne(isIncidentsCall).flush({}, { status: 500, statusText: 'Server Error' });

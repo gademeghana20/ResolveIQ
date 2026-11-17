@@ -4,19 +4,18 @@ import { FormControl, ReactiveFormsModule } from '@angular/forms';
 import { MatButtonModule } from '@angular/material/button';
 import { MatDialog } from '@angular/material/dialog';
 import { MatFormFieldModule } from '@angular/material/form-field';
-import { MatIconModule } from '@angular/material/icon';
 import { MatInputModule } from '@angular/material/input';
-import { MatMenuModule } from '@angular/material/menu';
 import { MatProgressBarModule } from '@angular/material/progress-bar';
 import { MatSnackBar } from '@angular/material/snack-bar';
-import { MatTableModule } from '@angular/material/table';
+import { ColDef } from 'ag-grid-community';
 import { Observable } from 'rxjs';
 
 import { firstValidationMessage } from '../../../core/api-error';
 import { Role } from '../../../core/auth/auth.models';
 import { AuthService } from '../../../core/auth/auth.service';
 import { UserSummary } from '../../../core/user.models';
-import { Badge } from '../../../shared/badge/badge';
+import { ActionsCell, BadgeCell, RowAction } from '../../../shared/data-grid/cell-renderers';
+import { DataGrid } from '../../../shared/data-grid/data-grid';
 import { ConfirmDialog } from '../../../shared/confirm-dialog/confirm-dialog';
 import { AdminService } from '../admin.service';
 import { ChangeRoleDialog, ChangeRoleDialogData } from './change-role-dialog';
@@ -29,14 +28,11 @@ type LoadState = 'loading' | 'ready' | 'failed';
   selector: 'app-users',
   imports: [
     ReactiveFormsModule,
-    MatTableModule,
     MatButtonModule,
-    MatMenuModule,
-    MatIconModule,
     MatFormFieldModule,
     MatInputModule,
     MatProgressBarModule,
-    Badge,
+    DataGrid,
   ],
   templateUrl: './users.html',
   styleUrl: './users.css',
@@ -48,7 +44,48 @@ export class Users {
   private readonly snackBar = inject(MatSnackBar);
   private readonly destroyRef = inject(DestroyRef);
 
-  protected readonly columns = ['email', 'role', 'status', 'actions'];
+  protected readonly rowId = (user: UserSummary) => user.id;
+
+  protected readonly columnDefs: ColDef<UserSummary>[] = [
+    {
+      colId: 'email',
+      headerName: 'Email',
+      flex: 2,
+      minWidth: 240,
+      valueGetter: (p) => (p.data ? p.data.email + (this.isMe(p.data) ? ' (you)' : '') : ''),
+    },
+    { colId: 'role', headerName: 'Role', flex: 1, minWidth: 130, valueGetter: (p) => (p.data ? this.roleOf(p.data) : '') },
+    {
+      colId: 'status',
+      headerName: 'Status',
+      flex: 1,
+      minWidth: 120,
+      cellRenderer: BadgeCell,
+      cellRendererParams: {
+        label: (user: UserSummary) => (user.isActive ? 'Active' : 'Inactive'),
+        tone: (user: UserSummary) => (user.isActive ? 'success' : 'neutral'),
+      },
+    },
+    {
+      colId: 'actions',
+      headerName: 'Actions',
+      width: 110,
+      cellRenderer: ActionsCell,
+      cellRendererParams: {
+        mode: 'menu',
+        emptyHint: 'You cannot change or deactivate your own account here.',
+        menuLabel: (user: UserSummary) => `Actions for ${user.email}`,
+        actions: (user: UserSummary): RowAction<UserSummary>[] =>
+          this.isMe(user)
+            ? []
+            : [
+                { label: 'Change role…', run: (u) => this.changeRole(u) },
+                { label: 'Reset password…', run: (u) => this.resetPassword(u) },
+                { label: user.isActive ? 'Deactivate…' : 'Reactivate', run: (u) => this.toggleActive(u) },
+              ],
+      },
+    },
+  ];
 
   protected readonly state = signal<LoadState>('loading');
   protected readonly users = signal<UserSummary[]>([]);

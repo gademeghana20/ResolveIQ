@@ -1,0 +1,69 @@
+/* Not scoped to the component (see ViewEncapsulation.None): AG Grid draws its own cells. Everything starts with .data-grid. */
+
+app-data-grid {
+  display: block;
+}
+
+/* AG Grid pins its own colour scheme to "light". The app's colour variables switch between light and dark by following
+   the page's scheme, so the grid must follow it too, or it would stay white in dark mode. */
+.data-grid,
+.data-grid .ag-styled-root,
+.data-grid .ag-root-wrapper {
+  color-scheme: inherit;
+}
+
+.data-grid .clickable-row {
+  cursor: pointer;
+}
+
+/* Text styles that columns can ask for with cellClass */
+.data-grid .mono {
+  font-family: ui-monospace, Consolas, monospace;
+  white-space: nowrap;
+}
+
+.data-grid .muted {
+  color: var(--mat-sys-on-surface-variant);
+}
+
+.data-grid .strong {
+  font-weight: 600;
+}
+
+/* Numbers line up in a column: right-aligned, equal-width digits. */
+.data-grid .numeric {
+  font-variant-numeric: tabular-nums;
+}
+
+/* A link inside a cell, such as an incident's title */
+.data-grid .cell-link {
+  color: var(--mat-sys-primary);
+  font-weight: 500;
+  text-decoration: none;
+}
+
+.data-grid .cell-link:hover,
+.data-grid .cell-link:focus-visible {
+  text-decoration: underline;
+}
+
+/* A badge with something small beside it on the SAME line (for example "Breached  due Nov 17, 6:11 PM"). */
+.data-grid .badge-with-note {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  white-space: nowrap;
+}
+
+.data-grid .badge-note {
+  color: var(--mat-sys-on-surface-variant);
+  font: var(--mat-sys-label-small);
+}
+
+/* Buttons inside a cell (Edit, Hide…) sit on one line. */
+.data-grid .cell-actions {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  white-space: nowrap;
+}

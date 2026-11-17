@@ -1,0 +1,33 @@
+<nav class="footer" aria-label="Pages">
+  <div class="size">
+    <span id="rows-per-page">Rows per page</span>
+    <mat-select
+      class="size-select"
+      aria-labelledby="rows-per-page"
+      [value]="pageSize()"
+      (selectionChange)="resize($event.value)"
+    >
+      @for (option of pageSizeOptions(); track option) {
+        <mat-option [value]="option">{{ option }}</mat-option>
+      }
+    </mat-select>
+  </div>
+
+  <p class="range" aria-live="polite">{{ first() }}–{{ last() }} of {{ total() }}</p>
+
+  <div class="buttons">
+    <button mat-icon-button type="button" aria-label="First page" [disabled]="atStart()" (click)="go(1)">
+      <mat-icon>first_page</mat-icon>
+    </button>
+    <button mat-icon-button type="button" aria-label="Previous page" [disabled]="atStart()" (click)="go(page() - 1)">
+      <mat-icon>chevron_left</mat-icon>
+    </button>
+    <span class="page-of">Page {{ page() }} of {{ pageCount() }}</span>
+    <button mat-icon-button type="button" aria-label="Next page" [disabled]="atEnd()" (click)="go(page() + 1)">
+      <mat-icon>chevron_right</mat-icon>
+    </button>
+    <button mat-icon-button type="button" aria-label="Last page" [disabled]="atEnd()" (click)="go(pageCount())">
+      <mat-icon>last_page</mat-icon>
+    </button>
+  </div>
+</nav>

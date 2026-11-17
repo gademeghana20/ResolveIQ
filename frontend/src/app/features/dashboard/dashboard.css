@@ -74,34 +74,6 @@ mat-card-content {
   color: var(--mat-sys-on-surface-variant);
 }
 
-.workload {
-  width: 100%;
-  border-collapse: collapse;
-}
-
-.workload th,
-.workload td {
-  text-align: left;
-  padding: 8px 12px 8px 0;
-  border-bottom: 1px solid var(--viz-grid);
-}
-
-.workload thead th {
-  color: var(--mat-sys-on-surface-variant);
-  font: var(--mat-sys-label-large);
-}
-
-.workload tbody th {
-  font-weight: normal;
-  overflow-wrap: anywhere;
-}
-
-/* Numbers in a column line up: right-aligned with equal-width digits. */
-.workload .number {
-  text-align: right;
-  font-variant-numeric: tabular-nums;
-}
-
 @media (max-width: 600px) {
   .hero-tile {
     grid-column: auto;

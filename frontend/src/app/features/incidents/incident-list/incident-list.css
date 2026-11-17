@@ -34,50 +34,6 @@ h1 {
   margin-bottom: 12px;
 }
 
-.table-wrap {
-  overflow-x: auto;
-}
-
-table {
-  width: 100%;
-}
-
-.number {
-  font-family: ui-monospace, Consolas, monospace;
-  white-space: nowrap;
-}
-
-.title {
-  min-width: 200px;
-}
-
-.clickable {
-  cursor: pointer;
-}
-
-.clickable:hover {
-  background: var(--mat-sys-surface-container-low);
-}
-
-.title a {
-  color: var(--mat-sys-primary);
-  text-decoration: none;
-}
-
-.title a:hover {
-  text-decoration: underline;
-}
-
-.muted,
-.due {
-  color: var(--mat-sys-on-surface-variant);
-}
-
-.due {
-  font: var(--mat-sys-label-small);
-  margin-top: 2px;
-}
-
 .message {
   padding: 24px 16px;
   text-align: center;
