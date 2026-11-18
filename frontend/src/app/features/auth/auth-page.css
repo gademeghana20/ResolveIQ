@@ -73,6 +73,26 @@ form {
   color: var(--mat-sys-on-primary-container);
 }
 
+.demo {
+  margin: 20px 0 0;
+  padding-top: 16px;
+  border-top: 1px solid var(--mat-sys-outline-variant);
+  text-align: center;
+}
+
+.demo-title {
+  margin: 0 0 10px;
+  color: var(--mat-sys-on-surface-variant);
+  font: var(--mat-sys-body-medium);
+}
+
+.demo-buttons {
+  display: flex;
+  gap: 8px;
+  justify-content: center;
+  flex-wrap: wrap;
+}
+
 .switch {
   margin: 16px 0 0;
   text-align: center;

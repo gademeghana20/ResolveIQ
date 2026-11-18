@@ -9,6 +9,7 @@ import { MatInputModule } from '@angular/material/input';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { catchError, map, of } from 'rxjs';
 
+import { demoPassword } from '../../../core/api-config';
 import { AuthService } from '../../../core/auth/auth.service';
 import { ThemeToggle } from '../../../shared/theme-toggle/theme-toggle';
 import { AuthBrand } from '../auth-brand/auth-brand';
@@ -54,6 +55,20 @@ export class Login {
 
   protected readonly submitting = signal(false);
   protected readonly errorMessage = signal<string | null>(null);
+
+  // On a public demo site, one click signs in as a ready-made person. Hidden unless config.js holds the demo password.
+  private readonly sharedDemoPassword = demoPassword();
+  protected readonly showDemo = this.sharedDemoPassword !== '';
+  protected readonly demoAccounts = [
+    { label: 'Employee', email: 'employee@example.com' },
+    { label: 'Manager', email: 'manager@example.com' },
+    { label: 'Admin', email: 'admin@example.com' },
+  ];
+
+  protected signInAs(email: string): void {
+    this.form.setValue({ email, password: this.sharedDemoPassword });
+    this.submit();
+  }
 
   protected submit(): void {
     this.errorMessage.set(null);

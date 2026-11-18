@@ -21,6 +21,7 @@ namespace ResolveIQ.Infrastructure.Services
         private readonly IPasswordService _passwords;
         private readonly IAuditLog _audit;
         private readonly INotifier _notifier;
+        private readonly DemoSettings _demo;
 
         // Incidents still being worked on. A Resolved one is only waiting for its reporter, so it stays where it is.
         private static readonly IncidentStatus[] ActiveStatuses = { IncidentStatus.Open, IncidentStatus.InProgress, IncidentStatus.OnHold };
@@ -31,8 +32,10 @@ namespace ResolveIQ.Infrastructure.Services
             TimeProvider time,
             IPasswordService passwords,
             IAuditLog audit,
-            INotifier notifier)
+            INotifier notifier,
+            Microsoft.Extensions.Options.IOptions<DemoSettings> demo)
         {
+            _demo = demo.Value;
             _db = db;
             _userManager = userManager;
             _time = time;
@@ -102,6 +105,11 @@ namespace ResolveIQ.Infrastructure.Services
                 return new UserChangeResult(ChangeOutcome.NotFound);
             }
 
+            if (_demo.Protects(user.Email))
+            {
+                return Invalid("Id", DemoSettings.ProtectedMessage);
+            }
+
             var currentRoles = await _userManager.GetRolesAsync(user);
             if (!(currentRoles.Count == 1 && currentRoles[0] == newRole))
             {
@@ -127,6 +135,11 @@ namespace ResolveIQ.Infrastructure.Services
             if (target is null)
             {
                 return new UserChangeResult(ChangeOutcome.NotFound);
+            }
+
+            if (_demo.Protects(target.Email))
+            {
+                return Invalid("Id", DemoSettings.ProtectedMessage);
             }
 
             // Sending changes nothing about the account; the person has to follow the link to choose a password.
@@ -156,6 +169,11 @@ namespace ResolveIQ.Infrastructure.Services
             if (user is null)
             {
                 return new UserChangeResult(ChangeOutcome.NotFound);
+            }
+
+            if (!isActive && _demo.Protects(user.Email))
+            {
+                return Invalid("Id", DemoSettings.ProtectedMessage);
             }
 
             if (isActive && !string.IsNullOrEmpty(reassignToUserId))

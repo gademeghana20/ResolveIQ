@@ -2,6 +2,7 @@
 using System.Text;
 using System.Text.Json.Serialization;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.AspNetCore.HttpOverrides;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
@@ -44,6 +45,22 @@ builder.Services
 builder.Services.Configure<DataProtectionTokenProviderOptions>(options => options.TokenLifespan = TimeSpan.FromHours(1));
 
 builder.Services.Configure<AppSettings>(builder.Configuration.GetSection(AppSettings.SectionName));
+builder.Services.Configure<DemoSettings>(builder.Configuration.GetSection(DemoSettings.SectionName));
+
+// Behind a hosting service's proxy every request seems to come from the proxy's own address, which would make the
+// per-address rate limits shared by the whole world. With Hosting:TrustProxyHeaders=true the real address (and
+// http/https) is read from the proxy's X-Forwarded-* headers. Off by default: on a computer reachable directly,
+// those headers could be forged.
+var trustProxyHeaders = builder.Configuration.GetValue<bool>("Hosting:TrustProxyHeaders");
+if (trustProxyHeaders)
+{
+    builder.Services.Configure<ForwardedHeadersOptions>(options =>
+    {
+        options.ForwardedHeaders = ForwardedHeaders.XForwardedFor | ForwardedHeaders.XForwardedProto;
+        options.KnownIPNetworks.Clear();
+        options.KnownProxies.Clear();
+    });
+}
 // Development email: written to the log, not delivered. Swap this line for a real sender to send actual mail.
 builder.Services.AddScoped<IEmailSender, LoggingEmailSender>();
 builder.Services.AddScoped<IPasswordService, PasswordService>();
@@ -174,6 +191,15 @@ var app = builder.Build();
 // Seed the Admin, Manager and Employee roles if they do not exist yet.
 using (var scope = app.Services.CreateScope())
 {
+    // Hosts without a command line cannot run the database tool, so the app can bring its own database up to date
+    // when Database:MigrateOnStartup=true. Off by default, so a normal start never changes the database structure.
+    if (app.Configuration.GetValue<bool>("Database:MigrateOnStartup"))
+    {
+        var migrationDb = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
+        await migrationDb.Database.MigrateAsync();
+        app.Logger.LogInformation("The database structure is up to date.");
+    }
+
     var roleManager = scope.ServiceProvider.GetRequiredService<RoleManager<IdentityRole>>();
     await IdentitySeeder.SeedRolesAsync(roleManager);
 
@@ -214,8 +240,9 @@ using (var scope = app.Services.CreateScope())
             "There is no Admin account. Set Seed:AdminEmail and Seed:AdminPassword to create the first one.");
     }
 
-    // Demo users exist only in Development, with a password from user secrets.
-    if (app.Environment.IsDevelopment())
+    // Demo users exist in Development, or on a public demo site that asks for them with Seed:DemoUsers=true.
+    // Either way the password comes from settings (user secrets or an environment variable), never from code.
+    if (app.Environment.IsDevelopment() || app.Configuration.GetValue<bool>("Seed:DemoUsers"))
     {
         var demoPassword = app.Configuration["Seed:DemoPassword"];
         if (string.IsNullOrWhiteSpace(demoPassword))
@@ -241,6 +268,12 @@ using (var scope = app.Services.CreateScope())
 }
 
 // Configure the HTTP request pipeline.
+
+// Very first, so everything after it (rate limits, https) sees the visitor's real address and scheme.
+if (trustProxyHeaders)
+{
+    app.UseForwardedHeaders();
+}
 
 // First of all, so even errors and refusals carry the browser-safety headers.
 app.UseSecurityHeaders(allowInteractiveDocs: app.Environment.IsDevelopment());

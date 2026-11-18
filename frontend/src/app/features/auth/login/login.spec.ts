@@ -202,4 +202,43 @@ describe('Login', () => {
 
     expect(page().textContent).toContain('Cannot reach the server');
   });
+
+  describe('demo sign-in buttons', () => {
+    afterEach(() => {
+      delete window.resolveiqConfig;
+    });
+
+    it('are hidden on a normal site (no demo password in config.js)', async () => {
+      await setUp();
+
+      expect(page().textContent).not.toContain('Just looking?');
+      expect(Array.from(page().querySelectorAll('button')).some((b) => b.textContent!.includes('Manager'))).toBe(false);
+    });
+
+    it('show Employee, Manager and Admin when config.js has a demo password', async () => {
+      window.resolveiqConfig = { demoPassword: 'Demo#Pass-1' };
+      await setUp();
+
+      const labels = Array.from(page().querySelectorAll('.demo-buttons button')).map((b) => b.textContent!.trim());
+      expect(labels).toEqual(['Employee', 'Manager', 'Admin']);
+    });
+
+    it('sign in as that person with the shared password, in one click', async () => {
+      window.resolveiqConfig = { demoPassword: 'Demo#Pass-1' };
+      await setUp();
+
+      const manager = Array.from(page().querySelectorAll<HTMLButtonElement>('.demo-buttons button')).find((b) =>
+        b.textContent!.includes('Manager'),
+      )!;
+      manager.click();
+      await fixture.whenStable();
+
+      const request = http.expectOne(`${API_URL}/auth/login`);
+      expect(request.request.body).toEqual({ email: 'manager@example.com', password: 'Demo#Pass-1' });
+      request.flush({ token: fakeToken(), email: 'manager@example.com', roles: ['Manager'] });
+      await fixture.whenStable();
+
+      expect(navigate).toHaveBeenCalledWith('/incidents');
+    });
+  });
 });

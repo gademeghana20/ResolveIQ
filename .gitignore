@@ -489,3 +489,8 @@ dist/
 # Browser test output
 e2e/test-results/
 e2e/playwright-report/
+
+# Settings that belong only on a live server (connection string, signing key). Never commit these.
+appsettings.Production.json
+appsettings.*.local.json
+publish/

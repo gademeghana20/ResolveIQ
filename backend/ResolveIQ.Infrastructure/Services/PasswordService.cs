@@ -14,17 +14,20 @@ namespace ResolveIQ.Infrastructure.Services
         private readonly IEmailSender _email;
         private readonly AppSettings _settings;
         private readonly TimeProvider _time;
+        private readonly DemoSettings _demo;
 
         public PasswordService(
             UserManager<IdentityUser> userManager,
             IEmailSender email,
             IOptions<AppSettings> settings,
-            TimeProvider time)
+            TimeProvider time,
+            IOptions<DemoSettings> demo)
         {
             _userManager = userManager;
             _email = email;
             _settings = settings.Value;
             _time = time;
+            _demo = demo.Value;
         }
 
         public async Task<PasswordResult> ChangePasswordAsync(
@@ -39,6 +42,11 @@ namespace ResolveIQ.Infrastructure.Services
             if (user is null || await _userManager.IsLockedOutAsync(user))
             {
                 return wrong;
+            }
+
+            if (_demo.Protects(user.Email))
+            {
+                return PasswordResult.Fail("NewPassword", DemoSettings.ProtectedMessage);
             }
 
             // A wrong guess counts like a wrong guess at the login screen, so someone holding a stolen
@@ -59,7 +67,7 @@ namespace ResolveIQ.Infrastructure.Services
         public async Task SendForgottenLinkAsync(string email, CancellationToken cancellationToken = default)
         {
             var user = await _userManager.FindByEmailAsync(email);
-            if (user is not null && IsActive(user))
+            if (user is not null && IsActive(user) && !_demo.Protects(user.Email))
             {
                 await SendAsync(user, PasswordLinkKind.Forgotten, cancellationToken);
             }
@@ -84,7 +92,7 @@ namespace ResolveIQ.Infrastructure.Services
             CancellationToken cancellationToken = default)
         {
             var user = await _userManager.FindByEmailAsync(email);
-            if (user is null || !IsActive(user))
+            if (user is null || !IsActive(user) || _demo.Protects(user.Email))
             {
                 // The same answer as a bad token: nothing reveals whether the address has an account.
                 return PasswordResult.Fail("Token", BadLinkMessage);
