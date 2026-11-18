@@ -5,6 +5,6 @@
 //  demoPassword  Only for a public demo site: the shared password of the demo accounts. When it is filled in, the
 //                sign-in page shows "Employee / Manager / Admin" demo buttons. Leave it empty everywhere else.
 window.resolveiqConfig = {
-  apiBaseUrl: '',
-  demoPassword: '',
+  apiBaseUrl: 'https://resolveiq-api-demo.runasp.net',
+  demoPassword: 'Password@123',
 };
