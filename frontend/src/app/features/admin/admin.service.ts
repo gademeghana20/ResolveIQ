@@ -1,6 +1,7 @@
 import { HttpClient, HttpParams } from '@angular/common/http';
 import { Injectable, inject } from '@angular/core';
 import { Observable } from 'rxjs';
+import { AuditAction, AuditPage } from './audit/audit.models';
 
 import { API_URL } from '../../core/api-config';
 import { Role } from '../../core/auth/auth.models';
@@ -31,8 +32,21 @@ export class AdminService {
     return this.http.put<UserSummary>(`${API_URL}/users/${id}/role`, { role });
   }
 
-  setActive(id: string, isActive: boolean): Observable<UserSummary> {
-    return this.http.put<UserSummary>(`${API_URL}/users/${id}/active`, { isActive });
+  /** Deactivating can hand the person's unfinished incidents to someone else in the same step. */
+  setActive(id: string, isActive: boolean, reassignToUserId?: string): Observable<UserSummary> {
+    return this.http.put<UserSummary>(`${API_URL}/users/${id}/active`, { isActive, reassignToUserId });
+  }
+
+  /** One page of the audit trail, newest first. */
+  getAudit(query: { page: number; pageSize: number; action?: AuditAction; search?: string }): Observable<AuditPage> {
+    let params = new HttpParams().set('page', query.page).set('pageSize', query.pageSize);
+    if (query.action) {
+      params = params.set('action', query.action);
+    }
+    if (query.search?.trim()) {
+      params = params.set('search', query.search.trim());
+    }
+    return this.http.get<AuditPage>(`${API_URL}/audit`, { params });
   }
 
   /** Emails the person a link to choose a new password. The Admin never sees or types a password. */

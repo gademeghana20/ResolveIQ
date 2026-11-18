@@ -48,6 +48,11 @@ builder.Services.Configure<AppSettings>(builder.Configuration.GetSection(AppSett
 builder.Services.AddScoped<IEmailSender, LoggingEmailSender>();
 builder.Services.AddScoped<IPasswordService, PasswordService>();
 builder.Services.AddScoped<IRefreshTokenService, RefreshTokenService>();
+builder.Services.AddHttpContextAccessor();
+builder.Services.AddScoped<ICurrentActor, CurrentActor>();
+builder.Services.AddScoped<AuditLogService>();
+builder.Services.AddScoped<IAuditLog>(sp => sp.GetRequiredService<AuditLogService>());
+builder.Services.AddScoped<IAuditService>(sp => sp.GetRequiredService<AuditLogService>());
 builder.Services.AddScoped<INotifier, Notifier>();
 builder.Services.AddScoped<INotificationService, NotificationService>();
 

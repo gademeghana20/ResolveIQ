@@ -22,14 +22,17 @@ namespace ResolveIQ.API.Controllers
         private readonly IPasswordService _passwords;
         private readonly IRefreshTokenService _refreshTokens;
         private readonly RegistrationSettings _registration;
+        private readonly IAuditLog _audit;
 
         public AuthController(
             UserManager<IdentityUser> userManager,
             IJwtTokenService tokenService,
             IPasswordService passwords,
             IRefreshTokenService refreshTokens,
-            IOptions<RegistrationSettings> registration)
+            IOptions<RegistrationSettings> registration,
+            IAuditLog audit)
         {
+            _audit = audit;
             _userManager = userManager;
             _tokenService = tokenService;
             _passwords = passwords;
@@ -92,6 +95,11 @@ namespace ResolveIQ.API.Controllers
 
             // Everyone who registers is an Employee. The client can never choose a role.
             await _userManager.AddToRoleAsync(user, RoleNames.Employee);
+
+            // The person is the one who did it (nobody is signed in yet).
+            await _audit.RecordAsync(
+                AuditActions.UserRegistered, AuditActions.TargetUser, user.Id, user.Email, "Created their own account",
+                actorUserId: user.Id);
 
             return Ok(await BuildResponseAsync(user));
         }

@@ -215,6 +215,42 @@ describe('Users', () => {
       expect(rowFor('dana@example.com').textContent).toContain('Inactive');
     });
 
+    it('warns about unfinished incidents, and hands them to the chosen person when deactivating', async () => {
+      const busy = { ...dana, activeAssignedCount: 2 };
+      await open([busy, me, { id: 'u-sam', email: 'sam@example.com', roles: ['Employee'], isActive: true }]);
+      const open$ = dialogReturns({ reassignToUserId: 'u-sam' });
+
+      await chooseFromMenu('dana@example.com', 'Deactivate');
+
+      const data = open$.mock.calls[0][1]!.data as { count: number; candidates: { id: string }[] };
+      expect(data.count).toBe(2);
+      expect(data.candidates.map((c) => c.id)).toEqual(['user-1', 'u-sam']); // not the person themselves
+      const request = http.expectOne(`${API_URL}/users/u-dana/active`);
+      expect(request.request.body).toEqual({ isActive: false, reassignToUserId: 'u-sam' });
+      request.flush({ ...busy, isActive: false, activeAssignedCount: 0 });
+      await settle();
+
+      expect(snack).toHaveBeenCalledWith(expect.stringContaining('handed to sam@example.com'), 'Dismiss', expect.anything());
+    });
+
+    it('deactivates without handing over when that is the choice', async () => {
+      const busy = { ...dana, activeAssignedCount: 1 };
+      await open([busy, me]);
+      dialogReturns({ reassignToUserId: null });
+
+      await chooseFromMenu('dana@example.com', 'Deactivate');
+
+      const request = http.expectOne(`${API_URL}/users/u-dana/active`);
+      expect(request.request.body).toEqual({ isActive: false });
+      request.flush({ ...busy, isActive: false });
+    });
+
+    it('shows how many unfinished incidents each person has', async () => {
+      await open([{ ...dana, activeAssignedCount: 4 }, me]);
+
+      expect(rowFor('dana@example.com').textContent).toContain('4');
+    });
+
     it('does nothing if the question is answered "cancel"', async () => {
       await open();
       dialogReturns(false);

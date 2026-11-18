@@ -66,6 +66,10 @@ export const routes: Routes = [
             path: 'sla',
             loadComponent: () => import('./features/admin/sla/sla-policies').then((m) => m.SlaPolicies),
           },
+          {
+            path: 'audit',
+            loadComponent: () => import('./features/admin/audit/audit-log').then((m) => m.AuditLog),
+          },
           { path: '', pathMatch: 'full', redirectTo: 'users' },
         ],
       },

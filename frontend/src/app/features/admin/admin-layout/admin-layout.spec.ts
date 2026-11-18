@@ -11,7 +11,7 @@ describe('AdminLayout', () => {
     await fixture.whenStable();
 
     const links = Array.from((fixture.nativeElement as HTMLElement).querySelectorAll('nav a'));
-    expect(links.map((a) => a.textContent!.trim())).toEqual(['Users', 'Categories', 'SLA policies']);
+    expect(links.map((a) => a.textContent!.trim())).toEqual(['Users', 'Categories', 'SLA policies', 'Audit log']);
     expect(links[0].getAttribute('href')).toContain('users');
     expect(links[1].getAttribute('href')).toContain('categories');
     expect(links[2].getAttribute('href')).toContain('sla');

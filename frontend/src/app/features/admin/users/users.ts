@@ -20,6 +20,7 @@ import { ConfirmDialog } from '../../../shared/confirm-dialog/confirm-dialog';
 import { AdminService } from '../admin.service';
 import { ChangeRoleDialog, ChangeRoleDialogData } from './change-role-dialog';
 import { CreateUserDialog } from './create-user-dialog';
+import { DeactivateDialog, DeactivateDialogData, DeactivateResult } from './deactivate-dialog';
 
 type LoadState = 'loading' | 'ready' | 'failed';
 
@@ -63,6 +64,12 @@ export class Users {
         label: (user: UserSummary) => (user.isActive ? 'Active' : 'Inactive'),
         tone: (user: UserSummary) => (user.isActive ? 'success' : 'neutral'),
       },
+    },
+    {
+      colId: 'active',
+      headerName: 'Active incidents',
+      valueGetter: (p) => p.data?.activeAssignedCount ?? 0,
+      tooltipValueGetter: () => 'Unfinished incidents assigned to this person',
     },
     {
       colId: 'actions',
@@ -180,6 +187,11 @@ export class Users {
       return;
     }
 
+    if ((user.activeAssignedCount ?? 0) > 0) {
+      this.deactivateWithIncidents(user);
+      return;
+    }
+
     this.dialog
       .open(ConfirmDialog, {
         data: {
@@ -194,6 +206,32 @@ export class Users {
         if (confirmed) {
           this.run(this.admin.setActive(user.id, false), `${user.email} was deactivated.`);
         }
+      });
+  }
+
+  /** The person still has unfinished incidents: warn, and offer to hand them to someone else. */
+  private deactivateWithIncidents(user: UserSummary): void {
+    const count = user.activeAssignedCount ?? 0;
+    const data: DeactivateDialogData = {
+      email: user.email ?? 'this person',
+      count,
+      candidates: this.users()
+        .filter((u) => u.isActive && u.id !== user.id && u.email)
+        .map((u) => ({ id: u.id, email: u.email! }))
+        .sort((a, b) => a.email.localeCompare(b.email, undefined, { sensitivity: 'base' })),
+    };
+
+    this.dialog
+      .open<DeactivateDialog, DeactivateDialogData, DeactivateResult>(DeactivateDialog, { data })
+      .afterClosed()
+      .subscribe((result) => {
+        if (!result) {
+          return;
+        }
+        const moved = result.reassignToUserId
+          ? ` Their ${count === 1 ? 'incident was' : count + ' incidents were'} handed to ${data.candidates.find((c) => c.id === result.reassignToUserId)?.email}.`
+          : '';
+        this.run(this.admin.setActive(user.id, false, result.reassignToUserId ?? undefined), `${user.email} was deactivated.${moved}`);
       });
   }
 

@@ -11,6 +11,7 @@ import { RouterLink, RouterLinkActive, RouterOutlet } from '@angular/router';
       <a mat-button routerLink="users" routerLinkActive="active" ariaCurrentWhenActive="page">Users</a>
       <a mat-button routerLink="categories" routerLinkActive="active" ariaCurrentWhenActive="page">Categories</a>
       <a mat-button routerLink="sla" routerLinkActive="active" ariaCurrentWhenActive="page">SLA policies</a>
+      <a mat-button routerLink="audit" routerLinkActive="active" ariaCurrentWhenActive="page">Audit log</a>
     </nav>
 
     <router-outlet />

@@ -109,7 +109,7 @@ namespace ResolveIQ.API.Controllers
             CancellationToken cancellationToken)
         {
             var actingUserId = User.FindFirstValue("sub") ?? string.Empty;
-            var result = await _userService.SetActiveAsync(id, request.IsActive, actingUserId, cancellationToken);
+            var result = await _userService.SetActiveAsync(id, request.IsActive, actingUserId, request.ReassignToUserId, cancellationToken);
 
             return result.Outcome == ChangeOutcome.Success ? Ok(result.User) : ToProblem(result);
         }

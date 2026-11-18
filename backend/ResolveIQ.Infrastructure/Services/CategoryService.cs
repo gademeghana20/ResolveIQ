@@ -3,6 +3,7 @@ using ResolveIQ.Application.Abstractions;
 using ResolveIQ.Application.DTOs.Categories;
 using ResolveIQ.Application.DTOs.Common;
 using ResolveIQ.Application.DTOs.Incidents;
+using ResolveIQ.Domain.Constants;
 using ResolveIQ.Domain.Entities;
 using ResolveIQ.Infrastructure.Data;
 
@@ -13,10 +14,12 @@ namespace ResolveIQ.Infrastructure.Services
         private const string DuplicateMessage = "A category with this name already exists.";
 
         private readonly ApplicationDbContext _db;
+        private readonly IAuditLog _audit;
 
-        public CategoryService(ApplicationDbContext db)
+        public CategoryService(ApplicationDbContext db, IAuditLog audit)
         {
             _db = db;
+            _audit = audit;
         }
 
         public async Task<IReadOnlyList<CategoryResponse>> GetCategoriesAsync(
@@ -55,6 +58,9 @@ namespace ResolveIQ.Infrastructure.Services
 
             _db.Categories.Add(category);
             await _db.SaveChangesAsync(cancellationToken);
+            await _audit.RecordAsync(
+                AuditActions.CategoryCreated, AuditActions.TargetCategory, category.Id.ToString(), category.Name,
+                cancellationToken: cancellationToken);
 
             return new CategoryChangeResult(ChangeOutcome.Success, ToResponse(category));
         }
@@ -81,11 +87,38 @@ namespace ResolveIQ.Infrastructure.Services
                 return Invalid("Name", DuplicateMessage);
             }
 
+            var oldName = category.Name;
+            var oldDescription = category.Description;
+            var oldActive = category.IsActive;
+
             category.Name = name;
             category.Description = string.IsNullOrWhiteSpace(request.Description) ? null : request.Description.Trim();
             category.IsActive = request.IsActive;
 
             await _db.SaveChangesAsync(cancellationToken);
+
+            var changes = new List<string>();
+            if (oldName != category.Name)
+            {
+                changes.Add($"Name: {oldName} → {category.Name}");
+            }
+
+            if (oldDescription != category.Description)
+            {
+                changes.Add("Description changed");
+            }
+
+            if (oldActive != category.IsActive)
+            {
+                changes.Add(category.IsActive ? "Shown again" : "Hidden");
+            }
+
+            if (changes.Count > 0)
+            {
+                await _audit.RecordAsync(
+                    AuditActions.CategoryUpdated, AuditActions.TargetCategory, category.Id.ToString(), category.Name,
+                    string.Join("; ", changes), cancellationToken: cancellationToken);
+            }
 
             return new CategoryChangeResult(ChangeOutcome.Success, ToResponse(category));
         }

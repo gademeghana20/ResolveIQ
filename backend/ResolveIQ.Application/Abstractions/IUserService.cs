@@ -37,12 +37,14 @@ namespace ResolveIQ.Application.Abstractions
 
         /// <summary>
         /// Deactivates or reactivates a user. Either way, their current login tokens stop working at once.
-        /// An Admin cannot deactivate themselves.
+        /// An Admin cannot deactivate themselves. When deactivating, the person's unfinished incidents can be
+        /// handed to <paramref name="reassignToUserId"/> in the same step.
         /// </summary>
         Task<UserChangeResult> SetActiveAsync(
             string id,
             bool isActive,
             string actingUserId,
+            string? reassignToUserId = null,
             CancellationToken cancellationToken = default);
     }
 }

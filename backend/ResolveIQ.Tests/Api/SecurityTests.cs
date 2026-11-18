@@ -35,6 +35,8 @@ namespace ResolveIQ.Tests.Api
             ("GET", $"/api/incidents/{SomeId}/history", Everyone),
             ("GET", $"/api/incidents/{SomeId}/comments", Everyone),
             ("POST", $"/api/incidents/{SomeId}/comments", Everyone),
+            ("GET", "/api/incidents/export", Everyone),
+            ("GET", "/api/audit", AdminsOnly),
             ("GET", "/api/notifications", Everyone),
             ("PUT", $"/api/notifications/{SomeId}/read", Everyone),
             ("PUT", "/api/notifications/read-all", Everyone),
