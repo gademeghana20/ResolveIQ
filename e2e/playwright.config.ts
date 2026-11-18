@@ -40,6 +40,8 @@ export default defineConfig({
         ASPNETCORE_ENVIRONMENT: 'Development',
         ASPNETCORE_URLS: 'http://localhost:5293',
         ConnectionStrings__DefaultConnection: connection,
+        // A throwaway signing key for this test run only (the real one lives in user secrets, never in code).
+        Jwt__Key: 'e2e-only-signing-key-not-a-secret-0123456789abcdef',
         Seed__DemoPassword: DEMO_PASSWORD,
         RateLimiting__AuthPermitLimit: '1000',
         RateLimiting__GeneralPermitLimit: '10000',
