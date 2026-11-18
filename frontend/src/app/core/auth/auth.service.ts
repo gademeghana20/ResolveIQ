@@ -3,7 +3,7 @@ import { Injectable, computed, inject, signal } from '@angular/core';
 import { Observable, catchError, finalize, of, shareReplay, tap, throwError } from 'rxjs';
 
 import { API_URL } from '../api-config';
-import { AuthResponse, LoginRequest, RegisterRequest, Role } from './auth.models';
+import { AuthResponse, LoginRequest, RegisterRequest, RegistrationStatus, Role } from './auth.models';
 
 const STORAGE_KEY = 'resolveiq.session';
 
@@ -40,6 +40,11 @@ export class AuthService {
     return this.http
       .post<AuthResponse>(`${API_URL}/auth/login`, request)
       .pipe(tap((response) => this.startSession(response)));
+  }
+
+  /** Whether people may create their own account here (an Admin can switch it off or limit it to some email domains). */
+  registration(): Observable<RegistrationStatus> {
+    return this.http.get<RegistrationStatus>(`${API_URL}/auth/registration`);
   }
 
   register(request: RegisterRequest): Observable<AuthResponse> {

@@ -151,7 +151,7 @@ describe('authInterceptor: renewing an expired login quietly', () => {
   });
 
   describe('which auth calls carry the token', () => {
-    it.each(['login', 'register', 'forgot-password', 'reset-password', 'refresh-token', 'logout'])(
+    it.each(['login', 'register', 'registration', 'forgot-password', 'reset-password', 'refresh-token', 'logout'])(
       '%s is sent without one, and a 401 from it never signs anyone out',
       (name) => {
         setUp();

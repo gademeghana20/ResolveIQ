@@ -54,6 +54,12 @@ namespace ResolveIQ.Tests.Api
             }
         }
 
+        /// <summary>
+        /// Extra settings for a test that needs the app set up differently (registration closed, a low rate limit...).
+        /// A subclass overrides this; every other test gets the normal app.
+        /// </summary>
+        protected virtual IReadOnlyDictionary<string, string> ExtraSettings => new Dictionary<string, string>();
+
         protected override void ConfigureWebHost(IWebHostBuilder builder)
         {
             builder.UseEnvironment("Testing");
@@ -61,6 +67,17 @@ namespace ResolveIQ.Tests.Api
             // UseSetting is applied early enough for Program.cs to see these values at startup.
             builder.UseSetting("ConnectionStrings:DefaultConnection", ConnectionString);
             builder.UseSetting("Jwt:Key", JwtKey);
+
+            // Tests make thousands of calls from "one address" in a few minutes, so the limits are lifted, and the
+            // background housekeeping is off (tests run each job directly instead). Tests of those features override these.
+            builder.UseSetting("RateLimiting:AuthPermitLimit", "1000000");
+            builder.UseSetting("RateLimiting:GeneralPermitLimit", "1000000");
+            builder.UseSetting("Maintenance:Enabled", "false");
+
+            foreach (var (key, value) in ExtraSettings)
+            {
+                builder.UseSetting(key, value);
+            }
 
             if (SeedBootstrapAdmin)
             {

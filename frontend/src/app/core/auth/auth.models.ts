@@ -21,3 +21,9 @@ export interface AuthResponse {
   email: string;
   roles: Role[];
 }
+
+/** What /api/auth/registration says: whether people can create their own account, and for which email domains. */
+export interface RegistrationStatus {
+  enabled: boolean;
+  allowedEmailDomains: string[];
+}

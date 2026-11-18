@@ -8,7 +8,7 @@ import { AuthService } from './auth.service';
 
 // The auth calls that happen before anyone has a login, or that carry their own proof (the refresh token).
 // They never get the token, and a 401 from them must never sign anyone out ("wrong password" is just that).
-const OPEN_AUTH_CALLS = ['login', 'register', 'forgot-password', 'reset-password', 'refresh-token', 'logout'].map(
+const OPEN_AUTH_CALLS = ['login', 'register', 'registration', 'forgot-password', 'reset-password', 'refresh-token', 'logout'].map(
   (name) => `${API_URL}/auth/${name}`,
 );
 

@@ -73,6 +73,16 @@ describe('ForgotPassword', () => {
     http.expectOne(`${API_URL}/auth/forgot-password`).flush({ message: 'ok' });
   });
 
+  it('says to wait a minute when requests come too fast, and keeps the form', async () => {
+    await submit('dana@example.com');
+
+    http.expectOne(`${API_URL}/auth/forgot-password`).flush({}, { status: 429, statusText: 'Too Many Requests' });
+    await settle();
+
+    expect(page().textContent).toContain('Too many requests. Please wait a minute');
+    expect(page().querySelector('form')).not.toBeNull();
+  });
+
   it('says so when the server cannot be reached', async () => {
     await submit('dana@example.com');
 

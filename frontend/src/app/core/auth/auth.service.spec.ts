@@ -97,6 +97,18 @@ describe('AuthService', () => {
     expect(fresh).not.toBe(old);
   });
 
+  it('registration() asks the server whether people can sign themselves up', () => {
+    const auth = createService();
+    let answer: unknown;
+
+    auth.registration().subscribe((status) => (answer = status));
+    const request = http.expectOne(`${API_URL}/auth/registration`);
+    expect(request.request.method).toBe('GET');
+    request.flush({ enabled: false, allowedEmailDomains: ['corp.test'] });
+
+    expect(answer).toEqual({ enabled: false, allowedEmailDomains: ['corp.test'] });
+  });
+
   it('forgotPassword and resetPassword call the API without signing anyone in', () => {
     const auth = createService();
 

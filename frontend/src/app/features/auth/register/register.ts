@@ -1,5 +1,6 @@
 import { HttpErrorResponse } from '@angular/common/http';
 import { Component, inject, signal } from '@angular/core';
+import { toSignal } from '@angular/core/rxjs-interop';
 import { NonNullableFormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { MatButtonModule } from '@angular/material/button';
 import { MatCardModule } from '@angular/material/card';
@@ -7,8 +8,10 @@ import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatInputModule } from '@angular/material/input';
 import { MatSnackBar } from '@angular/material/snack-bar';
 import { Router, RouterLink } from '@angular/router';
+import { catchError, of } from 'rxjs';
 
 import { allFieldMessages } from '../../../core/api-error';
+import { RegistrationStatus } from '../../../core/auth/auth.models';
 import { AuthService } from '../../../core/auth/auth.service';
 import { PASSWORD_HINT } from '../../../core/password-rules';
 import { emailWithDomain, fieldsMatch, mismatchErrorMatcher } from '../../../core/validators';
@@ -48,6 +51,12 @@ export class Register {
       confirm: ['', Validators.required],
     },
     { validators: fieldsMatch('password', 'confirm') }, // a typing slip must not lock the person out
+  );
+
+  // Until the server answers (or if it cannot be asked), assume registration is open: the API checks again on submit.
+  protected readonly registration = toSignal(
+    this.auth.registration().pipe(catchError(() => of<RegistrationStatus>({ enabled: true, allowedEmailDomains: [] }))),
+    { initialValue: { enabled: true, allowedEmailDomains: [] } as RegistrationStatus },
   );
 
   protected readonly submitting = signal(false);
@@ -106,7 +115,11 @@ export class Register {
     this.errorMessage.set(
       error instanceof HttpErrorResponse && error.status === 0
         ? 'Cannot reach the server. Your account was not created.'
-        : 'Your account could not be created. Please try again.',
+        : error instanceof HttpErrorResponse && error.status === 403
+          ? 'Registration is closed. Ask an administrator to add you.'
+          : error instanceof HttpErrorResponse && error.status === 429
+            ? 'Too many attempts. Please wait a minute and try again.'
+            : 'Your account could not be created. Please try again.',
     );
   }
 

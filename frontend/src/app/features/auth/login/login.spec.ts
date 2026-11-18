@@ -78,6 +78,44 @@ describe('Login', () => {
     expect(link.getAttribute('href')).toBe('/forgot-password');
   });
 
+  it('keeps the Create an account link when the server says registration is open', async () => {
+    await setUp();
+    http.expectOne(`${API_URL}/auth/registration`).flush({ enabled: true, allowedEmailDomains: [] });
+    await fixture.whenStable();
+    fixture.detectChanges();
+
+    expect(Array.from(page().querySelectorAll('a')).some((a) => a.textContent!.includes('Create an account'))).toBe(true);
+  });
+
+  it('hides the Create an account link when registration is closed', async () => {
+    await setUp();
+    http.expectOne(`${API_URL}/auth/registration`).flush({ enabled: false, allowedEmailDomains: [] });
+    await fixture.whenStable();
+    fixture.detectChanges();
+
+    expect(Array.from(page().querySelectorAll('a')).some((a) => a.textContent!.includes('Create an account'))).toBe(false);
+  });
+
+  it('keeps the link if the server cannot be asked, rather than hiding the way to sign up', async () => {
+    await setUp();
+    http.expectOne(`${API_URL}/auth/registration`).error(new ProgressEvent('error'));
+    await fixture.whenStable();
+    fixture.detectChanges();
+
+    expect(Array.from(page().querySelectorAll('a')).some((a) => a.textContent!.includes('Create an account'))).toBe(true);
+  });
+
+  it('says to wait a minute when sign-in is being tried too fast', async () => {
+    await setUp();
+
+    await fillAndSubmit('manager@example.com', 'secret');
+    http.expectOne(`${API_URL}/auth/login`).flush({}, { status: 429, statusText: 'Too Many Requests' });
+    await fixture.whenStable();
+    fixture.detectChanges();
+
+    expect(page().textContent).toContain('Too many attempts. Please wait a minute');
+  });
+
   it('does not call the API when the form is empty, and says what is missing', async () => {
     await setUp();
 

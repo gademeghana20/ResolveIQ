@@ -62,7 +62,9 @@ export class ForgotPassword {
         this.errorMessage.set(
           error instanceof HttpErrorResponse && error.status === 0
             ? 'Cannot reach the server. Please check that the API is running.'
-            : 'Something went wrong. Please try again.',
+            : error instanceof HttpErrorResponse && error.status === 429
+              ? 'Too many requests. Please wait a minute and try again.'
+              : 'Something went wrong. Please try again.',
         );
       },
     });

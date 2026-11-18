@@ -38,7 +38,9 @@
           </button>
         </form>
 
-        <p class="switch">New here? <a routerLink="/register">Create an account</a></p>
+        @if (registrationOpen()) {
+          <p class="switch">New here? <a routerLink="/register">Create an account</a></p>
+        }
       </mat-card-content>
     </mat-card>
 

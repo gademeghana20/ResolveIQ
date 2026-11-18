@@ -63,6 +63,79 @@ describe('Register', () => {
     await settle();
   });
 
+  describe('who may register', () => {
+    const answer = async (status: { enabled: boolean; allowedEmailDomains: string[] }) => {
+      http.expectOne(`${API_URL}/auth/registration`).flush(status);
+      await settle();
+    };
+
+    it('shows the form when registration is open to any domain, with no domain note', async () => {
+      await answer({ enabled: true, allowedEmailDomains: [] });
+
+      expect(page().querySelector('form')).not.toBeNull();
+      expect(text()).not.toContain('limited to these email domains');
+    });
+
+    it('replaces the form with a clear message when registration is closed', async () => {
+      await answer({ enabled: false, allowedEmailDomains: [] });
+
+      expect(page().querySelector('form')).toBeNull();
+      expect(text()).toContain('Registration is closed');
+      const back = Array.from(page().querySelectorAll('a')).find((a) => a.textContent!.includes('Back to sign in'))!;
+      expect(back.getAttribute('href')).toBe('/login');
+    });
+
+    it('tells people which email domains are allowed, when it is limited', async () => {
+      await answer({ enabled: true, allowedEmailDomains: ['corp.test', 'partner.test'] });
+
+      expect(text()).toContain('limited to these email domains: corp.test, partner.test');
+      expect(page().querySelector('form')).not.toBeNull();
+    });
+
+    it('still shows the form if the server could not be asked (the API checks again on submit)', async () => {
+      http.expectOne(`${API_URL}/auth/registration`).error(new ProgressEvent('error'));
+      await settle();
+
+      expect(page().querySelector('form')).not.toBeNull();
+    });
+
+    it('shows the "closed" answer if the server refuses at submit time', async () => {
+      await answer({ enabled: true, allowedEmailDomains: [] });
+      await fill('dana@example.com', GOOD_PASSWORD);
+
+      await submit();
+      http.expectOne(URL).flush({ title: 'Registration is closed' }, { status: 403, statusText: 'Forbidden' });
+      await settle();
+
+      expect(text()).toContain('Registration is closed. Ask an administrator to add you.');
+    });
+
+    it('puts a "not an allowed domain" complaint beside the email box', async () => {
+      await answer({ enabled: true, allowedEmailDomains: ['corp.test'] });
+      await fill('dana@other.test', GOOD_PASSWORD);
+
+      await submit();
+      http.expectOne(URL).flush(
+        { errors: { Email: ['Registration is limited to these email domains: corp.test.'] } },
+        { status: 400, statusText: 'Bad Request' },
+      );
+      await settle();
+
+      expect(text()).toContain('Registration is limited to these email domains: corp.test.');
+    });
+
+    it('says to wait a minute when sign-ups come too fast', async () => {
+      await answer({ enabled: true, allowedEmailDomains: [] });
+      await fill('dana@example.com', GOOD_PASSWORD);
+
+      await submit();
+      http.expectOne(URL).flush({}, { status: 429, statusText: 'Too Many Requests' });
+      await settle();
+
+      expect(text()).toContain('Too many attempts. Please wait a minute');
+    });
+  });
+
   describe('the page', () => {
     it('asks for an email, a password and the password again', () => {
       expect(page().querySelectorAll('input').length).toBe(3);

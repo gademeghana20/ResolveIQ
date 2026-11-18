@@ -7,7 +7,12 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi;
 using ResolveIQ.API.Authentication;
+using Microsoft.AspNetCore.Diagnostics.HealthChecks;
 using ResolveIQ.API.ErrorHandling;
+using ResolveIQ.API.Health;
+using ResolveIQ.API.Maintenance;
+using ResolveIQ.API.Registration;
+using ResolveIQ.API.Security;
 using ResolveIQ.Application.Abstractions;
 using ResolveIQ.Domain.Constants;
 using ResolveIQ.Infrastructure.Authentication;
@@ -43,6 +48,19 @@ builder.Services.Configure<AppSettings>(builder.Configuration.GetSection(AppSett
 builder.Services.AddScoped<IEmailSender, LoggingEmailSender>();
 builder.Services.AddScoped<IPasswordService, PasswordService>();
 builder.Services.AddScoped<IRefreshTokenService, RefreshTokenService>();
+
+// Who may register, how fast one address may call the sign-in endpoints, and the background housekeeping.
+builder.Services.Configure<RegistrationSettings>(builder.Configuration.GetSection(RegistrationSettings.SectionName));
+builder.Services.Configure<MaintenanceSettings>(builder.Configuration.GetSection(MaintenanceSettings.SectionName));
+builder.Services.AddAppRateLimiting(builder.Configuration);
+builder.Services.AddScoped<MaintenanceJobs>();
+builder.Services.AddHostedService<MaintenanceService>();
+
+// "Is the app up, and can it reach its database?" for hosting services to ask.
+builder.Services.AddHealthChecks().AddCheck<DatabaseHealthCheck>("database");
+
+// Do not announce which web server software this is.
+builder.WebHost.ConfigureKestrel(options => options.AddServerHeader = false);
 
 // Configure JWT authentication: how the API validates incoming tokens.
 var jwtKey = builder.Configuration["Jwt:Key"]
@@ -206,7 +224,10 @@ using (var scope = app.Services.CreateScope())
 
 // Configure the HTTP request pipeline.
 
-// First, so it can catch a crash from anything that runs after it.
+// First of all, so even errors and refusals carry the browser-safety headers.
+app.UseSecurityHeaders(allowInteractiveDocs: app.Environment.IsDevelopment());
+
+// Next, so it can catch a crash from anything that runs after it.
 app.UseGlobalErrorHandling();
 
 if (app.Environment.IsDevelopment())
@@ -225,6 +246,14 @@ if (app.Environment.IsDevelopment())
 // Before authentication: even a 401 reply must carry the CORS headers so Angular can read it.
 app.UseCors();
 
+// Tell browsers to use HTTPS only (not in development, where http://localhost is normal).
+if (!app.Environment.IsDevelopment() && !app.Environment.IsEnvironment("Testing"))
+{
+    app.UseHsts();
+}
+
+app.UseRateLimiter();
+
 app.UseHttpsRedirection();
 
 app.UseAuthentication();
@@ -232,6 +261,12 @@ app.UseAuthentication();
 app.UseAuthorization();
 
 app.MapControllers();
+
+// Open to anyone and never rate limited, and it answers only Healthy or Unhealthy.
+app.MapHealthChecks("/health", new HealthCheckOptions
+{
+    ResponseWriter = (context, report) => context.Response.WriteAsJsonAsync(new { status = report.Status.ToString() })
+}).DisableRateLimiting();
 
 app.Run();
 

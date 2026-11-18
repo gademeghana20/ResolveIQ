@@ -1,11 +1,13 @@
 import { HttpErrorResponse } from '@angular/common/http';
 import { Component, inject, signal } from '@angular/core';
+import { toSignal } from '@angular/core/rxjs-interop';
 import { NonNullableFormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { MatButtonModule } from '@angular/material/button';
 import { MatCardModule } from '@angular/material/card';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatInputModule } from '@angular/material/input';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
+import { catchError, map, of } from 'rxjs';
 
 import { AuthService } from '../../../core/auth/auth.service';
 import { ThemeToggle } from '../../../shared/theme-toggle/theme-toggle';
@@ -37,6 +39,15 @@ export class Login {
     email: ['', [Validators.required, Validators.email]],
     password: ['', [Validators.required]],
   });
+
+  // The "Create an account" link is shown unless the server says registration is closed (or cannot be asked).
+  protected readonly registrationOpen = toSignal(
+    this.auth.registration().pipe(
+      map((status) => status.enabled),
+      catchError(() => of(true)),
+    ),
+    { initialValue: true },
+  );
 
   protected readonly submitting = signal(false);
   protected readonly errorMessage = signal<string | null>(null);
@@ -74,6 +85,9 @@ export class Login {
       }
       if (error.status === 401) {
         return 'Invalid email or password.';
+      }
+      if (error.status === 429) {
+        return 'Too many attempts. Please wait a minute and try again.';
       }
     }
     return 'Something went wrong. Please try again.';

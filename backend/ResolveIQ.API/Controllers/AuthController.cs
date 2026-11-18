@@ -1,6 +1,10 @@
 using System.Security.Claims;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
+using Microsoft.AspNetCore.RateLimiting;
+using Microsoft.Extensions.Options;
+using ResolveIQ.API.Registration;
+using ResolveIQ.API.Security;
 using Microsoft.AspNetCore.Mvc;
 using ResolveIQ.Application.Abstractions;
 using ResolveIQ.Application.DTOs.Auth;
@@ -10,28 +14,65 @@ namespace ResolveIQ.API.Controllers
 {
     [ApiController]
     [Route("api/auth")]
+    [EnableRateLimiting(AppRateLimiting.AuthPolicy)]
     public class AuthController : ControllerBase
     {
         private readonly UserManager<IdentityUser> _userManager;
         private readonly IJwtTokenService _tokenService;
         private readonly IPasswordService _passwords;
         private readonly IRefreshTokenService _refreshTokens;
+        private readonly RegistrationSettings _registration;
 
         public AuthController(
             UserManager<IdentityUser> userManager,
             IJwtTokenService tokenService,
             IPasswordService passwords,
-            IRefreshTokenService refreshTokens)
+            IRefreshTokenService refreshTokens,
+            IOptions<RegistrationSettings> registration)
         {
             _userManager = userManager;
             _tokenService = tokenService;
             _passwords = passwords;
             _refreshTokens = refreshTokens;
+            _registration = registration.Value;
         }
 
+        /// <summary>Whether people can create their own account, and if it is limited to certain email domains.</summary>
+        [HttpGet("registration")]
+        [ProducesResponseType(StatusCodes.Status200OK)]
+        public ActionResult<RegistrationStatusResponse> GetRegistration() =>
+            Ok(new RegistrationStatusResponse
+            {
+                Enabled = _registration.Enabled,
+                AllowedEmailDomains = _registration.AllowedEmailDomains
+            });
+
         [HttpPost("register")]
+        [ProducesResponseType(StatusCodes.Status200OK)]
+        [ProducesResponseType(StatusCodes.Status400BadRequest)]
+        [ProducesResponseType(StatusCodes.Status403Forbidden)]
         public async Task<ActionResult<AuthResponse>> Register(RegisterRequest request)
         {
+            if (!_registration.Enabled)
+            {
+                return StatusCode(StatusCodes.Status403Forbidden, new ProblemDetails
+                {
+                    Status = StatusCodes.Status403Forbidden,
+                    Title = "Registration is closed",
+                    Detail = "People cannot create their own accounts here. Ask an administrator to add you."
+                });
+            }
+
+            var allowed = _registration.AllowedEmailDomains;
+            var domain = request.Email[(request.Email.LastIndexOf('@') + 1)..];
+            if (allowed.Length > 0 && !allowed.Contains(domain, StringComparer.OrdinalIgnoreCase))
+            {
+                ModelState.AddModelError(
+                    "Email",
+                    $"Registration is limited to these email domains: {string.Join(", ", allowed)}.");
+                return ValidationProblem(ModelState);
+            }
+
             var user = new IdentityUser
             {
                 UserName = request.Email,
