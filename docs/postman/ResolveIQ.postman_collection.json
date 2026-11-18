@@ -196,7 +196,7 @@
             },
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"title\": \"Printer on the 3rd floor is jammed\",\n  \"description\": \"Paper keeps jamming in tray 2 since this morning.\",\n  \"categoryId\": \"{{categoryId}}\"\n}",
+              "raw": "{\n  \"title\": \"Printer on the 3rd floor is jammed\",\n  \"description\": \"Paper keeps jamming in tray 2 since this morning.\",\n  \"categoryId\": \"{{categoryId}}\",\n  \"urgency\": \"string\"\n}",
               "options": {
                 "raw": {
                   "language": "json"
@@ -627,6 +627,35 @@
     {
       "name": "Auth",
       "item": [
+        {
+          "name": "GET /api/auth/registration",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Succeeds (status 2xx)\", () => pm.expect(pm.response.code).to.be.within(200, 299));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/auth/registration",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "auth",
+                "registration"
+              ]
+            }
+          }
+        },
         {
           "name": "Register (creates an Employee and signs in)",
           "event": [
@@ -1104,12 +1133,108 @@
             },
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"title\": \"Printer on the 3rd floor is jammed\",\n  \"description\": \"Paper keeps jamming in tray 2 since this morning.\",\n  \"categoryId\": \"{{categoryId}}\"\n}",
+              "raw": "{\n  \"title\": \"Printer on the 3rd floor is jammed\",\n  \"description\": \"Paper keeps jamming in tray 2 since this morning.\",\n  \"categoryId\": \"{{categoryId}}\",\n  \"urgency\": \"string\"\n}",
               "options": {
                 "raw": {
                   "language": "json"
                 }
               }
+            }
+          }
+        },
+        {
+          "name": "GET /api/incidents/export",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Succeeds (status 2xx)\", () => pm.expect(pm.response.code).to.be.within(200, 299));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/incidents/export?Page=1&PageSize=20",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "incidents",
+                "export"
+              ],
+              "query": [
+                {
+                  "key": "Search",
+                  "value": "",
+                  "disabled": true
+                },
+                {
+                  "key": "Status",
+                  "value": "",
+                  "disabled": true
+                },
+                {
+                  "key": "Priority",
+                  "value": "",
+                  "disabled": true
+                },
+                {
+                  "key": "CategoryId",
+                  "value": "",
+                  "disabled": true
+                },
+                {
+                  "key": "AssignedToUserId",
+                  "value": "",
+                  "disabled": true
+                },
+                {
+                  "key": "Unassigned",
+                  "value": "",
+                  "disabled": true
+                },
+                {
+                  "key": "AssignedToMe",
+                  "value": "",
+                  "disabled": true
+                },
+                {
+                  "key": "ReportedByMe",
+                  "value": "",
+                  "disabled": true
+                },
+                {
+                  "key": "SlaState",
+                  "value": "",
+                  "disabled": true
+                },
+                {
+                  "key": "SortBy",
+                  "value": "",
+                  "disabled": true
+                },
+                {
+                  "key": "SortDirection",
+                  "value": "",
+                  "disabled": true
+                },
+                {
+                  "key": "Page",
+                  "value": "1",
+                  "disabled": false
+                },
+                {
+                  "key": "PageSize",
+                  "value": "20",
+                  "disabled": false
+                }
+              ]
             }
           }
         },
@@ -1770,7 +1895,7 @@
             },
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"isActive\": true\n}",
+              "raw": "{\n  \"isActive\": true,\n  \"reassignToUserId\": \"string\"\n}",
               "options": {
                 "raw": {
                   "language": "json"
