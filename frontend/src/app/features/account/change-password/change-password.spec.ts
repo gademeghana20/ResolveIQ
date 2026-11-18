@@ -54,6 +54,16 @@ describe('ChangePassword', () => {
     await settle();
   });
 
+  it('counts typed passwords as unsaved, and not the empty form', async () => {
+    expect(fixture.componentInstance.hasUnsavedChanges()).toBe(false);
+
+    const first = page().querySelector('input') as HTMLInputElement;
+    first.value = 'abc';
+    first.dispatchEvent(new Event('input'));
+
+    expect(fixture.componentInstance.hasUnsavedChanges()).toBe(true);
+  });
+
   it('asks for the current password and the new one twice, and lists the rules', () => {
     expect(page().querySelectorAll('input[type="password"]').length).toBe(3);
     expect(page().textContent).toContain('upper-case letter');

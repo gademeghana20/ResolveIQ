@@ -49,6 +49,9 @@ export class Login {
     { initialValue: true },
   );
 
+  // Shown when the person was sent here because their session ended (see the HTTP interceptor).
+  protected readonly sessionEnded = this.route.snapshot.queryParamMap.get('reason') === 'session-ended';
+
   protected readonly submitting = signal(false);
   protected readonly errorMessage = signal<string | null>(null);
 

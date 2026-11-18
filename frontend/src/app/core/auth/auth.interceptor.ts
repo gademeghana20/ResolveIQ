@@ -42,7 +42,8 @@ export const authInterceptor: HttpInterceptorFn = (request, next) => {
   const signOut = () => {
     const wherePersonWas = router.url;
     auth.logout();
-    router.navigate(['/login'], { queryParams: { returnUrl: wherePersonWas } });
+    // "reason" lets the sign-in page explain why the person is back there.
+    router.navigate(['/login'], { queryParams: { returnUrl: wherePersonWas, reason: 'session-ended' } });
   };
 
   const isRejected = (error: unknown) => error instanceof HttpErrorResponse && error.status === 401;

@@ -2,6 +2,7 @@ import { Routes } from '@angular/router';
 
 import { authGuard } from './core/auth/auth.guard';
 import { roleGuard } from './core/auth/role.guard';
+import { unsavedChangesGuard } from './core/unsaved-changes';
 
 // Pages use loadComponent so their code is downloaded only when someone visits them (lazy loading).
 // That keeps the first download small: the login page does not carry the incident table's code.
@@ -36,16 +37,19 @@ export const routes: Routes = [
       // "new" must come before ":id", or "new" would be read as an incident id.
       {
         path: 'incidents/new',
+        canDeactivate: [unsavedChangesGuard],
         loadComponent: () =>
           import('./features/incidents/incident-create/incident-create').then((m) => m.IncidentCreate),
       },
       {
         path: 'incidents/:id',
+        canDeactivate: [unsavedChangesGuard],
         loadComponent: () =>
           import('./features/incidents/incident-detail/incident-detail').then((m) => m.IncidentDetail),
       },
       {
         path: 'account/password',
+        canDeactivate: [unsavedChangesGuard],
         loadComponent: () => import('./features/account/change-password/change-password').then((m) => m.ChangePassword),
       },
       // Admin area: only people with the Admin role may open it.
@@ -74,8 +78,8 @@ export const routes: Routes = [
         ],
       },
       { path: '', pathMatch: 'full', redirectTo: 'incidents' },
+      // Anything else: a proper "page not found" inside the normal frame (signed-out visitors go to sign in first).
+      { path: '**', loadComponent: () => import('./features/not-found/not-found').then((m) => m.NotFound) },
     ],
   },
-
-  { path: '**', redirectTo: 'incidents' },
 ];

@@ -57,6 +57,16 @@ describe('CommentForm', () => {
     await settle();
   });
 
+  it('knows when a comment is typed but not posted', async () => {
+    expect(fixture.componentInstance.hasDraft()).toBe(false);
+
+    await write('   ');
+    expect(fixture.componentInstance.hasDraft()).toBe(false); // spaces are nothing
+
+    await write('Half a thought');
+    expect(fixture.componentInstance.hasDraft()).toBe(true);
+  });
+
   it('does not post an empty comment, and says why', async () => {
     await post();
 

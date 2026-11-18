@@ -70,6 +70,43 @@ describe('IncidentCreate', () => {
 
   const created = { id: 'new-id', incidentNumber: 'INC-000042' } as IncidentDetail;
 
+  describe('unsaved typing', () => {
+    it('is not a worry while nothing has been typed', async () => {
+      await setUp();
+
+      expect(fixture.componentInstance.hasUnsavedChanges()).toBe(false);
+    });
+
+    it('is a worry once something is typed', async () => {
+      await setUp();
+      type('input[formControlName="title"]', 'Printer broken');
+
+      expect(fixture.componentInstance.hasUnsavedChanges()).toBe(true);
+    });
+
+    it('is no worry once the incident is saved', async () => {
+      await setUp();
+      type('input[formControlName="title"]', 'Printer broken');
+      type('textarea', 'Paper jam');
+      await submit();
+      http.expectOne(`${API_URL}/incidents`).flush(created);
+
+      expect(fixture.componentInstance.hasUnsavedChanges()).toBe(false);
+    });
+
+    it('makes the browser ask before the tab is closed, only when there is something to lose', async () => {
+      await setUp();
+      const quiet = new Event('beforeunload', { cancelable: true });
+      window.dispatchEvent(quiet);
+      expect(quiet.defaultPrevented).toBe(false);
+
+      type('input[formControlName="title"]', 'Printer broken');
+      const asking = new Event('beforeunload', { cancelable: true });
+      window.dispatchEvent(asking);
+      expect(asking.defaultPrevented).toBe(true);
+    });
+  });
+
   it('has no priority field: a manager sets that later', async () => {
     await setUp();
 

@@ -1,5 +1,5 @@
 import { HttpErrorResponse } from '@angular/common/http';
-import { Component, DestroyRef, computed, inject, input, signal } from '@angular/core';
+import { Component, DestroyRef, HostListener, computed, inject, input, signal, viewChild } from '@angular/core';
 import { takeUntilDestroyed, toObservable } from '@angular/core/rxjs-interop';
 import { DatePipe } from '@angular/common';
 import { MatButtonModule } from '@angular/material/button';
@@ -9,6 +9,7 @@ import { RouterLink } from '@angular/router';
 import { EMPTY, catchError, forkJoin, of, switchMap, tap } from 'rxjs';
 
 import { AuthService } from '../../../core/auth/auth.service';
+import { HasUnsavedChanges, warnBeforeClosingTab } from '../../../core/unsaved-changes';
 import { Badge } from '../../../shared/badge/badge';
 import { formatDuration } from '../../../shared/format';
 import { IncidentActions } from '../actions/incident-actions';
@@ -33,13 +34,25 @@ type LoadState = 'loading' | 'ready' | 'notFound' | 'failed';
   templateUrl: './incident-detail.html',
   styleUrl: './incident-detail.css',
 })
-export class IncidentDetail {
+export class IncidentDetail implements HasUnsavedChanges {
   private readonly incidents = inject(IncidentService);
   private readonly destroyRef = inject(DestroyRef);
   private readonly auth = inject(AuthService);
 
   /** The incident id from the address (/incidents/:id), handed in by the router. */
   readonly id = input.required<string>();
+
+  private readonly commentForm = viewChild(CommentForm);
+
+  /** True while a comment has been typed but not posted. */
+  hasUnsavedChanges(): boolean {
+    return this.commentForm()?.hasDraft() ?? false;
+  }
+
+  @HostListener('window:beforeunload', ['$event'])
+  protected onBeforeUnload(event: BeforeUnloadEvent): void {
+    warnBeforeClosingTab(event, this);
+  }
 
   protected readonly state = signal<LoadState>('loading');
   protected readonly detail = signal<IncidentDetailModel | null>(null);

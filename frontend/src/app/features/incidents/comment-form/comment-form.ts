@@ -37,6 +37,11 @@ export class CommentForm {
   protected readonly submitting = signal(false);
   protected readonly errorMessage = signal<string | null>(null);
 
+  /** True while a comment has been typed but not posted. */
+  hasDraft(): boolean {
+    return this.text.value.trim().length > 0;
+  }
+
   protected submit(): void {
     this.errorMessage.set(null);
 

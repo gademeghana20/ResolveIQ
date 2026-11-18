@@ -13,7 +13,7 @@ describe('Login', () => {
   let router: Router;
   let navigate: ReturnType<typeof vi.spyOn>;
 
-  async function setUp(returnUrl: string | null = null) {
+  async function setUp(returnUrl: string | null = null, reason: string | null = null) {
     localStorage.clear();
 
     await TestBed.configureTestingModule({
@@ -24,7 +24,7 @@ describe('Login', () => {
         provideHttpClientTesting(),
         {
           provide: ActivatedRoute,
-          useValue: { snapshot: { queryParamMap: convertToParamMap(returnUrl ? { returnUrl } : {}) } },
+          useValue: { snapshot: { queryParamMap: convertToParamMap({ ...(returnUrl ? { returnUrl } : {}), ...(reason ? { reason } : {}) }) } },
         },
       ],
     }).compileComponents();
@@ -48,6 +48,19 @@ describe('Login', () => {
     page().querySelector('form')!.dispatchEvent(new Event('submit'));
     await fixture.whenStable();
   }
+
+  it('explains why the person is back here when their session ended', async () => {
+    await setUp('/incidents/42', 'session-ended');
+
+    expect(page().textContent).toContain('Your session ended');
+    expect(page().querySelector('[role="status"]')).not.toBeNull();
+  });
+
+  it('says nothing about a session when the person simply arrived', async () => {
+    await setUp();
+
+    expect(page().textContent).not.toContain('Your session ended');
+  });
 
   it('shows the email and password fields and a sign-in button', async () => {
     await setUp();

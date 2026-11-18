@@ -8,6 +8,10 @@
       </mat-card-header>
 
       <mat-card-content>
+        @if (sessionEnded) {
+          <p class="form-notice" role="status">Your session ended, so you were signed out. Please sign in again to carry on.</p>
+        }
+
         <form [formGroup]="form" (ngSubmit)="submit()" novalidate>
           <mat-form-field appearance="outline">
             <mat-label>Email</mat-label>

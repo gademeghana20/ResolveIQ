@@ -78,7 +78,7 @@ describe('authInterceptor', () => {
     expect(failedWith).toBe(401); // the screen still hears about the error
     expect(auth.isLoggedIn()).toBe(false);
     expect(localStorage.getItem('resolveiq.session')).toBeNull();
-    expect(navigate).toHaveBeenCalledWith(['/login'], { queryParams: { returnUrl: '/incidents/42' } });
+    expect(navigate).toHaveBeenCalledWith(['/login'], { queryParams: { returnUrl: '/incidents/42', reason: 'session-ended' } });
   });
 
   it('a 401 from the login call itself (wrong password) does not redirect anywhere', () => {

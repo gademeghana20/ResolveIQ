@@ -99,7 +99,7 @@ describe('authInterceptor: renewing an expired login quietly', () => {
 
     expect(failedWith).toBe(401);
     expect(auth.isLoggedIn()).toBe(false);
-    expect(navigate).toHaveBeenCalledWith(['/login'], { queryParams: { returnUrl: '/incidents/42' } });
+    expect(navigate).toHaveBeenCalledWith(['/login'], { queryParams: { returnUrl: '/incidents/42', reason: 'session-ended' } });
   });
 
   it('stays signed in when the refresh failed only because the server could not be reached', () => {

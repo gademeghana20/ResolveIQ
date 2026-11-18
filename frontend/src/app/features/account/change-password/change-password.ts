@@ -1,5 +1,5 @@
 import { HttpErrorResponse } from '@angular/common/http';
-import { Component, inject, signal } from '@angular/core';
+import { Component, HostListener, inject, signal } from '@angular/core';
 import { NonNullableFormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { MatButtonModule } from '@angular/material/button';
 import { MatCardModule } from '@angular/material/card';
@@ -10,6 +10,7 @@ import { MatSnackBar } from '@angular/material/snack-bar';
 import { allFieldMessages } from '../../../core/api-error';
 import { AuthService } from '../../../core/auth/auth.service';
 import { PASSWORD_HINT } from '../../../core/password-rules';
+import { HasUnsavedChanges, warnBeforeClosingTab } from '../../../core/unsaved-changes';
 import { fieldsMatch, mismatchErrorMatcher } from '../../../core/validators';
 
 /** Lets a signed-in person change their own password. They must type the current one first. */
@@ -19,7 +20,7 @@ import { fieldsMatch, mismatchErrorMatcher } from '../../../core/validators';
   templateUrl: './change-password.html',
   styleUrl: './change-password.css',
 })
-export class ChangePassword {
+export class ChangePassword implements HasUnsavedChanges {
   private readonly auth = inject(AuthService);
   private readonly snackBar = inject(MatSnackBar);
   private readonly formBuilder = inject(NonNullableFormBuilder);
@@ -38,6 +39,16 @@ export class ChangePassword {
 
   protected readonly saving = signal(false);
   protected readonly errorMessage = signal<string | null>(null);
+
+  /** True while something has been typed and not yet saved. */
+  hasUnsavedChanges(): boolean {
+    return this.form.dirty;
+  }
+
+  @HostListener('window:beforeunload', ['$event'])
+  protected onBeforeUnload(event: BeforeUnloadEvent): void {
+    warnBeforeClosingTab(event, this);
+  }
 
   protected save(): void {
     this.errorMessage.set(null);

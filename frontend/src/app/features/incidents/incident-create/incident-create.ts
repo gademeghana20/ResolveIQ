@@ -1,5 +1,5 @@
 import { HttpErrorResponse } from '@angular/common/http';
-import { Component, inject, signal } from '@angular/core';
+import { Component, HostListener, inject, signal } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { NonNullableFormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { MatButtonModule } from '@angular/material/button';
@@ -12,6 +12,7 @@ import { Router, RouterLink } from '@angular/router';
 import { catchError, of } from 'rxjs';
 
 import { fieldErrors } from '../../../core/api-error';
+import { HasUnsavedChanges, warnBeforeClosingTab } from '../../../core/unsaved-changes';
 import { notBlank } from '../../../core/validators';
 import { Category, IncidentPriority, MAX_DESCRIPTION_LENGTH, MAX_TITLE_LENGTH } from '../incident.models';
 import { IncidentService } from '../incident.service';
@@ -30,7 +31,7 @@ import { IncidentService } from '../incident.service';
   templateUrl: './incident-create.html',
   styleUrl: './incident-create.css',
 })
-export class IncidentCreate {
+export class IncidentCreate implements HasUnsavedChanges {
   private readonly incidents = inject(IncidentService);
   private readonly router = inject(Router);
   private readonly snackBar = inject(MatSnackBar);
@@ -52,6 +53,19 @@ export class IncidentCreate {
   protected readonly categoriesFailed = signal(false);
   protected readonly submitting = signal(false);
   protected readonly errorMessage = signal<string | null>(null);
+
+  // Set once the incident is saved, so leaving afterwards is not treated as losing something.
+  private saved = false;
+
+  /** True while the person has typed something that has not been sent. */
+  hasUnsavedChanges(): boolean {
+    return this.form.dirty && !this.saved;
+  }
+
+  @HostListener('window:beforeunload', ['$event'])
+  protected onBeforeUnload(event: BeforeUnloadEvent): void {
+    warnBeforeClosingTab(event, this);
+  }
 
   constructor() {
     // Only active categories can be chosen. If they cannot be loaded, the form still works without one.
@@ -82,6 +96,7 @@ export class IncidentCreate {
       .createIncident(title.trim(), description.trim(), categoryId || undefined, (urgency as IncidentPriority) || undefined)
       .subscribe({
       next: (created) => {
+        this.saved = true;
         this.snackBar.open(`Incident ${created.incidentNumber} created`, 'Dismiss', { duration: 6000 });
         this.router.navigate(['/incidents', created.id]);
       },
