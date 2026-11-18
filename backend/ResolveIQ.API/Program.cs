@@ -226,6 +226,16 @@ using (var scope = app.Services.CreateScope())
         {
             var userManager = scope.ServiceProvider.GetRequiredService<UserManager<IdentityUser>>();
             await IdentitySeeder.SeedDemoUsersAsync(userManager, demoPassword);
+
+            // Optional made-up incidents and people, only when asked for (Seed:DemoData=true) and only into an
+            // empty database, so it can never add to real data.
+            if (app.Configuration.GetValue<bool>("Seed:DemoData"))
+            {
+                var added = await DemoDataSeeder.SeedAsync(db, userManager, demoPassword);
+                app.Logger.LogInformation(added
+                    ? "Added the demo incidents and people."
+                    : "Demo data was not added (the database already has incidents).");
+            }
         }
     }
 }
