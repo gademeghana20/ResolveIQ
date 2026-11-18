@@ -1,5 +1,5 @@
 import { BreakpointObserver } from '@angular/cdk/layout';
-import { Component, computed, inject, signal } from '@angular/core';
+import { Component, DestroyRef, computed, inject, signal } from '@angular/core';
 import { takeUntilDestroyed, toSignal } from '@angular/core/rxjs-interop';
 import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
@@ -8,8 +8,10 @@ import { NavigationEnd, Router, RouterLink, RouterLinkActive, RouterOutlet } fro
 import { filter, map } from 'rxjs';
 
 import { AuthService } from '../../core/auth/auth.service';
+import { NotificationService } from '../../core/notifications/notification.service';
 import { Logo } from '../../shared/logo/logo';
 import { ThemeToggle } from '../../shared/theme-toggle/theme-toggle';
+import { NotificationBell } from '../notification-bell/notification-bell';
 
 /** Below this width the sidebar becomes a menu that slides over the page. */
 const NARROW_SCREEN = '(max-width: 900px)';
@@ -29,6 +31,7 @@ const NARROW_SCREEN = '(max-width: 900px)';
     MatIconModule,
     Logo,
     ThemeToggle,
+    NotificationBell,
   ],
   templateUrl: './shell.html',
   styleUrl: './shell.css',
@@ -58,6 +61,9 @@ export class Shell {
   protected readonly roleText = computed(() => this.auth.roles().join(', '));
 
   constructor() {
+    // The bell looks for news for as long as the signed-in pages are open.
+    inject(NotificationService).start(inject(DestroyRef));
+
     // After choosing a page from the slide-out menu, close it.
     this.router.events
       .pipe(

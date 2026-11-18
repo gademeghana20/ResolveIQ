@@ -48,6 +48,8 @@ builder.Services.Configure<AppSettings>(builder.Configuration.GetSection(AppSett
 builder.Services.AddScoped<IEmailSender, LoggingEmailSender>();
 builder.Services.AddScoped<IPasswordService, PasswordService>();
 builder.Services.AddScoped<IRefreshTokenService, RefreshTokenService>();
+builder.Services.AddScoped<INotifier, Notifier>();
+builder.Services.AddScoped<INotificationService, NotificationService>();
 
 // Who may register, how fast one address may call the sign-in endpoints, and the background housekeeping.
 builder.Services.Configure<RegistrationSettings>(builder.Configuration.GetSection(RegistrationSettings.SectionName));

@@ -12,11 +12,13 @@ namespace ResolveIQ.Infrastructure.Services
     {
         private readonly ApplicationDbContext _db;
         private readonly TimeProvider _time;
+        private readonly INotifier _notifier;
 
-        public CommentService(ApplicationDbContext db, TimeProvider time)
+        public CommentService(ApplicationDbContext db, TimeProvider time, INotifier notifier)
         {
             _db = db;
             _time = time;
+            _notifier = notifier;
         }
 
         public async Task<IReadOnlyList<CommentResponse>?> GetCommentsAsync(
@@ -58,16 +60,16 @@ namespace ResolveIQ.Infrastructure.Services
             CancellationToken cancellationToken = default)
         {
             // Not found and not allowed look the same, so nobody can probe for incident ids.
-            var status = await IncidentAccess.ApplyVisibility(_db.Incidents.AsNoTracking(), userId, roles)
+            var incident = await IncidentAccess.ApplyVisibility(_db.Incidents.AsNoTracking(), userId, roles)
                 .Where(i => i.Id == incidentId)
-                .Select(i => (IncidentStatus?)i.Status)
+                .Select(i => new { i.Status, i.IncidentNumber, i.Title, i.ReportedByUserId, i.AssignedToUserId })
                 .FirstOrDefaultAsync(cancellationToken);
-            if (status is null)
+            if (incident is null)
             {
                 return new AddCommentResult(ChangeOutcome.NotFound);
             }
 
-            if (status == IncidentStatus.Closed)
+            if (incident.Status == IncidentStatus.Closed)
             {
                 return new AddCommentResult(ChangeOutcome.Invalid, Message: "Comments are closed on a closed incident.");
             }
@@ -87,12 +89,21 @@ namespace ResolveIQ.Infrastructure.Services
             };
 
             _db.IncidentComments.Add(comment);
-            await _db.SaveChangesAsync(cancellationToken);
 
             var authorEmail = await _db.Users.AsNoTracking()
                 .Where(u => u.Id == userId)
                 .Select(u => u.Email)
                 .FirstOrDefaultAsync(cancellationToken);
+
+            // The reporter and the assignee are told (never the person who wrote it), in the same save as the comment.
+            var label = $"{incident.IncidentNumber} \"{NotificationText.Shorten(incident.Title, 60)}\"";
+            var message = $"{authorEmail ?? "Someone"} commented on {label}.";
+            var batch = new NotificationBatch();
+            batch.Add(incident.ReportedByUserId, "Comment", message);
+            batch.Add(incident.AssignedToUserId, "Comment", message);
+            _notifier.Queue(incidentId, batch, exceptUserId: userId);
+
+            await _db.SaveChangesAsync(cancellationToken);
 
             return new AddCommentResult(ChangeOutcome.Success, new CommentResponse
             {

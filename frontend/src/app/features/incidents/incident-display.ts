@@ -28,7 +28,7 @@ export function statusActionLabel(from: IncidentStatus, to: IncidentStatus): str
     case 'OnHold':
       return 'Put on hold…'; // the dots mean "this asks you something first"
     case 'Resolved':
-      return 'Mark resolved';
+      return 'Mark resolved…'; // the dots mean "this asks you something first"
     case 'Closed':
       return 'Close incident…';
     default:
@@ -69,6 +69,10 @@ export function describeChange(entry: HistoryEntry): string {
       return to === 'Started' ? 'SLA clock started' : `SLA clock restarted (it was ${slaLabelText(from)})`;
     case 'OnHoldReason':
       return `Put on hold: ${to}`;
+    case 'ResolutionNotes':
+      return `How it was fixed: ${to}`;
+    case 'AutoClosed':
+      return to ?? 'Closed automatically';
     case 'Title':
       return `Title changed from "${from}" to "${to}"`;
     case 'Description':

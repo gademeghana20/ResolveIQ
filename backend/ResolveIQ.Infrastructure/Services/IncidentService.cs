@@ -1,4 +1,5 @@
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Options;
 using ResolveIQ.Application.Abstractions;
 using ResolveIQ.Application.DTOs.Common;
 using ResolveIQ.Application.DTOs.Incidents;
@@ -21,13 +22,24 @@ namespace ResolveIQ.Infrastructure.Services
         // description keeps its full old and new wording. Shorter values are never cut.
         private const int HistoryValueMaxLength = 4000;
 
+        // Putting an incident on hold takes a short reason; resolving it takes the fuller account of the fix.
+        private const int MaxHoldReasonLength = 500;
+
         private readonly ApplicationDbContext _db;
         private readonly TimeProvider _time;
+        private readonly INotifier _notifier;
+        private readonly int _autoCloseDays;
 
-        public IncidentService(ApplicationDbContext db, TimeProvider time)
+        public IncidentService(
+            ApplicationDbContext db,
+            TimeProvider time,
+            INotifier notifier,
+            IOptions<MaintenanceSettings> maintenance)
         {
             _db = db;
             _time = time;
+            _notifier = notifier;
+            _autoCloseDays = maintenance.Value.AutoCloseResolvedAfterDays;
         }
 
         // ---- reading ----
@@ -170,6 +182,7 @@ namespace ResolveIQ.Infrastructure.Services
                 Description = request.Description.Trim(),
                 Status = IncidentStatus.Open,
                 CategoryId = request.CategoryId,
+                ReportedUrgency = request.Urgency,
                 ReportedByUserId = reportedByUserId,
                 CreatedAtUtc = Now()
             };
@@ -244,9 +257,12 @@ namespace ResolveIQ.Infrastructure.Services
                         .Select(u => u.Email)
                         .FirstOrDefaultAsync(cancellationToken);
 
+                var previousAssigneeId = incident.AssignedToUserId;
                 incident.AssignedToUserId = assignee.Id;
                 AddHistory(incident.Id, actingUserId, "AssignedTo", previousAssignee, assignee.Email, now);
                 changed = true;
+
+                await QueueAssignmentNotificationsAsync(incident, previousAssigneeId, assignee.Id, assignee.Email, actingUserId, cancellationToken);
             }
 
             // The first assignment starts the SLA clock. Later reassignments do not restart it.
@@ -306,6 +322,17 @@ namespace ResolveIQ.Infrastructure.Services
                 return Invalid("Reason", "A reason is required when putting an incident on hold.");
             }
 
+            if (newStatus == IncidentStatus.OnHold && trimmedReason!.Length > MaxHoldReasonLength)
+            {
+                return Invalid("Reason", $"The reason is too long: the limit is {MaxHoldReasonLength} characters.");
+            }
+
+            // Whoever reads the incident next (usually the reporter, deciding whether to confirm) needs to know what was done.
+            if (newStatus == IncidentStatus.Resolved && string.IsNullOrEmpty(trimmedReason))
+            {
+                return Invalid("Reason", "Say how it was fixed before marking an incident resolved.");
+            }
+
             var oldStatus = incident.Status;
             var now = Now();
 
@@ -326,6 +353,7 @@ namespace ResolveIQ.Infrastructure.Services
             if (newStatus == IncidentStatus.Resolved)
             {
                 incident.ResolvedAtUtc = now;
+                incident.ResolutionNotes = trimmedReason;
             }
             else if (oldStatus == IncidentStatus.Resolved && newStatus == IncidentStatus.InProgress)
             {
@@ -335,6 +363,12 @@ namespace ResolveIQ.Infrastructure.Services
                 }
 
                 incident.ResolvedAtUtc = null; // reopened
+                incident.ResolutionNotes = null; // the history still has what was written
+            }
+
+            if (newStatus == IncidentStatus.Closed)
+            {
+                incident.ClosedAtUtc = now;
             }
 
             AddHistory(incident.Id, userId, "Status", oldStatus.ToString(), newStatus.ToString(), now);
@@ -342,6 +376,13 @@ namespace ResolveIQ.Infrastructure.Services
             {
                 AddHistory(incident.Id, userId, "OnHoldReason", null, trimmedReason, now);
             }
+
+            if (newStatus == IncidentStatus.Resolved)
+            {
+                AddHistory(incident.Id, userId, "ResolutionNotes", null, trimmedReason, now);
+            }
+
+            await QueueStatusNotificationsAsync(incident, oldStatus, newStatus, trimmedReason, userId, cancellationToken);
 
             return await SaveAndRespondAsync(id, cancellationToken);
         }
@@ -377,6 +418,13 @@ namespace ResolveIQ.Infrastructure.Services
             var now = Now();
             ApplyPriorityChange(incident, newPriority, userId, await LoadTargetHoursAsync(cancellationToken), now);
             incident.UpdatedAtUtc = now;
+
+            var batch = new NotificationBatch();
+            batch.Add(
+                incident.AssignedToUserId,
+                "Priority",
+                $"The priority of {NotificationText.Label(incident)} is now {newPriority}.");
+            _notifier.Queue(incident.Id, batch, exceptUserId: userId);
 
             return await SaveAndRespondAsync(id, cancellationToken);
         }
@@ -435,6 +483,75 @@ namespace ResolveIQ.Infrastructure.Services
         }
 
         // ---- helpers ----
+
+        private async Task<string?> EmailOfUserAsync(string? userId, CancellationToken cancellationToken) =>
+            userId is null
+                ? null
+                : await _db.Users.AsNoTracking().Where(u => u.Id == userId).Select(u => u.Email).FirstOrDefaultAsync(cancellationToken);
+
+        // Who is told when an incident is assigned: the new assignee, the one it was taken from, and the reporter.
+        private async Task QueueAssignmentNotificationsAsync(
+            Incident incident,
+            string? previousAssigneeId,
+            string newAssigneeId,
+            string? newAssigneeEmail,
+            string actingUserId,
+            CancellationToken cancellationToken)
+        {
+            var label = NotificationText.Label(incident);
+            var actor = await EmailOfUserAsync(actingUserId, cancellationToken) ?? "a manager";
+            var batch = new NotificationBatch();
+
+            batch.Add(newAssigneeId, "Assigned", $"{label} was assigned to you by {actor}.");
+            batch.Add(previousAssigneeId, "Reassigned", $"{label} was reassigned to {newAssigneeEmail ?? "someone else"}.");
+            batch.Add(incident.ReportedByUserId, "Assigned", $"{label} was assigned to {newAssigneeEmail ?? "someone"}.");
+
+            _notifier.Queue(incident.Id, batch, exceptUserId: actingUserId);
+        }
+
+        // Who is told when the status changes: the reporter and the assignee (never the person who did it).
+        private async Task QueueStatusNotificationsAsync(
+            Incident incident,
+            IncidentStatus oldStatus,
+            IncidentStatus newStatus,
+            string? notes,
+            string actingUserId,
+            CancellationToken cancellationToken)
+        {
+            var label = NotificationText.Label(incident);
+            var actor = await EmailOfUserAsync(actingUserId, cancellationToken) ?? "someone";
+            var batch = new NotificationBatch();
+
+            if (newStatus == IncidentStatus.Resolved)
+            {
+                // The reporter is the one who has to decide, so they are told how it was fixed and what to do next.
+                batch.Add(
+                    incident.ReportedByUserId,
+                    "Resolved",
+                    $"{label} was resolved by {actor}: {NotificationText.Shorten(notes ?? string.Empty, 200)} Please confirm it is fixed, or reopen it.");
+                batch.Add(incident.AssignedToUserId, "Status", $"{label} was marked resolved by {actor}.");
+            }
+            else if (oldStatus == IncidentStatus.Resolved && newStatus == IncidentStatus.InProgress)
+            {
+                var message = $"{label} was reopened by {actor}: it is back in progress.";
+                batch.Add(incident.AssignedToUserId, "Reopened", message);
+                batch.Add(incident.ReportedByUserId, "Reopened", message);
+            }
+            else if (newStatus == IncidentStatus.Closed)
+            {
+                var message = $"{label} was closed by {actor}.";
+                batch.Add(incident.AssignedToUserId, "Closed", message);
+                batch.Add(incident.ReportedByUserId, "Closed", message);
+            }
+            else
+            {
+                var message = $"{label} is now {NotificationText.StatusName(newStatus)} (changed by {actor}).";
+                batch.Add(incident.ReportedByUserId, "Status", message);
+                batch.Add(incident.AssignedToUserId, "Status", message);
+            }
+
+            _notifier.Queue(incident.Id, batch, exceptUserId: actingUserId);
+        }
 
         private const string PriorityLockedMessage =
             "The priority cannot be changed once an incident is resolved or closed. Reopen it first.";
@@ -549,7 +666,7 @@ namespace ResolveIQ.Infrastructure.Services
         private void ApplyPriorityChange(
             Incident incident,
             IncidentPriority newPriority,
-            string changedByUserId,
+            string? changedByUserId,
             IReadOnlyDictionary<IncidentPriority, int> targets,
             DateTime now)
         {
@@ -571,7 +688,7 @@ namespace ResolveIQ.Infrastructure.Services
 
         private void AddHistory(
             Guid incidentId,
-            string changedByUserId,
+            string? changedByUserId,
             string field,
             string? oldValue,
             string? newValue,
@@ -701,7 +818,7 @@ namespace ResolveIQ.Infrastructure.Services
             };
         }
 
-        private static IncidentDetailResponse ToDetail(Incident i, DateTime now)
+        private IncidentDetailResponse ToDetail(Incident i, DateTime now)
         {
             var sla = SlaCalculator.Evaluate(i, now);
 
@@ -720,6 +837,12 @@ namespace ResolveIQ.Infrastructure.Services
                 CreatedAtUtc = i.CreatedAtUtc,
                 UpdatedAtUtc = i.UpdatedAtUtc,
                 ResolvedAtUtc = i.ResolvedAtUtc,
+                ClosedAtUtc = i.ClosedAtUtc,
+                ReportedUrgency = i.ReportedUrgency,
+                ResolutionNotes = i.ResolutionNotes,
+                AutoCloseAtUtc = i.Status == IncidentStatus.Resolved && i.ResolvedAtUtc is DateTime resolvedAt && _autoCloseDays > 0
+                    ? resolvedAt.AddDays(_autoCloseDays)
+                    : null,
                 SlaState = sla.State,
                 SlaStartedAtUtc = sla.StartedAtUtc,
                 SlaDueAtUtc = sla.DueAtUtc

@@ -49,6 +49,13 @@ export interface IncidentDetail {
   createdAtUtc: string;
   updatedAtUtc: string | null;
   resolvedAtUtc: string | null;
+  closedAtUtc: string | null;
+  /** How urgent the reporter said it was. A hint only: the real priority is set by a manager. */
+  reportedUrgency: IncidentPriority | null;
+  /** How it was fixed (while Resolved or Closed). */
+  resolutionNotes: string | null;
+  /** While Resolved: when it will close by itself if nobody confirms or reopens it. */
+  autoCloseAtUtc: string | null;
   slaState: SlaState;
   slaStartedAtUtc: string | null;
   slaDueAtUtc: string | null;

@@ -27,6 +27,13 @@
           />
           <app-stat-tile label="Assigned to me" [value]="now.assignedToMe" note="active incidents" />
           <app-stat-tile
+            label="Waiting for your confirmation"
+            [value]="now.awaitingMyConfirmation"
+            note="resolved: is it fixed?"
+            [link]="['/incidents']"
+            [queryParams]="{ scope: 'reported', status: 'Resolved' }"
+          />
+          <app-stat-tile
             label="Unassigned"
             [value]="now.unassigned"
             [note]="oldestWaiting()"

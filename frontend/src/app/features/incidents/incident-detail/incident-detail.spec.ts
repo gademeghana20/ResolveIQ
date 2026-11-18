@@ -1,9 +1,13 @@
 import { provideHttpClient } from '@angular/common/http';
 import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
+import { MatDialog } from '@angular/material/dialog';
+import { of } from 'rxjs';
+
 import { provideRouter } from '@angular/router';
 
 import { API_URL } from '../../../core/api-config';
+import { AuthService } from '../../../core/auth/auth.service';
 import { HistoryEntry, IncidentComment, IncidentDetail as IncidentDetailModel } from '../incident.models';
 import { IncidentDetail } from './incident-detail';
 
@@ -26,6 +30,10 @@ function detail(overrides: Partial<IncidentDetailModel> = {}): IncidentDetailMod
     createdAtUtc: '2026-11-16T18:00:00Z',
     updatedAtUtc: null,
     resolvedAtUtc: null,
+    closedAtUtc: null,
+    reportedUrgency: null,
+    resolutionNotes: null,
+    autoCloseAtUtc: null,
     slaState: 'AtRisk',
     slaStartedAtUtc: '2026-11-16T18:30:00Z',
     slaDueAtUtc: '2026-11-17T02:30:00Z',
@@ -102,6 +110,107 @@ describe('IncidentDetail', () => {
     expect(text()).toContain('reporter@example.com');
     expect(text()).toContain('dana@example.com');
     expect(text()).toContain('Network');
+  });
+
+  describe('when it has been resolved', () => {
+    const resolved = (overrides: Partial<IncidentDetailModel> = {}) =>
+      detail({
+        status: 'Resolved',
+        resolvedAtUtc: '2026-11-17T09:00:00Z',
+        resolutionNotes: 'Replaced the roller.',
+        autoCloseAtUtc: '2026-11-24T09:00:00Z',
+        reportedByUserId: 'user-1',
+        ...overrides,
+      });
+
+    async function open(body: IncidentDetailModel, asReporter: boolean) {
+      // "user-1" is who the fake sign-in token says the person is.
+      (TestBed.inject(AuthService) as unknown as { userId: () => string | null }).userId = () => (asReporter ? 'user-1' : 'someone-else');
+      answerDetail(body);
+      answerHistory([]);
+      answerComments([]);
+      await settle();
+    }
+
+    it('shows how it was fixed, in its own box', async () => {
+      await open(resolved(), true);
+
+      const box = Array.from((fixture.nativeElement as HTMLElement).querySelectorAll('mat-card')).find((c) => c.textContent!.includes('How it was fixed'))!;
+      expect(box.textContent).toContain('Replaced the roller.');
+    });
+
+    it('asks the reporter whether it is fixed, and says when it will close by itself', async () => {
+      await open(resolved(), true);
+
+      const notice = (fixture.nativeElement as HTMLElement).querySelector('.notice')!;
+      expect(notice.textContent).toContain('Is it fixed?');
+      expect(notice.textContent).toContain('reopen it if the problem is still there');
+      expect(notice.textContent).toContain('closes automatically on Nov 24, 2026');
+    });
+
+    it('tells everyone else it is waiting for the reporter', async () => {
+      await open(resolved(), false);
+
+      const notice = (fixture.nativeElement as HTMLElement).querySelector('.notice')!;
+      expect(notice.textContent).toContain('Waiting for the person who reported it');
+      expect(notice.textContent).not.toContain('Is it fixed?');
+    });
+
+    it('does not promise an automatic close when that is switched off', async () => {
+      await open(resolved({ autoCloseAtUtc: null }), true);
+
+      expect((fixture.nativeElement as HTMLElement).querySelector('.notice')!.textContent).not.toContain('automatically');
+    });
+
+    it('keeps showing how it was fixed after it is closed, with when it was closed', async () => {
+      await open(resolved({ status: 'Closed', closedAtUtc: '2026-11-18T10:00:00Z', autoCloseAtUtc: null }), true);
+
+      expect(text()).toContain('How it was fixed');
+      expect(text()).toContain('Closed');
+      expect(text()).toContain('Nov 18, 2026');
+      expect((fixture.nativeElement as HTMLElement).querySelector('.notice')).toBeNull();
+    });
+  });
+
+  it('shows no resolution box and no notice while the incident is still being worked', async () => {
+    answerDetail(detail());
+    answerHistory([]);
+    answerComments([]);
+    await settle();
+
+    expect(text()).not.toContain('How it was fixed');
+    expect((fixture.nativeElement as HTMLElement).querySelector('.notice')).toBeNull();
+  });
+
+  it('shows the urgency the reporter gave, or says none was given', async () => {
+    answerDetail(detail({ reportedUrgency: 'High' }));
+    answerHistory([]);
+    answerComments([]);
+    await settle();
+    expect(text()).toContain('Reported urgency');
+    expect(text()).toContain('High');
+  });
+
+  it('says "Not given" when the reporter gave no urgency', async () => {
+    answerDetail(detail({ reportedUrgency: null }));
+    answerHistory([]);
+    answerComments([]);
+    await settle();
+
+    expect(text()).toContain('Not given');
+  });
+
+  it('names the app, not a person, for a change it made itself', async () => {
+    answerDetail(detail());
+    answerHistory([
+      { fieldChanged: 'Status', oldValue: 'Resolved', newValue: 'Closed', changedBy: null, changedAtUtc: '2026-11-24T09:00:00Z' },
+      { fieldChanged: 'AutoClosed', oldValue: null, newValue: 'Closed automatically after 7 days resolved', changedBy: null, changedAtUtc: '2026-11-24T09:00:00Z' },
+    ]);
+    answerComments([]);
+    await settle();
+
+    expect(text()).toContain('ResolveIQ (automatic)');
+    expect(text()).toContain('Closed automatically after 7 days resolved');
   });
 
   it('keeps the line breaks in the description', async () => {
@@ -249,7 +358,8 @@ describe('IncidentDetail', () => {
     answerComments([]);
     await settle();
 
-    const resolve = Array.from((fixture.nativeElement as HTMLElement).querySelectorAll('button')).find((b) => b.textContent!.trim() === 'Mark resolved')!;
+    vi.spyOn(TestBed.inject(MatDialog), 'open').mockReturnValue({ afterClosed: () => of('Fixed it.') } as never);
+    const resolve = Array.from((fixture.nativeElement as HTMLElement).querySelectorAll('button')).find((b) => b.textContent!.trim() === 'Mark resolved…')!;
     resolve.click();
     http.expectOne(`${API_URL}/incidents/${ID}/status`).flush({}, { status: 409, statusText: 'Conflict' });
     await settle();

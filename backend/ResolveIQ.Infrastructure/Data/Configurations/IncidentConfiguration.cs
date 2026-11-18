@@ -28,6 +28,9 @@ namespace ResolveIQ.Infrastructure.Data.Configurations
             builder.Property(i => i.AssignedToUserId)
                 .HasMaxLength(450);
 
+            builder.Property(i => i.ResolutionNotes)
+                .HasMaxLength(2000);
+
             builder.Property(i => i.RowVersion)
                 .IsRowVersion();
 

@@ -11,6 +11,8 @@ import { IncidentService } from '../incident.service';
 export interface AssignDialogData {
   currentAssigneeId: string | null;
   currentPriority: IncidentPriority | null;
+  /** What the reporter said; the priority box starts there when the incident has none yet. */
+  reportedUrgency?: IncidentPriority | null;
 }
 
 export interface AssignDialogResult {
@@ -30,6 +32,9 @@ export interface AssignDialogResult {
       } @else {
         @if (!data.currentPriority) {
           <p>This incident has no priority yet. Set one now, and the SLA clock starts when you assign it.</p>
+          @if (data.reportedUrgency) {
+            <p class="hint">The reporter said this is <strong>{{ data.reportedUrgency }}</strong> urgency. You decide the priority.</p>
+          }
         }
         <form [formGroup]="form" class="fields">
           <mat-form-field appearance="outline">
@@ -68,6 +73,7 @@ export interface AssignDialogResult {
   styles: `
     .fields { display: flex; flex-direction: column; min-width: 300px; }
     .error { color: var(--mat-sys-error); }
+    .hint { color: var(--mat-sys-on-surface-variant); }
   `,
 })
 export class AssignDialog {
@@ -81,7 +87,7 @@ export class AssignDialog {
 
   protected readonly form = new FormGroup({
     assignee: new FormControl<string | null>(this.data.currentAssigneeId, Validators.required),
-    priority: new FormControl<IncidentPriority | null>(this.data.currentPriority, Validators.required),
+    priority: new FormControl<IncidentPriority | null>(this.data.currentPriority ?? this.data.reportedUrgency ?? null, Validators.required),
   });
 
   constructor() {

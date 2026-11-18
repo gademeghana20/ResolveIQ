@@ -79,6 +79,44 @@ describe('IncidentCreate', () => {
     expect(text()).not.toContain('Priority');
   });
 
+  describe('urgency', () => {
+    const control = () =>
+      (fixture.componentInstance as unknown as { form: IncidentCreate['form'] }).form.controls.urgency;
+
+    it('is an optional question, with a note that the manager decides', async () => {
+      await setUp();
+
+      expect(text()).toContain('How urgent is this for you? (optional)');
+      expect(text()).toContain('Only a hint for the manager');
+      expect(control().value).toBe(''); // "Not sure"
+    });
+
+    it('is sent with the report when chosen', async () => {
+      await setUp();
+      type('input[formControlName="title"]', 'Printer broken');
+      type('textarea', 'Paper jam');
+      control().setValue('High');
+
+      await submit();
+
+      const request = http.expectOne(`${API_URL}/incidents`);
+      expect(request.request.body).toMatchObject({ title: 'Printer broken', urgency: 'High' });
+      request.flush(created);
+    });
+
+    it('is left out when the person is not sure', async () => {
+      await setUp();
+      type('input[formControlName="title"]', 'Printer broken');
+      type('textarea', 'Paper jam');
+
+      await submit();
+
+      const request = http.expectOne(`${API_URL}/incidents`);
+      expect((request.request.body as { urgency?: string }).urgency).toBeUndefined();
+      request.flush(created);
+    });
+  });
+
   it('does not submit an empty form, and says what is missing', async () => {
     await setUp();
 

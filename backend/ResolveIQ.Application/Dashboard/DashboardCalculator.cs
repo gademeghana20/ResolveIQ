@@ -54,6 +54,7 @@ namespace ResolveIQ.Application.Dashboard
                 ActiveIncidents = incidents.Count(IsActive),
                 AssignedToMe = incidents.Count(i => IsActive(i) && i.AssignedToUserId == currentUserId),
                 Unassigned = unassigned.Count,
+                AwaitingMyConfirmation = incidents.Count(i => i.Status == IncidentStatus.Resolved && i.ReportedByUserId == currentUserId),
                 OldestUnassignedWaitingMinutes = oldestWaiting,
                 Sla = sla,
                 OpenAgeBuckets = BuildAgeBuckets(incidents, nowUtc)

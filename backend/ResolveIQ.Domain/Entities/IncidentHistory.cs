@@ -15,7 +15,8 @@ namespace ResolveIQ.Domain.Entities
 
         public Guid IncidentId { get; set; }
 
-        public string ChangedByUserId { get; set; } = string.Empty;
+        /// <summary>Who made the change. Empty when the app did it by itself (for example closing a long-resolved incident).</summary>
+        public string? ChangedByUserId { get; set; }
 
         public string FieldChanged { get; set; } = string.Empty;
 

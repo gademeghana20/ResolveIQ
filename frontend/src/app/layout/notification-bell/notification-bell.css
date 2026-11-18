@@ -1,0 +1,69 @@
+/* The list opens in an overlay, so these rules are not scoped to the component (see its ViewEncapsulation). */
+
+.bell-panel {
+  width: min(420px, 94vw);
+  max-height: 70vh;
+}
+
+.bell-panel .bell-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 4px 8px 4px 16px;
+  border-bottom: 1px solid var(--mat-sys-outline-variant);
+}
+
+.bell-panel .bell-item {
+  height: auto;
+  min-height: 0;
+  padding: 10px 16px;
+  white-space: normal;
+}
+
+/* The menu item's own layout puts text in a row; stack the message above the time instead. */
+.bell-panel .bell-item .mat-mdc-menu-item-text {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  align-items: flex-start;
+}
+
+.bell-panel .bell-message {
+  font: var(--mat-sys-body-medium);
+  line-height: 1.35;
+}
+
+.bell-panel .bell-item.unread .bell-message {
+  font-weight: 600;
+}
+
+.bell-panel .bell-when {
+  color: var(--mat-sys-on-surface-variant);
+  font: var(--mat-sys-label-small);
+}
+
+/* A small dot marks an unread one; the words "Unread:" carry it for screen readers. */
+.bell-panel .bell-dot {
+  display: inline-block;
+  width: 8px;
+  height: 8px;
+  margin-right: 8px;
+  border-radius: 50%;
+  background: var(--mat-sys-primary);
+}
+
+.bell-panel .bell-empty {
+  margin: 0;
+  padding: 24px 16px;
+  text-align: center;
+  color: var(--mat-sys-on-surface-variant);
+}
+
+.bell-panel .visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+}

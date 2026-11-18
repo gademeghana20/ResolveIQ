@@ -120,9 +120,10 @@ namespace ResolveIQ.Tests.Api
             this TestUser reporter,
             string title = "Printer is broken",
             string description = "Paper jam on floor 2",
-            Guid? categoryId = null)
+            Guid? categoryId = null,
+            string? urgency = null)
         {
-            var response = await reporter.Client.PostAsJsonAsync("/api/incidents", new { title, description, categoryId });
+            var response = await reporter.Client.PostAsJsonAsync("/api/incidents", new { title, description, categoryId, urgency });
             await response.ExpectAsync(HttpStatusCode.Created);
             return await response.ReadJsonAsync();
         }
@@ -146,7 +147,10 @@ namespace ResolveIQ.Tests.Api
             JsonElement incident,
             string status,
             string? reason = null) =>
-            who.Client.PutAsJsonAsync($"/api/incidents/{incident.GetGuid("id")}/status", new { status, reason });
+            // Resolving an incident now needs a note on how it was fixed, so tests that do not care about it get a stock one.
+            who.Client.PutAsJsonAsync(
+                $"/api/incidents/{incident.GetGuid("id")}/status",
+                new { status, reason = reason ?? (status == "Resolved" ? "Fixed it." : null) });
 
         public static async Task<JsonElement> GetIncidentAsync(this TestUser who, JsonElement incident)
         {

@@ -8,6 +8,7 @@ import { MatProgressBarModule } from '@angular/material/progress-bar';
 import { RouterLink } from '@angular/router';
 import { EMPTY, catchError, forkJoin, of, switchMap, tap } from 'rxjs';
 
+import { AuthService } from '../../../core/auth/auth.service';
 import { Badge } from '../../../shared/badge/badge';
 import { IncidentActions } from '../actions/incident-actions';
 import { CommentForm } from '../comment-form/comment-form';
@@ -34,6 +35,7 @@ type LoadState = 'loading' | 'ready' | 'notFound' | 'failed';
 export class IncidentDetail {
   private readonly incidents = inject(IncidentService);
   private readonly destroyRef = inject(DestroyRef);
+  private readonly auth = inject(AuthService);
 
   /** The incident id from the address (/incidents/:id), handed in by the router. */
   readonly id = input.required<string>();
@@ -43,6 +45,12 @@ export class IncidentDetail {
 
   // null means "could not be loaded", an empty list means "loaded, nothing there yet".
   protected readonly history = signal<HistoryEntry[] | null>(null);
+
+  /** Whether the person looking reported this incident (they are the one who confirms a fix). */
+  protected readonly isReporter = computed(() => {
+    const incident = this.detail();
+    return !!incident && incident.reportedByUserId === this.auth.userId();
+  });
   protected readonly comments = signal<IncidentComment[] | null>(null);
 
   // Bumping this reloads the page's data, for the Retry button and, later, after an action.

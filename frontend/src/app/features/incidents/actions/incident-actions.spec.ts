@@ -29,6 +29,10 @@ function incident(actions: Partial<IncidentActionsModel> = {}, overrides: Partia
     createdAtUtc: '2026-11-16T18:00:00Z',
     updatedAtUtc: null,
     resolvedAtUtc: null,
+    closedAtUtc: null,
+    reportedUrgency: null,
+    resolutionNotes: null,
+    autoCloseAtUtc: null,
     slaState: 'OnTrack',
     slaStartedAtUtc: null,
     slaDueAtUtc: null,
@@ -94,7 +98,7 @@ describe('IncidentActions', () => {
   it('shows only the actions the API allows', async () => {
     await setUp(incident({ allowedStatusChanges: ['OnHold', 'Resolved'], canAssign: true, canChangePriority: false }));
 
-    expect(labels()).toEqual(['Put on hold…', 'Mark resolved', 'Reassign…']);
+    expect(labels()).toEqual(['Put on hold…', 'Mark resolved…', 'Reassign…']);
   });
 
   it('says Assign when nobody is assigned yet, and offers a priority change when allowed', async () => {
@@ -122,7 +126,7 @@ describe('IncidentActions', () => {
 
       expect(labels()).toEqual([
         'Put on hold… (on behalf of dana@example.com)',
-        'Mark resolved (on behalf of dana@example.com)',
+        'Mark resolved… (on behalf of dana@example.com)',
       ]);
     });
 
@@ -154,7 +158,7 @@ describe('IncidentActions', () => {
         }),
       );
 
-      expect(labels()).toEqual(['Mark resolved (on behalf of the assignee)']);
+      expect(labels()).toEqual(['Mark resolved… (on behalf of the assignee)']);
     });
 
     it('only labels the moves that really are on someone\'s behalf', async () => {
@@ -180,10 +184,11 @@ describe('IncidentActions', () => {
         }),
       );
 
+      dialogOpens('Fixed it.'); // resolving asks how it was fixed first
       page().querySelector('button')!.click();
 
       const request = http.expectOne(`${API_URL}/incidents/${ID}/status`);
-      expect(request.request.body).toMatchObject({ status: 'Resolved' });
+      expect(request.request.body).toMatchObject({ status: 'Resolved', reason: 'Fixed it.' });
       request.flush(incident());
     });
   });
@@ -227,8 +232,9 @@ describe('IncidentActions', () => {
 
     it('cannot be clicked while another change is saving', async () => {
       await setUp(incident({ canEdit: true, allowedStatusChanges: ['Resolved'] }));
+      dialogOpens('Fixed it.');
 
-      buttonNamed('Mark resolved').click();
+      buttonNamed('Mark resolved…').click();
       await settle();
 
       expect(buttonNamed('Edit title and description…').disabled).toBe(true);
@@ -237,13 +243,13 @@ describe('IncidentActions', () => {
   });
 
   it('moves an incident with one click when no more information is needed', async () => {
-    await setUp(incident({ allowedStatusChanges: ['Resolved'] }));
-    const updated = incident({}, { status: 'Resolved' });
+    await setUp(incident({ allowedStatusChanges: ['InProgress'] }, { status: 'Open' }));
+    const updated = incident({}, { status: 'InProgress' });
 
-    buttonNamed('Mark resolved').click();
+    buttonNamed('Start work').click();
     const request = http.expectOne(`${API_URL}/incidents/${ID}/status`);
     expect(request.request.method).toBe('PUT');
-    expect(request.request.body).toMatchObject({ status: 'Resolved' });
+    expect(request.request.body).toMatchObject({ status: 'InProgress' });
     request.flush(updated);
 
     expect(changed).toEqual([updated]);
@@ -251,16 +257,51 @@ describe('IncidentActions', () => {
 
   it('cannot be clicked again while a change is being saved', async () => {
     await setUp(incident({ allowedStatusChanges: ['Resolved'], canAssign: true }));
+    dialogOpens('Fixed it.');
 
-    buttonNamed('Mark resolved').click();
+    buttonNamed('Mark resolved…').click();
     await settle();
 
-    expect(buttonNamed('Mark resolved').disabled).toBe(true);
+    expect(buttonNamed('Mark resolved…').disabled).toBe(true);
     expect(buttonNamed('Reassign…').disabled).toBe(true);
 
     http.expectOne(`${API_URL}/incidents/${ID}/status`).flush(incident());
     await settle();
-    expect(buttonNamed('Mark resolved').disabled).toBe(false);
+    expect(buttonNamed('Mark resolved…').disabled).toBe(false);
+  });
+
+  describe('marking an incident resolved', () => {
+    it('asks how it was fixed first, then sends the answer as the reason', async () => {
+      await setUp(incident({ allowedStatusChanges: ['Resolved'] }));
+      const open = dialogOpens('Replaced the roller.');
+
+      buttonNamed('Mark resolved…').click();
+
+      expect(open).toHaveBeenCalled();
+      const request = http.expectOne(`${API_URL}/incidents/${ID}/status`);
+      expect(request.request.body).toEqual({ status: 'Resolved', reason: 'Replaced the roller.' });
+      request.flush(incident({}, { status: 'Resolved' }));
+    });
+
+    it('sends nothing when the question is cancelled', async () => {
+      await setUp(incident({ allowedStatusChanges: ['Resolved'] }));
+      dialogOpens(undefined);
+
+      buttonNamed('Mark resolved…').click();
+
+      http.expectNone(`${API_URL}/incidents/${ID}/status`);
+    });
+  });
+
+  describe('assigning', () => {
+    it('tells the assign box what the reporter said about urgency', async () => {
+      await setUp(incident({ canAssign: true }, { reportedUrgency: 'Critical', assignedToUserId: null, assignedToEmail: null }));
+      const open = dialogOpens(undefined);
+
+      buttonNamed('Assign…').click();
+
+      expect(open.mock.calls[0][1]).toMatchObject({ data: { reportedUrgency: 'Critical' } });
+    });
   });
 
   describe('putting an incident on hold', () => {
@@ -343,7 +384,8 @@ describe('IncidentActions', () => {
   describe('when the API refuses', () => {
     async function failWith(status: number, body: object = {}) {
       await setUp(incident({ allowedStatusChanges: ['Resolved'] }));
-      buttonNamed('Mark resolved').click();
+      dialogOpens('Fixed it.');
+      buttonNamed('Mark resolved…').click();
       http.expectOne(`${API_URL}/incidents/${ID}/status`).flush(body, { status, statusText: String(status) });
       await settle();
     }
@@ -353,7 +395,7 @@ describe('IncidentActions', () => {
 
       expect(snack).toHaveBeenCalledWith('That change is not allowed.', 'Dismiss', expect.anything());
       expect(changed).toEqual([]);
-      expect(buttonNamed('Mark resolved').disabled).toBe(false); // can try again
+      expect(buttonNamed('Mark resolved…').disabled).toBe(false); // can try again
     });
 
     it('asks the page to reload when someone else changed the incident (409)', async () => {
@@ -372,7 +414,8 @@ describe('IncidentActions', () => {
 
     it('says so when the server cannot be reached, without asking for a reload', async () => {
       await setUp(incident({ allowedStatusChanges: ['Resolved'] }));
-      buttonNamed('Mark resolved').click();
+      dialogOpens('Fixed it.');
+      buttonNamed('Mark resolved…').click();
       http.expectOne(`${API_URL}/incidents/${ID}/status`).error(new ProgressEvent('error'));
       await settle();
 

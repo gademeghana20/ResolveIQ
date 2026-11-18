@@ -37,6 +37,20 @@ namespace ResolveIQ.Application.DTOs.Incidents
 
         public DateTime? ResolvedAtUtc { get; set; }
 
+        public DateTime? ClosedAtUtc { get; set; }
+
+        /// <summary>How urgent the reporter said it was (a hint; the real priority is set by a Manager or Admin).</summary>
+        public IncidentPriority? ReportedUrgency { get; set; }
+
+        /// <summary>How it was fixed. Filled in while the incident is Resolved or Closed.</summary>
+        public string? ResolutionNotes { get; set; }
+
+        /// <summary>
+        /// While Resolved: when it will be closed automatically if nobody confirms or reopens it.
+        /// Empty in every other state, or when automatic closing is switched off.
+        /// </summary>
+        public DateTime? AutoCloseAtUtc { get; set; }
+
         public SlaState SlaState { get; set; }
 
         public DateTime? SlaStartedAtUtc { get; set; }

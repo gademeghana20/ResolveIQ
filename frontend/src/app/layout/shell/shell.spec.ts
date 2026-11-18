@@ -133,6 +133,12 @@ describe('Shell', () => {
       expect(page().querySelector('.avatar')!.textContent!.trim()).toBe(initials);
     });
 
+    it('has the notification bell in the top bar, and starts looking for news', async () => {
+      await setUp();
+
+      expect(page().querySelector('header app-notification-bell button[aria-label^="Notifications"]')).not.toBeNull();
+    });
+
     it('offers the colour theme switch', async () => {
       await setUp();
 

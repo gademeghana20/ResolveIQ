@@ -13,7 +13,7 @@ import { catchError, of } from 'rxjs';
 
 import { fieldErrors } from '../../../core/api-error';
 import { notBlank } from '../../../core/validators';
-import { Category, MAX_DESCRIPTION_LENGTH, MAX_TITLE_LENGTH } from '../incident.models';
+import { Category, IncidentPriority, MAX_DESCRIPTION_LENGTH, MAX_TITLE_LENGTH } from '../incident.models';
 import { IncidentService } from '../incident.service';
 
 @Component({
@@ -43,7 +43,10 @@ export class IncidentCreate {
     title: ['', [notBlank, Validators.maxLength(MAX_TITLE_LENGTH)]],
     description: ['', [notBlank, Validators.maxLength(MAX_DESCRIPTION_LENGTH)]],
     categoryId: [''], // empty means "no category"
+    urgency: [''], // empty means "not sure"
   });
+
+  protected readonly urgencies: IncidentPriority[] = ['Low', 'Medium', 'High', 'Critical'];
 
   protected readonly categories = signal<Category[]>([]);
   protected readonly categoriesFailed = signal(false);
@@ -72,10 +75,12 @@ export class IncidentCreate {
       return;
     }
 
-    const { title, description, categoryId } = this.form.getRawValue();
+    const { title, description, categoryId, urgency } = this.form.getRawValue();
     this.submitting.set(true);
 
-    this.incidents.createIncident(title.trim(), description.trim(), categoryId || undefined).subscribe({
+    this.incidents
+      .createIncident(title.trim(), description.trim(), categoryId || undefined, (urgency as IncidentPriority) || undefined)
+      .subscribe({
       next: (created) => {
         this.snackBar.open(`Incident ${created.incidentNumber} created`, 'Dismiss', { duration: 6000 });
         this.router.navigate(['/incidents', created.id]);

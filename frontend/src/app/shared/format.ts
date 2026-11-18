@@ -49,3 +49,23 @@ export function niceAxis(maxValue: number, wantedTicks = 4): { top: number; step
 
   return { top: Math.ceil(maxValue / step) * step, step };
 }
+
+/** "2026-11-17T18:00:00Z" -> "just now", "5 min ago", "3 h ago", "2 d ago"; older than a week it is the date. */
+export function timeAgo(isoDateTime: string, now: number = Date.now()): string {
+  const minutes = Math.floor((now - new Date(isoDateTime).getTime()) / 60_000);
+
+  if (minutes < 1) {
+    return 'just now';
+  }
+  if (minutes < 60) {
+    return `${minutes} min ago`;
+  }
+
+  const hours = Math.floor(minutes / 60);
+  if (hours < 24) {
+    return `${hours} h ago`;
+  }
+
+  const days = Math.floor(hours / 24);
+  return days < 8 ? `${days} d ago` : new Date(isoDateTime).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' });
+}

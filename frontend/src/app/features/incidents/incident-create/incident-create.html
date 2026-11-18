@@ -52,6 +52,17 @@
         }
       </mat-form-field>
 
+      <mat-form-field appearance="outline" subscriptSizing="dynamic">
+        <mat-label>How urgent is this for you? (optional)</mat-label>
+        <mat-select formControlName="urgency">
+          <mat-option value="">Not sure</mat-option>
+          @for (urgency of urgencies; track urgency) {
+            <mat-option [value]="urgency">{{ urgency }}</mat-option>
+          }
+        </mat-select>
+        <mat-hint>Only a hint for the manager, who decides the final priority.</mat-hint>
+      </mat-form-field>
+
       @if (errorMessage(); as message) {
         <p class="form-error" role="alert">{{ message }}</p>
       }

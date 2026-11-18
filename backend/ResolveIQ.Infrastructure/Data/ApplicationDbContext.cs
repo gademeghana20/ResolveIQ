@@ -27,6 +27,8 @@ namespace ResolveIQ.Infrastructure.Data
 
         public DbSet<RefreshToken> RefreshTokens { get; set; } = null!;
 
+        public DbSet<Notification> Notifications { get; set; } = null!;
+
         protected override void ConfigureConventions(ModelConfigurationBuilder configurationBuilder)
         {
             base.ConfigureConventions(configurationBuilder);

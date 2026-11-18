@@ -36,6 +36,19 @@
         (stale)="reload()"
       />
 
+      @if (incident.status === 'Resolved') {
+        <p class="notice" role="status">
+          @if (isReporter()) {
+            <strong>Is it fixed?</strong> Read how it was fixed below. Close the incident to confirm, or reopen it if the problem is still there.
+          } @else {
+            <strong>Resolved.</strong> Waiting for the person who reported it to confirm the fix.
+          }
+          @if (incident.autoCloseAtUtc) {
+            If nobody responds, it closes automatically on {{ incident.autoCloseAtUtc | date: 'mediumDate' }}.
+          }
+        </p>
+      }
+
       <div class="layout">
         <div class="main">
           <mat-card>
@@ -44,6 +57,15 @@
               <p class="text">{{ incident.description }}</p>
             </mat-card-content>
           </mat-card>
+
+          @if (incident.resolutionNotes) {
+            <mat-card>
+              <mat-card-header><mat-card-title>How it was fixed</mat-card-title></mat-card-header>
+              <mat-card-content>
+                <p class="text">{{ incident.resolutionNotes }}</p>
+              </mat-card-content>
+            </mat-card>
+          }
 
           <mat-card>
             <mat-card-header><mat-card-title>Comments</mat-card-title></mat-card-header>
@@ -87,6 +109,9 @@
                 <dt>Category</dt>
                 <dd>{{ incident.categoryName ?? '—' }}</dd>
 
+                <dt>Reported urgency</dt>
+                <dd>{{ incident.reportedUrgency ?? 'Not given' }}</dd>
+
                 <dt>Created</dt>
                 <dd>{{ incident.createdAtUtc | date: 'medium' }}</dd>
 
@@ -96,6 +121,11 @@
                 @if (incident.resolvedAtUtc) {
                   <dt>Resolved</dt>
                   <dd>{{ incident.resolvedAtUtc | date: 'medium' }}</dd>
+                }
+
+                @if (incident.closedAtUtc) {
+                  <dt>Closed</dt>
+                  <dd>{{ incident.closedAtUtc | date: 'medium' }}</dd>
                 }
 
                 <dt>SLA due</dt>
@@ -113,7 +143,7 @@
                     <li>
                       <div>{{ describeChange(entry) }}</div>
                       <div class="meta">
-                        {{ entry.changedBy ?? 'Unknown user' }} · {{ entry.changedAtUtc | date: 'medium' }}
+                        {{ entry.changedBy ?? 'ResolveIQ (automatic)' }} · {{ entry.changedAtUtc | date: 'medium' }}
                       </div>
                       @if (entry.fieldChanged === 'Description') {
                         <details class="changes">

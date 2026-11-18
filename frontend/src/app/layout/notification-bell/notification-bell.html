@@ -1,0 +1,39 @@
+<button
+  mat-icon-button
+  type="button"
+  class="bell"
+  [matMenuTriggerFor]="panel"
+  [attr.aria-label]="label()"
+  (menuOpened)="onOpen()"
+>
+  <mat-icon
+    aria-hidden="true"
+    [matBadge]="unread() > 99 ? '99+' : unread()"
+    [matBadgeHidden]="unread() === 0"
+    matBadgeSize="small"
+    matBadgeColor="warn"
+    >notifications</mat-icon
+  >
+</button>
+
+<mat-menu #panel="matMenu" class="bell-panel" xPosition="before">
+  <div class="bell-head" role="presentation" (click)="$event.stopPropagation()" (keydown)="$event.stopPropagation()">
+    <strong>Notifications</strong>
+    <button mat-button type="button" [disabled]="unread() === 0" (click)="markAll()">Mark all as read</button>
+  </div>
+
+  @for (notification of items(); track notification.id) {
+    <button mat-menu-item type="button" class="bell-item" [class.unread]="!notification.isRead" (click)="open(notification)">
+      <span class="bell-message">
+        @if (!notification.isRead) {
+          <span class="bell-dot" aria-hidden="true"></span>
+          <span class="visually-hidden">Unread: </span>
+        }
+        {{ notification.message }}
+      </span>
+      <span class="bell-when">{{ ago(notification.createdAtUtc) }}</span>
+    </button>
+  } @empty {
+    <p class="bell-empty">No notifications yet.</p>
+  }
+</mat-menu>

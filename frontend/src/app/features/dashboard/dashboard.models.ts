@@ -17,6 +17,8 @@ export interface DashboardSummary {
   activeIncidents: number;
   assignedToMe: number;
   unassigned: number;
+  /** Incidents I reported that are resolved and waiting for me to confirm the fix. */
+  awaitingMyConfirmation: number;
   oldestUnassignedWaitingMinutes: number | null;
   sla: SlaCounts;
   /** Active incidents by how long they have been open: Under1Day, 1To3Days, 3To7Days, Over7Days (always all four). */

@@ -1,4 +1,4 @@
-import { formatDay, formatDuration, formatHours, formatPercent, niceAxis } from './format';
+import { formatDay, formatDuration, formatHours, formatPercent, niceAxis, timeAgo } from './format';
 
 describe('formatDuration', () => {
   it.each([
@@ -64,5 +64,32 @@ describe('niceAxis', () => {
 
   it('gives an empty chart a sensible scale instead of dividing by zero', () => {
     expect(niceAxis(0)).toEqual({ top: 4, step: 1 });
+  });
+});
+
+describe("timeAgo", () => {
+  const now = new Date("2026-11-18T12:00:00Z").getTime();
+  const ago = (minutes: number) => new Date(now - minutes * 60_000).toISOString();
+
+  it("says just now for the last minute", () => {
+    expect(timeAgo(ago(0), now)).toBe("just now");
+    expect(timeAgo(ago(0.9), now)).toBe("just now");
+  });
+
+  it("counts minutes, then hours, then days", () => {
+    expect(timeAgo(ago(1), now)).toBe("1 min ago");
+    expect(timeAgo(ago(59), now)).toBe("59 min ago");
+    expect(timeAgo(ago(60), now)).toBe("1 h ago");
+    expect(timeAgo(ago(23 * 60 + 59), now)).toBe("23 h ago");
+    expect(timeAgo(ago(24 * 60), now)).toBe("1 d ago");
+    expect(timeAgo(ago(7 * 24 * 60), now)).toBe("7 d ago");
+  });
+
+  it("gives the date once it is more than a week old", () => {
+    expect(timeAgo(ago(8 * 24 * 60), now)).toMatch(/Nov 10, 2026/);
+  });
+
+  it("never says a time in the future (a slightly fast clock is still just now)", () => {
+    expect(timeAgo(ago(-5), now)).toBe("just now");
   });
 });

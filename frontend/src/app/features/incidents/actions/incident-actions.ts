@@ -14,6 +14,7 @@ import { AssignDialog, AssignDialogResult } from './assign-dialog';
 import { EditIncidentDialog, EditIncidentDialogData } from './edit-incident-dialog';
 import { HoldReasonDialog } from './hold-reason-dialog';
 import { PriorityDialog, PriorityDialogData } from './priority-dialog';
+import { ResolveNotesDialog } from './resolve-notes-dialog';
 
 /**
  * The action buttons on an incident. It shows only what the API says the current person may do
@@ -65,6 +66,15 @@ export class IncidentActions {
       return;
     }
 
+    if (target === 'Resolved') {
+      // The reporter decides whether to accept the fix, so they need to be told what it was.
+      this.dialog
+        .open<ResolveNotesDialog, void, string>(ResolveNotesDialog)
+        .afterClosed()
+        .subscribe((notes) => notes && this.run(this.incidents.changeStatus(incident.id, target, notes)));
+      return;
+    }
+
     if (target === 'Closed') {
       // Closed is final, so make sure.
       this.dialog
@@ -88,7 +98,11 @@ export class IncidentActions {
 
     this.dialog
       .open<AssignDialog, unknown, AssignDialogResult>(AssignDialog, {
-        data: { currentAssigneeId: incident.assignedToUserId, currentPriority: incident.priority },
+        data: {
+          currentAssigneeId: incident.assignedToUserId,
+          currentPriority: incident.priority,
+          reportedUrgency: incident.reportedUrgency,
+        },
       })
       .afterClosed()
       .subscribe((result) => result && this.run(this.incidents.assign(incident.id, result.assigneeUserId, result.priority)));

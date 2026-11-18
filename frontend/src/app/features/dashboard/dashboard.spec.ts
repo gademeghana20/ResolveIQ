@@ -16,6 +16,7 @@ const summary: DashboardSummary = {
   assignedToMe: 3,
   unassigned: 4,
   oldestUnassignedWaitingMinutes: 200,
+  awaitingMyConfirmation: 2,
   sla: { notStarted: 4, onTrack: 5, atRisk: 2, paused: 1, breached: 3, met: 14, none: 1 },
   openAgeBuckets: [
     { name: 'Under1Day', count: 4 },
@@ -133,6 +134,15 @@ describe('Dashboard', () => {
       await loadBoth();
 
       expect(tile('Assigned to me').textContent).toContain('3');
+    });
+
+    it('reminds me of resolved incidents waiting for me to confirm, and opens exactly those', async () => {
+      await loadBoth();
+
+      expect(tile('Waiting for your confirmation').textContent).toContain('2');
+      expect(tile('Waiting for your confirmation').querySelector('a')!.getAttribute('href')).toBe(
+        '/incidents?scope=reported&status=Resolved',
+      );
     });
 
     it('says how long the oldest unassigned incident has waited', async () => {

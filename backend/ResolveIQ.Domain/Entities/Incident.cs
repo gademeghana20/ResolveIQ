@@ -33,6 +33,18 @@ namespace ResolveIQ.Domain.Entities
 
         public DateTime? ResolvedAtUtc { get; set; }
 
+        /// <summary>When the incident was closed (by its reporter, a Manager or Admin, or automatically). Empty until then.</summary>
+        public DateTime? ClosedAtUtc { get; set; }
+
+        /// <summary>
+        /// How urgent the reporter said it was when reporting it. Only a hint for whoever triages it: the real priority,
+        /// and with it the SLA, is still set by a Manager or Admin.
+        /// </summary>
+        public IncidentPriority? ReportedUrgency { get; set; }
+
+        /// <summary>How it was fixed, written when it was resolved. Cleared if the incident is reopened (the history keeps it).</summary>
+        public string? ResolutionNotes { get; set; }
+
         /// <summary>
         /// When the SLA clock started: the first assignment, or the latest priority change.
         /// Null while the incident has never been assigned.

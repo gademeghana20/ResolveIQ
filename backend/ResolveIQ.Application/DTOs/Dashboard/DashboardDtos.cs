@@ -32,6 +32,9 @@ namespace ResolveIQ.Application.DTOs.Dashboard
 
         public int Unassigned { get; set; }
 
+        /// <summary>Incidents the person reported that are Resolved and waiting for them to confirm the fix (or reopen).</summary>
+        public int AwaitingMyConfirmation { get; set; }
+
         /// <summary>How long the longest-waiting unassigned incident has waited. Empty if there are none.</summary>
         public long? OldestUnassignedWaitingMinutes { get; set; }
 

@@ -8,8 +8,11 @@ namespace ResolveIQ.Application.DTOs.Incidents
         [EnumDataType(typeof(IncidentStatus))]
         public IncidentStatus Status { get; set; }
 
-        /// <summary>Required when putting an incident OnHold (why is work paused?).</summary>
-        [StringLength(500)]
+        /// <summary>
+        /// Required when putting an incident OnHold (why is work paused? up to 500 characters) and when marking it
+        /// Resolved (how was it fixed? up to 2000 characters).
+        /// </summary>
+        [StringLength(2000)]
         public string? Reason { get; set; }
     }
 }

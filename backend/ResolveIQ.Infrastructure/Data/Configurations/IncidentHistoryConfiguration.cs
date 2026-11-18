@@ -15,7 +15,6 @@ namespace ResolveIQ.Infrastructure.Data.Configurations
                 .UseIdentityColumn();
 
             builder.Property(h => h.ChangedByUserId)
-                .IsRequired()
                 .HasMaxLength(450);
 
             builder.Property(h => h.FieldChanged)
