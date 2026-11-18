@@ -32,16 +32,17 @@ You do each step yourself in your own accounts. Nothing here needs a password or
 2. In its control panel, create a **website** (the free plan has one) and a **SQL Server database** (the free plan has one).
    Write down the database's **connection string** (the panel shows it).
    Also write down the website's address, for example `https://yourname.runasp.net`.
-3. Check which .NET version the host runs. ResolveIQ needs **.NET 10**.
-   - If the host offers .NET 10, build the normal way (step 4).
-   - If it does not, build **self-contained** instead (the app carries its own runtime): add
-     `--self-contained -r win-x64` to the command in step 4.
-4. On your computer, from the project folder, build the API:
+3. Check which .NET version the host runs. ResolveIQ needs **.NET 10** (MonsterASP.NET's free plan offers it).
+   If a host does not, build **self-contained** instead (the app carries its own runtime): add `--self-contained -r win-x64`.
+4. On your computer, from the project folder, build the API the **portable** way (no `-r` option):
    ```
-   dotnet publish backend/ResolveIQ.API -c Release -o publish
+   dotnet publish backend/ResolveIQ.API -c Release -o publish/api
    ```
-5. Upload everything inside the new `publish` folder to the website, using the upload method the panel offers
-   (FTP, or its file manager). Replace what is there.
+   Then delete the non-Windows folders inside `publish/api/runtimes` (keep the ones starting with `win`) to make it smaller,
+   and zip the *contents* of `publish/api`.
+   > We first tried a build made for one specific processor type (`-r win-x64`). On the host it failed to start with
+   > "HTTP Error 500.30", with no useful message. The portable build above started straight away.
+5. In the host's file manager, open `wwwroot`, upload the zip, and click **Unzip** on its row (answer yes to overwriting).
 6. Create a file called `appsettings.Production.json` **on the server only** (never in the project, never in GitHub;
    the project already ignores that name). Put this in it, filling in the capital-letter parts:
 
@@ -70,12 +71,18 @@ You do each step yourself in your own accounts. Nothing here needs a password or
    - `Registration:Enabled: false`: strangers cannot create accounts. Visitors use the demo buttons.
    - `Hosting:TrustProxyHeaders`: makes the sign-in limit work per visitor instead of for everyone at once.
    - `Database:MigrateOnStartup`: the app builds its own tables the first time it starts.
-   - `Cors` / `App`: which website is allowed to talk to the API. Use the Vercel address from Part 2.
+   - `Cors` / `App`: which website is allowed to talk to the API. Use the Vercel address from Part 2 (exactly, with `https://` and no slash at the end).
      You can come back and fix it after you know the address.
-7. Start (or restart) the website from the panel, then open `https://yourname.runasp.net/health`.
-   You should see `{"status":"Healthy"}`.
-   - If you see an error page, open the host's log viewer. The usual causes are a wrong connection string
-     or a missing `Jwt` key.
+7. **Turn on HTTPS.** In the panel open the website, then **HTTPS**, then **Enable HTTPS** (the free Let's Encrypt one).
+   A new certificate can take **a few minutes** to start working; until then the address says "connection closed".
+   (The Vercel site talks to the API over `https`, so the API needs it.)
+8. Open `https://yourname.runasp.net/health`. You should see `{"status":"Healthy"}`. The first visit can be slow,
+   because the app builds its tables and adds the demo data.
+   - **"HTTP Error 500.30":** the app crashed while starting. Create a folder called `logs` inside `wwwroot` and set
+     `stdoutLogEnabled="true"` in `web.config`, visit the address, and read the file that appears in `logs`.
+     The usual causes are a wrong connection string, a missing `Jwt` key, or a wrong processor type (see step 4).
+     Turn the log off again afterwards.
+   - Uploading a new `web.config` makes the host restart the app, which is also how new settings take effect.
 
 ## Part 2: the website on Vercel
 
