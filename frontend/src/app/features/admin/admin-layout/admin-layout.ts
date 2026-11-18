@@ -30,6 +30,7 @@ import { RouterLink, RouterLinkActive, RouterOutlet } from '@angular/router';
     .active {
       font-weight: 700;
       background: var(--mat-sys-secondary-container);
+      color: var(--mat-sys-on-secondary-container);
     }
   `,
 })

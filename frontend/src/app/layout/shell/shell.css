@@ -172,7 +172,8 @@
   width: 34px;
   height: 34px;
   border-radius: 50%;
-  background: color-mix(in srgb, var(--mat-sys-on-primary) 24%, transparent);
+  /* Darker than the pill in light mode, lighter in dark mode, so the initials always stand out. */
+  background: light-dark(rgba(0, 0, 0, 0.22), rgba(255, 255, 255, 0.35));
   font-size: 0.8rem;
   font-weight: 700;
   letter-spacing: 0.02em;
@@ -194,7 +195,6 @@
 
 .role {
   font: var(--mat-sys-label-small);
-  opacity: 0.85;
 }
 
 .page {

@@ -44,8 +44,7 @@ import { Component, input } from '@angular/core';
     }
 
     .iq {
-      font-weight: 400;
-      opacity: 0.85;
+      font-weight: 400; /* lighter weight, not lighter colour: faded text would be hard to read */
     }
   `,
 })

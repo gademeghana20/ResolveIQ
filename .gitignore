@@ -485,3 +485,7 @@ $RECYCLE.BIN/
 node_modules/
 dist/
 .angular/
+
+# Browser test output
+e2e/test-results/
+e2e/playwright-report/

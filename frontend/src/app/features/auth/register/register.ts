@@ -18,7 +18,11 @@ import { emailWithDomain, fieldsMatch, mismatchErrorMatcher } from '../../../cor
 import { ThemeToggle } from '../../../shared/theme-toggle/theme-toggle';
 import { AuthBrand } from '../auth-brand/auth-brand';
 
-type Problems = { email: string[]; password: string[]; other: string[] };
+interface Problems {
+  email: string[];
+  password: string[];
+  other: string[];
+}
 
 @Component({
   selector: 'app-register',

@@ -60,9 +60,11 @@
   /* The sidebar: deep green in both modes, a little darker at night */
   --app-sidebar-bg: light-dark(#2b7a62, #123229);
   --app-sidebar-fg: #ffffff;
-  --app-sidebar-muted: rgba(255, 255, 255, 0.74);
-  --app-sidebar-hover: rgba(255, 255, 255, 0.1);
-  --app-sidebar-active: rgba(255, 255, 255, 0.18);
+  /* Text on the sidebar must stay readable (4.5:1 or better), so "muted" is almost white and the hover and
+     active highlights darken the green in light mode instead of lightening it. */
+  --app-sidebar-muted: rgba(255, 255, 255, 0.94);
+  --app-sidebar-hover: light-dark(rgba(0, 0, 0, 0.12), rgba(255, 255, 255, 0.1));
+  --app-sidebar-active: light-dark(rgba(0, 0, 0, 0.22), rgba(255, 255, 255, 0.18));
   --app-sidebar-divider: rgba(255, 255, 255, 0.16);
   /* The white pill buttons on the sidebar (New incident, Log out): white in both modes, with green text. */
   --app-sidebar-pill-bg: #ffffff;

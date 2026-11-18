@@ -1,0 +1,14 @@
+{
+  "name": "resolveiq-e2e",
+  "version": "0.0.0",
+  "private": true,
+  "description": "Browser tests for ResolveIQ: the real API and the real web app, driven like a person would.",
+  "scripts": {
+    "test": "playwright test",
+    "test:headed": "playwright test --headed"
+  },
+  "devDependencies": {
+    "@axe-core/playwright": "4.10",
+    "@playwright/test": "1.55"
+  }
+}

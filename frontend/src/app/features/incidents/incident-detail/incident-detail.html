@@ -131,7 +131,7 @@
                 <dt>SLA due</dt>
                 <dd>{{ incident.slaDueAtUtc ? (incident.slaDueAtUtc | date: 'medium') : '—' }}</dd>
 
-                @if (incident.slaMinutesLeft != null) {
+                @if (typeof incident.slaMinutesLeft === 'number') {
                   @if (incident.slaMinutesLeft >= 0) {
                     <dt>Time left</dt>
                     <dd>{{ formatDuration(incident.slaMinutesLeft) }}</dd>
