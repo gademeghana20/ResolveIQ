@@ -119,6 +119,7 @@ builder.Services.AddCors(options =>
     {
         options.AddDefaultPolicy(policy => policy
             .WithOrigins(allowedOrigins)
+            .WithExposedHeaders("Content-Disposition", "X-Export-Truncated") // readable by the CSV download
             .AllowAnyHeader()      // Authorization (the token) and Content-Type
             .AllowAnyMethod());    // GET, POST, PUT
     }

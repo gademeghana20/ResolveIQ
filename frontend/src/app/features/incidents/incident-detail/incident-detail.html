@@ -130,6 +130,16 @@
 
                 <dt>SLA due</dt>
                 <dd>{{ incident.slaDueAtUtc ? (incident.slaDueAtUtc | date: 'medium') : '—' }}</dd>
+
+                @if (incident.slaMinutesLeft != null) {
+                  @if (incident.slaMinutesLeft >= 0) {
+                    <dt>Time left</dt>
+                    <dd>{{ formatDuration(incident.slaMinutesLeft) }}</dd>
+                  } @else {
+                    <dt>Overdue by</dt>
+                    <dd class="overdue">{{ formatDuration(-incident.slaMinutesLeft) }}</dd>
+                  }
+                }
               </dl>
             </mat-card-content>
           </mat-card>

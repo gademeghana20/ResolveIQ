@@ -1,4 +1,4 @@
-import { formatDay, formatDuration, formatHours, formatPercent, niceAxis, timeAgo } from './format';
+import { formatDay, formatDuration, formatHours, formatPercent, niceAxis, slaTimeText, timeAgo } from './format';
 
 describe('formatDuration', () => {
   it.each([
@@ -91,5 +91,14 @@ describe("timeAgo", () => {
 
   it("never says a time in the future (a slightly fast clock is still just now)", () => {
     expect(timeAgo(ago(-5), now)).toBe("just now");
+  });
+});
+
+describe("slaTimeText", () => {
+  it("says how long is left, or how late it is", () => {
+    expect(slaTimeText(200)).toBe("3 h 20 min left");
+    expect(slaTimeText(0)).toBe("0 min left");
+    expect(slaTimeText(-45)).toBe("overdue by 45 min");
+    expect(slaTimeText(-3000)).toBe("overdue by 2 d 2 h");
   });
 });

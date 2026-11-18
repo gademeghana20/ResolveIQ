@@ -10,6 +10,7 @@ import { EMPTY, catchError, forkJoin, of, switchMap, tap } from 'rxjs';
 
 import { AuthService } from '../../../core/auth/auth.service';
 import { Badge } from '../../../shared/badge/badge';
+import { formatDuration } from '../../../shared/format';
 import { IncidentActions } from '../actions/incident-actions';
 import { CommentForm } from '../comment-form/comment-form';
 import {
@@ -63,6 +64,7 @@ export class IncidentDetail {
   protected readonly priorityTone = priorityTone;
   protected readonly slaLabel = slaLabel;
   protected readonly slaTone = slaTone;
+  protected readonly formatDuration = formatDuration;
   protected readonly describeChange = describeChange;
 
   constructor() {

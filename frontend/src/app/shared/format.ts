@@ -19,6 +19,11 @@ export function formatDuration(totalMinutes: number): string {
   return restHours ? `${days} d ${restHours} h` : `${days} d`;
 }
 
+/** Minutes to the SLA deadline -> "3 h 20 min left", or "overdue by 45 min" when negative. */
+export function slaTimeText(minutesLeft: number): string {
+  return minutesLeft >= 0 ? `${formatDuration(minutesLeft)} left` : `overdue by ${formatDuration(-minutesLeft)}`;
+}
+
 /** Average hours -> a short readable time, e.g. 4.5 -> "4 h 30 min". */
 export function formatHours(hours: number): string {
   return formatDuration(hours * 60);

@@ -14,6 +14,7 @@ import { catchError, debounceTime, distinctUntilChanged, of, switchMap, tap } fr
 
 import { AuthService } from '../../../core/auth/auth.service';
 import { BadgeCell, BadgeNoteCell, LinkCell } from '../../../shared/data-grid/cell-renderers';
+import { slaTimeText } from '../../../shared/format';
 import { DataGrid, GridSort } from '../../../shared/data-grid/data-grid';
 import { GridFooter, PageChange } from '../../../shared/grid-footer/grid-footer';
 import { priorityLabel, priorityTone, slaLabel, slaTone, statusLabel, statusTone } from '../incident-display';
@@ -37,6 +38,16 @@ import { IncidentService } from '../incident.service';
 function createdText(iso: string): string {
   const sameYear = new Date(iso).getFullYear() === new Date().getFullYear();
   return formatDate(iso, sameYear ? 'MMM d' : 'MMM d, y', 'en-US');
+}
+
+/** Hands a file to the browser's download. */
+function saveFile(blob: Blob, name: string): void {
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement('a');
+  link.href = url;
+  link.download = name;
+  link.click();
+  URL.revokeObjectURL(url);
 }
 
 type Scope = 'all' | 'assigned' | 'reported' | 'unassigned';
@@ -81,6 +92,8 @@ export class IncidentList {
   protected readonly result = signal<PagedResult<IncidentSummary> | null>(null);
   protected readonly loading = signal(true);
   protected readonly loadFailed = signal(false);
+  protected readonly exporting = signal(false);
+  protected readonly exportMessage = signal<{ text: string; failed: boolean } | null>(null);
   protected readonly categories = signal<Category[]>([]);
 
   // Only Managers and Admins may look up people, so only they get the Assignee filter.
@@ -145,6 +158,8 @@ export class IncidentList {
         label: (row: IncidentSummary) => slaLabel(row.slaState),
         tone: (row: IncidentSummary) => slaTone(row.slaState),
         dueAt: (row: IncidentSummary) => row.slaDueAtUtc ?? null,
+        // While the clock runs, "3 h left" / "overdue by 45 min" is more useful than a date; the date is the tooltip.
+        note: (row: IncidentSummary) => (row.slaMinutesLeft == null ? null : slaTimeText(row.slaMinutesLeft)),
       },
     },
     {
@@ -326,6 +341,26 @@ export class IncidentList {
   protected clearFilters(): void {
     this.searchControl.setValue('', { emitEvent: false });
     this.query.update((q) => ({ ...DEFAULT_QUERY, sortBy: q.sortBy, sortDirection: q.sortDirection, pageSize: q.pageSize }));
+  }
+
+  /** Downloads what the list shows (same filters and sorting, all pages) as a CSV file. */
+  protected exportCsv(): void {
+    this.exporting.set(true);
+    this.exportMessage.set(null);
+
+    this.incidents.exportCsv(this.query()).subscribe({
+      next: ({ blob, truncated }) => {
+        this.exporting.set(false);
+        saveFile(blob, `incidents-${new Date().toISOString().slice(0, 10)}.csv`);
+        this.exportMessage.set(
+          truncated ? { text: 'The file has the first 5,000 incidents. Add filters to export fewer.', failed: false } : null,
+        );
+      },
+      error: () => {
+        this.exporting.set(false);
+        this.exportMessage.set({ text: 'The export did not work. Please try again.', failed: true });
+      },
+    });
   }
 
   protected retry(): void {

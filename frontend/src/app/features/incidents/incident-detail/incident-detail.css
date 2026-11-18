@@ -90,6 +90,11 @@ mat-card-content {
   overflow-wrap: anywhere;
 }
 
+.facts dd.overdue {
+  color: var(--mat-sys-error);
+  font-weight: 500;
+}
+
 .timeline {
   list-style: none;
   margin: 0;

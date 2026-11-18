@@ -1,6 +1,6 @@
 import { HttpClient, HttpParams } from '@angular/common/http';
 import { Injectable, inject } from '@angular/core';
-import { Observable } from 'rxjs';
+import { Observable, map } from 'rxjs';
 
 import { API_URL } from '../../core/api-config';
 import {
@@ -23,6 +23,17 @@ export class IncidentService {
 
   getIncidents(query: IncidentQuery): Observable<PagedResult<IncidentSummary>> {
     return this.http.get<PagedResult<IncidentSummary>>(`${API_URL}/incidents`, { params: toParams(query) });
+  }
+
+  /** The incidents the list shows for these filters, as a CSV file (every page, up to the API's limit). */
+  exportCsv(query: IncidentQuery): Observable<{ blob: Blob; truncated: boolean }> {
+    return this.http
+      .get(`${API_URL}/incidents/export`, {
+        params: toParams({ ...query, page: 1, pageSize: 1 }), // paging does not apply to an export
+        responseType: 'blob',
+        observe: 'response',
+      })
+      .pipe(map((response) => ({ blob: response.body as Blob, truncated: response.headers.get('X-Export-Truncated') === 'true' })));
   }
 
   getIncident(id: string): Observable<IncidentDetail> {

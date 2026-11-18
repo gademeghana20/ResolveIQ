@@ -36,6 +36,33 @@ namespace ResolveIQ.API.Controllers
             return Ok(await _incidentService.GetIncidentsAsync(query, userId, roles, cancellationToken));
         }
 
+        /// <summary>Downloads the incidents the list would show for these filters as a CSV file.</summary>
+        [HttpGet("export")]
+        [Produces("text/csv")]
+        [ProducesResponseType(StatusCodes.Status200OK)]
+        [ProducesResponseType(StatusCodes.Status400BadRequest)]
+        [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+        public async Task<IActionResult> ExportIncidents(
+            [FromQuery] IncidentQuery query,
+            CancellationToken cancellationToken)
+        {
+            if (!TryGetCurrentUser(out var userId, out var roles))
+            {
+                return Unauthorized();
+            }
+
+            var export = await _incidentService.ExportIncidentsAsync(query, userId, roles, cancellationToken);
+
+            // A byte-order mark makes Excel read the file as UTF-8, so accented names stay right.
+            var bytes = new System.Text.UTF8Encoding(encoderShouldEmitUTF8Identifier: true)
+                .GetPreamble()
+                .Concat(System.Text.Encoding.UTF8.GetBytes(IncidentCsv.Build(export.Rows)))
+                .ToArray();
+
+            Response.Headers["X-Export-Truncated"] = export.Truncated ? "true" : "false";
+            return File(bytes, "text/csv; charset=utf-8", $"incidents-{DateTime.UtcNow:yyyyMMdd-HHmm}.csv");
+        }
+
         [HttpGet("{id:guid}")]
         [ProducesResponseType(StatusCodes.Status200OK)]
         [ProducesResponseType(StatusCodes.Status401Unauthorized)]

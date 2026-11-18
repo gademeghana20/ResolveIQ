@@ -70,6 +70,8 @@ export class LinkCell implements ICellRendererAngularComp {
 export interface BadgeNoteCellParams<TRow = unknown> extends BadgeCellParams<TRow> {
   /** A date to show as "due …" beside the badge, or null for none. */
   dueAt: (row: TRow) => string | null;
+  /** Words to show instead of the due date (for example "3 h left"); the due date then becomes a tooltip. */
+  note?: (row: TRow) => string | null;
 }
 
 /** A badge with its due date directly underneath it. */
@@ -79,7 +81,9 @@ export interface BadgeNoteCellParams<TRow = unknown> extends BadgeCellParams<TRo
   template: `
     <span class="badge-with-note">
       <app-badge [label]="label" [tone]="tone" />
-      @if (dueAt) {
+      @if (note) {
+        <span class="badge-note" [attr.title]="dueAt ? 'Due ' + (dueAt | date: 'MMM d, h:mm a') : null">{{ note }}</span>
+      } @else if (dueAt) {
         <span class="badge-note">due {{ dueAt | date: 'MMM d, h:mm a' }}</span>
       }
     </span>
@@ -89,6 +93,7 @@ export class BadgeNoteCell implements ICellRendererAngularComp {
   protected label = '';
   protected tone: BadgeTone = 'neutral';
   protected dueAt: string | null = null;
+  protected note: string | null = null;
 
   agInit(params: BadgeNoteCellParams): void {
     this.refresh(params);
@@ -99,6 +104,7 @@ export class BadgeNoteCell implements ICellRendererAngularComp {
       this.label = params.label(params.data);
       this.tone = params.tone(params.data);
       this.dueAt = params.dueAt(params.data);
+      this.note = params.note?.(params.data) ?? null;
     }
     return true;
   }

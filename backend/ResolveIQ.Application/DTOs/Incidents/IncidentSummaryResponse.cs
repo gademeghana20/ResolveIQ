@@ -33,5 +33,11 @@ namespace ResolveIQ.Application.DTOs.Incidents
 
         /// <summary>The SLA deadline. Empty while not started, paused, or without a target.</summary>
         public DateTime? SlaDueAtUtc { get; set; }
+
+        /// <summary>
+        /// Whole minutes until the deadline while the clock runs; negative when overdue.
+        /// Empty when no clock is running.
+        /// </summary>
+        public int? SlaMinutesLeft { get; set; }
     }
 }

@@ -18,6 +18,16 @@ namespace ResolveIQ.Application.Abstractions
             CancellationToken cancellationToken = default);
 
         /// <summary>
+        /// The same incidents the list would show for these filters (ignoring paging), up to
+        /// <see cref="IncidentExport.MaxRows"/>, for a CSV download.
+        /// </summary>
+        Task<IncidentExport> ExportIncidentsAsync(
+            IncidentQuery query,
+            string userId,
+            IReadOnlyCollection<string> roles,
+            CancellationToken cancellationToken = default);
+
+        /// <summary>
         /// Returns one incident, or null if it does not exist or the user is not allowed to see it.
         /// </summary>
         Task<IncidentDetailResponse?> GetIncidentByIdAsync(

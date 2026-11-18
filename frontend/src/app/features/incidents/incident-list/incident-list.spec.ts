@@ -124,6 +124,82 @@ describe('IncidentList', () => {
     expect(sla.textContent).toContain('due Nov 17');
   });
 
+  it('says how much time is left while the clock runs, with the due date as a tooltip', async () => {
+    await load([incident({ slaState: 'OnTrack', slaDueAtUtc: '2026-11-17T18:11:00Z', slaMinutesLeft: 200 })]);
+
+    const note = root().querySelector('.ag-cell[col-id="sla"] .badge-note')!;
+    expect(note.textContent!.trim()).toBe('3 h 20 min left');
+    expect(note.getAttribute('title')).toContain('Due Nov 17');
+  });
+
+  it('says how late it is when overdue', async () => {
+    await load([incident({ slaState: 'Breached', slaDueAtUtc: '2026-11-17T18:11:00Z', slaMinutesLeft: -45 })]);
+
+    expect(root().querySelector('.ag-cell[col-id="sla"] .badge-note')!.textContent!.trim()).toBe('overdue by 45 min');
+  });
+
+  describe('Export CSV', () => {
+    const exportButton = () =>
+      Array.from(root().querySelectorAll('button')).find((b) => b.textContent!.includes('Export CSV') || b.textContent!.includes('Preparing')) as HTMLButtonElement;
+    const exportCall = (r: { url: string }) => r.url === `${API_URL}/incidents/export`;
+    let saved: ReturnType<typeof vi.fn<(name: string) => void>>;
+
+    beforeEach(async () => {
+      saved = vi.fn<(name: string) => void>();
+      vi.spyOn(HTMLAnchorElement.prototype, 'click').mockImplementation(function (this: HTMLAnchorElement) {
+        saved(this.download);
+      });
+      (URL as unknown as { createObjectURL: () => string }).createObjectURL = () => 'blob:fake';
+      (URL as unknown as { revokeObjectURL: () => void }).revokeObjectURL = () => undefined;
+      await load([incident()]);
+    });
+
+    it('asks for the same filters, without paging, and saves the file', async () => {
+      exportButton().click();
+      await settleQuickly();
+
+      const request = http.expectOne(exportCall);
+      expect(request.request.params.get('sortBy')).toBe('CreatedAt');
+      expect(request.request.params.get('pageSize')).toBe('1'); // paging is ignored by the API for an export
+      expect(request.request.responseType).toBe('blob');
+      request.flush(new Blob(['x']), { headers: { 'X-Export-Truncated': 'false' } });
+      await settleQuickly();
+
+      expect(saved).toHaveBeenCalledWith(expect.stringMatching(/^incidents-\d{4}-\d{2}-\d{2}\.csv$/));
+      expect(text()).not.toContain('first 5,000');
+    });
+
+    it('says so when the file was cut at the limit', async () => {
+      exportButton().click();
+      await settleQuickly();
+
+      http.expectOne(exportCall).flush(new Blob(['x']), { headers: { 'X-Export-Truncated': 'true' } });
+      await settleQuickly();
+
+      expect(text()).toContain('first 5,000 incidents');
+    });
+
+    it('says so when the export fails, and can be tried again', async () => {
+      exportButton().click();
+      await settleQuickly();
+
+      http.expectOne(exportCall).flush(new Blob(['boom']), { status: 500, statusText: 'Server Error' });
+      await settleQuickly();
+
+      expect(text()).toContain('The export did not work');
+      expect(saved).not.toHaveBeenCalled();
+      expect(exportButton().disabled).toBe(false);
+    });
+
+    it('is switched off while the file is being prepared', async () => {
+      exportButton().click();
+      await settleQuickly();
+
+      expect(exportButton().disabled).toBe(true);
+      http.expectOne(exportCall).flush(new Blob(['x']));
+    });
+  });
+
   it('has no New incident button of its own (the side menu has one)', async () => {
     await load([incident()]);
 

@@ -30,6 +30,8 @@ export interface IncidentSummary {
   createdAtUtc: string; // ISO date text, e.g. "2026-11-16T18:00:00Z"
   slaState: SlaState;
   slaDueAtUtc: string | null;
+  /** Whole minutes to the deadline while the clock runs (negative when overdue); null when no clock is running. */
+  slaMinutesLeft?: number | null;
 }
 
 /** Everything about one incident (the detail page). */
@@ -59,6 +61,7 @@ export interface IncidentDetail {
   slaState: SlaState;
   slaStartedAtUtc: string | null;
   slaDueAtUtc: string | null;
+  slaMinutesLeft?: number | null;
   actions: IncidentActions;
 }
 

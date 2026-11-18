@@ -83,5 +83,23 @@ namespace ResolveIQ.Domain.Sla
             var state2 = remaining <= target * AtRiskFraction ? SlaState.AtRisk : SlaState.OnTrack;
             return new SlaResult(state2, started, due);
         }
+
+        /// <summary>
+        /// Whole minutes until the deadline while the clock is running; negative once it has passed
+        /// ("overdue by"). Empty when the clock is not running (not started, paused, no target, or finished),
+        /// because there is no live number to show then.
+        /// </summary>
+        public static int? MinutesLeft(Incident incident, SlaResult result, DateTime nowUtc)
+        {
+            if (result.DueAtUtc is not DateTime due
+                || result.State is not (SlaState.OnTrack or SlaState.AtRisk or SlaState.Breached)
+                || incident.SlaPausedAtUtc is not null
+                || incident.Status is IncidentStatus.Resolved or IncidentStatus.Closed)
+            {
+                return null;
+            }
+
+            return (int)Math.Floor((due - nowUtc).TotalMinutes);
+        }
     }
 }

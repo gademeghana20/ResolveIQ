@@ -213,6 +213,37 @@ describe('IncidentDetail', () => {
     expect(text()).toContain('Closed automatically after 7 days resolved');
   });
 
+  describe('SLA time', () => {
+    async function open(minutes: number | null) {
+      answerDetail(detail({ slaMinutesLeft: minutes }));
+      answerHistory([]);
+      answerComments([]);
+      await settle();
+    }
+
+    it('shows how much time is left while the clock runs', async () => {
+      await open(200);
+
+      expect(text()).toContain('Time left');
+      expect(text()).toContain('3 h 20 min');
+      expect(text()).not.toContain('Overdue by');
+    });
+
+    it('shows how late it is, in red, when overdue', async () => {
+      await open(-90);
+
+      expect(text()).toContain('Overdue by');
+      expect((fixture.nativeElement as HTMLElement).querySelector('dd.overdue')!.textContent).toContain('1 h 30 min');
+    });
+
+    it('shows neither when no clock is running', async () => {
+      await open(null);
+
+      expect(text()).not.toContain('Time left');
+      expect(text()).not.toContain('Overdue by');
+    });
+  });
+
   it('keeps the line breaks in the description', async () => {
     answerDetail(detail());
     answerHistory([]);

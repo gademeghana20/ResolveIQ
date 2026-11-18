@@ -101,6 +101,38 @@ namespace ResolveIQ.Infrastructure.Services
             };
         }
 
+        public async Task<IncidentExport> ExportIncidentsAsync(
+            IncidentQuery query,
+            string userId,
+            IReadOnlyCollection<string> roles,
+            CancellationToken cancellationToken = default)
+        {
+            // Same visibility and filters as the list, but one big page (one more than the cap, to know if it was cut).
+            var everything = new IncidentQuery
+            {
+                Search = query.Search,
+                Status = query.Status,
+                Priority = query.Priority,
+                CategoryId = query.CategoryId,
+                AssignedToUserId = query.AssignedToUserId,
+                Unassigned = query.Unassigned,
+                AssignedToMe = query.AssignedToMe,
+                ReportedByMe = query.ReportedByMe,
+                SlaState = query.SlaState,
+                SortBy = query.SortBy,
+                SortDirection = query.SortDirection,
+                Page = 1,
+                PageSize = IncidentExport.MaxRows + 1
+            };
+
+            var result = await GetIncidentsAsync(everything, userId, roles, cancellationToken);
+            var truncated = result.Items.Count > IncidentExport.MaxRows;
+
+            return new IncidentExport(
+                result.Items.Take(IncidentExport.MaxRows).ToList(),
+                truncated);
+        }
+
         public async Task<IncidentDetailResponse?> GetIncidentByIdAsync(
             Guid id,
             string userId,
@@ -814,7 +846,8 @@ namespace ResolveIQ.Infrastructure.Services
                 AssignedToUserId = i.AssignedToUserId,
                 CreatedAtUtc = i.CreatedAtUtc,
                 SlaState = sla.State,
-                SlaDueAtUtc = sla.DueAtUtc
+                SlaDueAtUtc = sla.DueAtUtc,
+                SlaMinutesLeft = SlaCalculator.MinutesLeft(i, sla, now)
             };
         }
 
@@ -845,7 +878,8 @@ namespace ResolveIQ.Infrastructure.Services
                     : null,
                 SlaState = sla.State,
                 SlaStartedAtUtc = sla.StartedAtUtc,
-                SlaDueAtUtc = sla.DueAtUtc
+                SlaDueAtUtc = sla.DueAtUtc,
+                SlaMinutesLeft = SlaCalculator.MinutesLeft(i, sla, now)
             };
         }
     }
