@@ -49,7 +49,18 @@
             "development": {
               "optimization": false,
               "extractLicenses": false,
-              "sourceMap": true
+              "sourceMap": true,
+              "assets": [
+                {
+                  "glob": "**/*",
+                  "input": "public",
+                  "ignore": ["config.js"]
+                },
+                {
+                  "glob": "config.js",
+                  "input": "src/dev-config"
+                }
+              ]
             }
           },
           "defaultConfiguration": "production"
