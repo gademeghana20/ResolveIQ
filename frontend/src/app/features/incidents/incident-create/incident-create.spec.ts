@@ -1,5 +1,6 @@
 import { provideHttpClient } from '@angular/common/http';
 import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
+import { WritableSignal } from '@angular/core';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { MATERIAL_ANIMATIONS } from '@angular/material/core';
 import { MatSnackBar } from '@angular/material/snack-bar';
@@ -286,4 +287,69 @@ describe('IncidentCreate', () => {
     await submit();
     http.expectOne(`${API_URL}/incidents`).flush(created);
   });
+
+  describe('with files', () => {
+    const attachUrl = `${API_URL}/incidents/new-id/attachments`;
+    const chosen = () => (fixture.componentInstance as unknown as { pendingFiles: WritableSignal<File[]> }).pendingFiles;
+    const photo = () => new File(['x'], 'shot.png');
+
+    async function fillAndSubmit() {
+      type('input[formControlName="title"]', 'Printer broken');
+      type('textarea', 'Paper jam');
+      chosen().set([photo()]);
+      await submit();
+    }
+
+    it('counts chosen files as unsaved, even before anything is typed', async () => {
+      await setUp();
+      expect(fixture.componentInstance.hasUnsavedChanges()).toBe(false);
+
+      chosen().set([photo()]);
+
+      expect(fixture.componentInstance.hasUnsavedChanges()).toBe(true);
+    });
+
+    it('attaches the files once the incident is saved, then opens it', async () => {
+      await setUp();
+      await fillAndSubmit();
+
+      http.expectOne(`${API_URL}/incidents`).flush(created);
+      await settle();
+      expect(navigate).not.toHaveBeenCalled(); // the files are still on their way
+
+      http.expectOne(attachUrl).flush({ id: 'f1' });
+      await settle();
+
+      expect(navigate).toHaveBeenCalledWith(['/incidents', 'new-id']);
+      expect(snack.mock.calls[0][0]).toContain('INC-000042');
+      expect(snack.mock.calls[0][0]).not.toContain('could not');
+      expect(fixture.componentInstance.hasUnsavedChanges()).toBe(false);
+    });
+
+    it('still opens the new incident when a file fails, and says so', async () => {
+      await setUp();
+      await fillAndSubmit();
+
+      http.expectOne(`${API_URL}/incidents`).flush(created);
+      await settle();
+      http.expectOne(attachUrl).flush({}, { status: 500, statusText: 'Server Error' });
+      await settle();
+
+      expect(navigate).toHaveBeenCalledWith(['/incidents', 'new-id']);
+      expect(snack.mock.calls[0][0]).toContain('INC-000042 created');
+      expect(snack.mock.calls[0][0]).toContain('1 of 1 files could not be attached');
+    });
+
+    it('does not try to attach anything when the incident itself could not be saved', async () => {
+      await setUp();
+      await fillAndSubmit();
+
+      http.expectOne(`${API_URL}/incidents`).flush({}, { status: 500, statusText: 'Server Error' });
+      await settle();
+
+      http.expectNone(attachUrl);
+      expect(navigate).not.toHaveBeenCalled();
+    });
+  });
+
 });

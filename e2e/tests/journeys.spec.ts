@@ -1,7 +1,9 @@
+import fs from 'node:fs';
+
 import { expect, test } from '@playwright/test';
 
 import { DEMO_PASSWORD } from '../playwright.config';
-import { ADMIN, EMPLOYEE, MANAGER, choose, signIn, signOut, uniqueTitle } from './helpers';
+import { ADMIN, EMPLOYEE, MANAGER, choose, expectAccessible, signIn, signOut, uniqueTitle } from './helpers';
 
 test.describe('signing in', () => {
   test('a visitor is sent to the sign-in page, and a wrong password is refused', async ({ page }) => {
@@ -147,5 +149,84 @@ test.describe('the Admin area', () => {
     const [download] = await Promise.all([page.waitForEvent('download'), page.getByRole('button', { name: 'Export CSV' }).click()]);
 
     expect(download.suggestedFilename()).toMatch(/^incidents-\d{4}-\d{2}-\d{2}\.csv$/);
+  });
+});
+
+test.describe('files on an incident', () => {
+  test('a file attached while reporting is there for the manager to download, and the page stays accessible', async ({ page }) => {
+    const title = uniqueTitle('Error message attached');
+
+    // 1. An employee reports it and attaches a note.
+    await signIn(page, EMPLOYEE);
+    await page.getByRole('link', { name: 'New incident' }).click();
+    await page.getByLabel('Title').fill(title);
+    await page.getByLabel('Description').fill('The notes file has the steps that cause it.');
+    await page.locator('input[type="file"]').setInputFiles({
+      name: 'steps.txt',
+      mimeType: 'text/plain',
+      buffer: Buffer.from('Steps to reproduce\n1. open the report\n2. it crashes\n'),
+    });
+    await expect(page.locator('.chosen')).toContainText('steps.txt');
+    await page.getByRole('button', { name: 'Submit incident' }).click();
+
+    await expect(page.getByRole('heading', { name: title })).toBeVisible();
+    await expect(page.getByRole('button', { name: 'Download steps.txt' })).toBeVisible();
+    await expect(page.getByText('Attached the file "steps.txt"')).toBeVisible(); // it is in the history too
+    await expectAccessible(page, 'an incident with an attached file');
+    await signOut(page);
+
+    // 2. A manager opens the incident and downloads the very same file.
+    await signIn(page, MANAGER);
+    await page.goto('/incidents');
+    await page.getByRole('link', { name: title }).click();
+    const [download] = await Promise.all([
+      page.waitForEvent('download'),
+      page.getByRole('button', { name: 'Download steps.txt' }).click(),
+    ]);
+
+    expect(download.suggestedFilename()).toBe('steps.txt');
+    expect(fs.readFileSync((await download.path())!, 'utf8')).toContain('Steps to reproduce');
+  });
+
+  test('a file the app does not allow is refused before anything is sent', async ({ page }) => {
+    await signIn(page, EMPLOYEE);
+    await page.getByRole('link', { name: 'New incident' }).click();
+
+    await page.locator('input[type="file"]').setInputFiles({
+      name: 'installer.exe',
+      mimeType: 'application/octet-stream',
+      buffer: Buffer.from('MZ not really a program'),
+    });
+
+    await expect(page.getByRole('alert')).toContainText('installer.exe');
+    await expect(page.getByRole('alert')).toContainText('not allowed');
+    await expect(page.locator('.chosen')).toHaveCount(0);
+  });
+
+  test('a file on a comment shows under that comment, and its author can remove it', async ({ page }) => {
+    const title = uniqueTitle('Comment with a file');
+
+    await signIn(page, EMPLOYEE);
+    await page.getByRole('link', { name: 'New incident' }).click();
+    await page.getByLabel('Title').fill(title);
+    await page.getByLabel('Description').fill('Plain incident, the file comes with a comment.');
+    await page.getByRole('button', { name: 'Submit incident' }).click();
+    await expect(page.getByRole('heading', { name: title })).toBeVisible();
+
+    await page.getByLabel('Add a comment').fill('Here is the log.');
+    await page.locator('app-comment-form input[type="file"]').setInputFiles({
+      name: 'router.txt',
+      mimeType: 'text/plain',
+      buffer: Buffer.from('log line 1\nlog line 2\n'),
+    });
+    await page.getByRole('button', { name: 'Post comment' }).click();
+
+    const comment = page.locator('article.comment', { hasText: 'Here is the log.' });
+    await expect(comment.getByRole('button', { name: 'Download router.txt' })).toBeVisible();
+
+    await comment.getByRole('button', { name: 'Remove router.txt' }).click();
+    await page.getByRole('dialog').getByRole('button', { name: 'Remove' }).click();
+    await expect(comment.getByRole('button', { name: 'Download router.txt' })).toHaveCount(0);
+    await expect(page.getByText('Removed the file "router.txt"')).toBeVisible();
   });
 });

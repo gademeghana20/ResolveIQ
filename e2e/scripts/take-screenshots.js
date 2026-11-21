@@ -115,12 +115,27 @@ async function dashboardReady(page) {
       await shot(page, '05-employee-confirm-the-fix', { fullPage: true });
     });
 
+    await step('employee incident with files', async () => {
+      await page.goto(`${BASE}/incidents`);
+      await gridReady(page);
+      await page.getByRole('link', { name: /Excel crashes when opening/ }).click();
+      await page.getByRole('button', { name: 'Download excel-error.png' }).waitFor();
+      await page.getByRole('button', { name: 'Download macro-check.pdf' }).waitFor();
+      await shot(page, '18-employee-incident-with-files', { fullPage: true });
+    });
+
     await step('employee reports an incident', async () => {
       await page.goto(`${BASE}/incidents/new`);
       await page.getByLabel('Title').fill('Laptop fan is very loud');
       await page.getByLabel('Description').fill('The fan runs at full speed even when I only have a browser open. It started this week.');
       await page.getByRole('combobox', { name: /How urgent is this for you/ }).click();
       await page.getByRole('option', { name: 'Medium' }).click();
+      await page.locator('input[type="file"]').setInputFiles({
+        name: 'fan-noise.txt',
+        mimeType: 'text/plain',
+        buffer: Buffer.from('The fan gets loud a few minutes after I sign in.\n'),
+      });
+      await page.locator('.chosen').waitFor();
       await shot(page, '06-employee-report-incident');
     });
 

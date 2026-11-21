@@ -13,4 +13,5 @@ mat-form-field {
 .form-error {
   margin: 0 0 4px;
   color: var(--mat-sys-error);
+  white-space: pre-line; /* one line for each file that could not be attached */
 }

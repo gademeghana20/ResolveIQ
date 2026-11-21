@@ -56,6 +56,7 @@ Things worth knowing before you click around:
 - **Registration is switched off** on the live site, so strangers cannot fill the database with accounts.
 - **It runs on free hosting.** The first click after a quiet period can take a few seconds.
 - **No real email is sent.** "Forgot password" is switched off for the demo accounts, and the app only writes emails to its log (see [known limits](#15-known-limits-and-what-was-left-out-on-purpose)).
+- **File attachments are switched off on the live demo**, so strangers cannot put files on a site that is not theirs. Everything else about files works, and you can try uploading by [running the app on your computer](#10-run-it-on-your-computer) (attachments are on by default there).
 
 ---
 
@@ -69,6 +70,7 @@ Things worth knowing before you click around:
 | "Was it actually fixed?" | The assignee writes **how it was fixed**. The **reporter** confirms and closes it, or reopens it. If nobody answers, it closes by itself after 7 days. |
 | "Who changed what?" | Every incident has a full history. The Admin area has a separate audit log. Both are written by the system and cannot be edited. |
 | "Can I see the big picture?" | A dashboard with numbers and charts for right now and for the last 7, 30 or 90 days. |
+| "Can I show what I mean?" | **Attach screenshots, PDFs and text files** to an incident or to a comment. They stay private to the people who can see that incident. |
 
 ---
 
@@ -132,6 +134,7 @@ An Admin can change these hours, or switch a priority off so its incidents get n
 | **Read the answer** | When an incident is resolved, a **"How it was fixed"** box explains what was done. |
 | **Confirm or reopen** | A banner asks **"Is it fixed?"**. **Close incident** confirms it. **Reopen** sends it back to work. If nobody answers, it closes automatically after 7 days. |
 | **Edit their own report** | Change the title and description until the incident is closed. |
+| **Attach files** | Add screenshots, PDFs or text files: while reporting, later on the incident page, or together with a comment. Up to 5 MB each. They can download any file on an incident they can see, and remove their own. |
 | **Comment** | Add notes to the conversation. Comments are a permanent record and cannot be edited or deleted. |
 | **Get notified** | A bell shows what happened on their incidents (assigned, status changes, comments, resolved, reopened, closed, closed automatically). |
 | **See their own numbers** | A dashboard of their own incidents, including a **"Waiting for your confirmation"** tile for incidents that need their answer. |
@@ -143,6 +146,8 @@ An Admin can change these hours, or switch a priority off so its incidents get n
 | Report an incident | Confirm that it is fixed |
 |---|---|
 | ![Reporting an incident](docs/screenshots/06-employee-report-incident.png) | ![The "Is it fixed?" screen with the resolution note, comments and history](docs/screenshots/05-employee-confirm-the-fix.png) |
+
+![An incident with files attached to it and to a comment](docs/screenshots/18-employee-incident-with-files.png)
 
 ![The notifications bell, open](docs/screenshots/04-employee-notifications.png)
 
@@ -162,6 +167,7 @@ An Admin can change these hours, or switch a priority off so its incidents get n
 | **Change priority** | While the incident is still being worked. This restarts the SLA clock with the new priority's hours. |
 | **Watch the deadline** | Every incident shows **"Time left"**, or **"Overdue by 1 d 8 h"** in red. The list and the dashboard show At risk and Breached counts. |
 | **Step in** | Make any valid status move on someone's behalf (start, hold, resolve, close, reopen). |
+| **Tidy files** | See every incident's files, and remove any file (for example one attached by mistake). The history records the removal. |
 | **Read the dashboard** | Everything below, including the **Workload by assignee** table (active and breached incidents per person). |
 | **Export a CSV** | The current list, with the same filters, ready for Excel (see [Security](#8-security) for how it is made safe). |
 
@@ -224,6 +230,9 @@ The server enforces every row. Hiding a button in the screen is only a convenien
 | See incidents | Own only | All | All |
 | Edit title and description | Their own report, until closed | Their own report | Their own report |
 | Comment on an incident they can see | ✅ | ✅ | ✅ |
+| Attach files (when the site allows it, and the incident is not closed) | On incidents they can see; on their own comments | On incidents they can see; on their own comments | On incidents they can see; on their own comments |
+| Download a file | On incidents they can see | All | All |
+| Remove a file (not on a closed incident) | Their own | Any | Any |
 | Start work, hold, resolve | If assigned to them | ✅ (on behalf) | ✅ (on behalf) |
 | Close or reopen a resolved incident | If they reported it | ✅ (on behalf) | ✅ (on behalf) |
 | Assign, reassign | ❌ | ✅ | ✅ |
@@ -253,6 +262,15 @@ The server enforces every row. Hiding a button in the screen is only a convenien
 - **Resolution notes:** resolving requires saying how it was fixed. Holding requires saying why. Both are kept in the history.
 - **Auto-close:** a background job runs every hour and closes incidents that have sat in *Resolved* for 7 days with no answer. It notifies the reporter and the assignee, and writes a history line.
 - **CSV export** of the filtered list: up to 5,000 rows, UTF-8 so Excel shows accents correctly, and a header tells the screen if the list was cut short.
+
+### File attachments
+
+- **Attach files** to an incident (while reporting it, or later from its **Attachments** card) or to a **comment** (they are sent right after the comment is saved, and show under it).
+- **What is allowed:** pictures (`.png` `.jpg` `.jpeg` `.gif` `.webp`), `.pdf` and plain `.txt`. At most **5 MB** a file, **5 files** on a comment and **20** on an incident. All of these can be changed in settings.
+- **Checked twice.** The web app warns about a wrong kind or a file that is too big before anything is sent; the server then checks **again** and looks at the file's real first bytes, so a program or script renamed to `cute.png` is refused.
+- **Download or remove:** any file on an incident a person can see can be downloaded. The person who attached it, and any Manager or Admin, can remove it. Both adding and removing a file show up in the incident's **History**, and a file attached to the incident (not to a comment) tells the reporter and the assignee in the bell.
+- **Closed incidents are frozen:** no files can be added or removed, but the existing ones can still be downloaded.
+- **Safe by design:** see [Security](#8-security). On a public demo site, attaching is switched off unless you turn it on.
 
 ### SLA and deadlines
 
@@ -341,9 +359,12 @@ erDiagram
     CATEGORY ||--o{ INCIDENT : "groups"
     INCIDENT ||--o{ INCIDENT_HISTORY : "records changes"
     INCIDENT ||--o{ INCIDENT_COMMENT : "has"
+    INCIDENT ||--o{ ATTACHMENT : "has files"
+    INCIDENT_COMMENT ||--o{ ATTACHMENT : "may carry"
     USER ||--o{ INCIDENT : "reports or is assigned"
     USER ||--o{ NOTIFICATION : "receives"
     USER ||--o{ REFRESH_TOKEN : "holds"
+    USER ||--o{ ATTACHMENT : "attaches"
 ```
 
 The **SLA policy** table holds the hours for each priority; an incident copies the hours it was promised when its clock starts, so it is not linked to the policy afterwards. The **audit log** table is deliberately not linked to users (see below).
@@ -354,6 +375,7 @@ Design choices worth knowing:
 - **The audit log has no link to the users table.** It stores the actor's email on each line, so deleting or deactivating an account never rewrites or removes the record of what that person did.
 - **Counters (`Sequence` columns) order events that happen in the same instant**, so history and comments always read in the order they really happened.
 - **A change and its history lines are saved in one transaction**: all of it or none of it.
+- **A file's bytes are stored in the database** (a `varbinary(max)` column), so one backup covers everything. Listing files reads only their details, never their bytes; the bytes are read only when someone downloads a file.
 - **Refresh tokens are stored hashed**, rotated on every use, and cleaned up by the background job.
 
 ### Background job
@@ -375,6 +397,7 @@ An hourly job (it can be switched off or timed differently) closes long-resolved
 | **Registration** | Can be closed, or limited to chosen email domains. |
 | **Browser safety headers** | `X-Content-Type-Options`, `X-Frame-Options: DENY`, `Referrer-Policy: no-referrer`, a strict `Content-Security-Policy` for the API, `Permissions-Policy`, and HSTS in production. Sign-in answers are never cached. |
 | **CORS** | Only the exact website addresses listed in settings, never "any origin". |
+| **File attachments** | Only a short list of kinds is allowed (pictures, PDF, plain text; **no** programs, scripts, web pages or SVG). A file is accepted only if its extension **and** its real first bytes agree, so a renamed file is refused. The app picks the content type itself and cleans the file name (no folders, no odd characters). Files are always sent as **downloads** (never opened inside the page) with `nosniff` and no caching. They are exactly as private as the incident they belong to: someone who cannot see the incident gets "not found". Sizes and counts are capped, and on a public demo site uploads are **off by default**. |
 | **CSV export** | Cells that begin with `=`, `+`, `-`, `@`, tab or a line break get a leading `'`, so a malicious incident title cannot run as a spreadsheet formula. Fields are quoted and escaped. |
 | **Secrets** | Never in the code. Signing key, connection string and admin password come from user secrets or environment variables. The API refuses to start without a signing key. |
 | **Docs and errors** | The interactive API docs (Swagger) exist only in Development. Error responses never include stack traces in production. |
@@ -387,9 +410,9 @@ An hourly job (it can be switched off or timed differently) closes long-resolved
 
 | Suite | What it covers | Size |
 |---|---|---|
-| **Back end** (xUnit) | Business rules, every endpoint through the real API against a real, throwaway SQL Server database, the permission matrix (every role against every endpoint), SLA maths with a fake clock, rate limiting, audit log, hand-over, CSV, demo-account protection, and more. | **540 tests** |
-| **Front end** (Vitest) | Components, services, guards, interceptors, formatting and validation. | **688 tests** |
-| **Browser** (Playwright) | The real API and the real web app driven like a person: sign-in, a full incident from **report to assign to resolve to confirm**, who-sees-what, the unsaved-changes warning, the audit log, the CSV download. Plus an **axe accessibility scan** (WCAG 2.1 A and AA) of every main screen. | **13 tests** |
+| **Back end** (xUnit) | Business rules, every endpoint through the real API against a real, throwaway SQL Server database, the permission matrix (every role against every endpoint), SLA maths with a fake clock, rate limiting, audit log, hand-over, CSV, file attachments, demo-account protection, and more. | **606 tests** |
+| **Front end** (Vitest) | Components, services, guards, interceptors, formatting and validation. | **749 tests** |
+| **Browser** (Playwright) | The real API and the real web app driven like a person: sign-in, a full incident from **report to assign to resolve to confirm**, who-sees-what, the unsaved-changes warning, the audit log, the CSV download, and **attaching, downloading and removing files**. Plus an **axe accessibility scan** (WCAG 2.1 A and AA) of every main screen. | **16 tests** |
 
 **Continuous integration** (GitHub Actions) runs on every push:
 
@@ -480,6 +503,9 @@ Every setting can go in `appsettings.json`, in user secrets, or in an environmen
 | `Maintenance:AutoCloseResolvedAfterDays` | Days before an unanswered resolved incident closes itself | 7 |
 | `App:FrontendUrl` | Where the web app lives (emailed links point here) | `http://localhost:4200` |
 | `Cors:AllowedOrigins` | The web addresses allowed to call the API | `http://localhost:4200` |
+| `Attachments:Enabled` | Whether people may attach files. Left unset it is **on**, except on a public demo (`Demo:ProtectAccounts`), where it is **off**. Existing files can always be downloaded. | unset |
+| `Attachments:MaxFileBytes` | The biggest single file (never above 10 MB, whatever you set) | 5 MB |
+| `Attachments:MaxFilesPerIncident` / `MaxFilesPerComment` | How many files an incident, or one comment, may hold | 20 / 5 |
 | `Hosting:TrustProxyHeaders` | Behind a hosting proxy: read each visitor's real address (so rate limits work per person) | `false` |
 | `Database:MigrateOnStartup` | Let the app build and update its own tables on start | `false` |
 
@@ -507,7 +533,7 @@ ResolveIQ/
 │  ├─ ResolveIQ.Application/     DTOs, validation, service interfaces
 │  ├─ ResolveIQ.Domain/          Entities, incident workflow, SLA calculator (pure code)
 │  ├─ ResolveIQ.Infrastructure/  EF Core, Identity, services, migrations, seeders
-│  └─ ResolveIQ.Tests/           540 tests
+│  └─ ResolveIQ.Tests/           606 tests
 ├─ frontend/                     Angular app (features: incidents, dashboard, admin, auth, account)
 ├─ e2e/                          Playwright browser tests, and the screenshot script
 ├─ docs/
@@ -522,13 +548,14 @@ ResolveIQ/
 
 ## 14. API and Postman
 
-Interactive documentation (Swagger) is available at `/swagger` when the API runs in Development. A ready-made **Postman collection** (36 requests in 7 folders, plus a 13-step guided tour) is in [`docs/postman`](docs/postman). Import both files, fill in the `email` and `password` of a demo account, and run the first request.
+Interactive documentation (Swagger) is available at `/swagger` when the API runs in Development. A ready-made **Postman collection** (41 requests in 8 folders, plus a 13-step guided tour) is in [`docs/postman`](docs/postman). Import both files, fill in the `email` and `password` of a demo account, and run the first request.
 
 | Area | Endpoints |
 |---|---|
 | **Auth** `/api/auth` | `POST login` · `POST register` · `GET registration` · `POST refresh-token` · `POST logout` · `POST change-password` · `POST forgot-password` · `POST reset-password` |
 | **Incidents** `/api/incidents` | `GET` (search, filter, sort, page) · `GET export` · `GET {id}` · `POST` · `PUT {id}` · `PUT {id}/assign` · `PUT {id}/status` · `PUT {id}/priority` · `GET {id}/history` |
 | **Comments** | `GET` / `POST /api/incidents/{id}/comments` |
+| **Attachments** | `GET /api/attachments/settings` · `GET /api/incidents/{id}/attachments` · `POST /api/incidents/{id}/attachments` (a form with the field `file`, and optionally `commentId`) · `GET /api/attachments/{id}/download` · `DELETE /api/attachments/{id}` |
 | **Dashboard** | `GET /api/dashboard/summary` · `GET /api/dashboard/incident-statistics` |
 | **Notifications** | `GET /api/notifications` · `PUT {id}/read` · `PUT read-all` |
 | **Categories** | `GET` · `POST` (Admin) · `PUT {id}` (Admin) |
@@ -547,7 +574,7 @@ Interactive documentation (Swagger) is available at `/swagger` when the API runs
 - **The live demo is on free hosting**, so the first visit after a quiet period is slow, and size and CPU limits are small.
 - **Everybody shares the demo accounts**, including a working Admin. The data is made up, and the shared accounts are protected. If it ever gets messy, the database can be wiped and the app re-adds the demo data on its next start.
 - **Notifications refresh once a minute** (while the page is visible). They are not pushed instantly.
-- **No file attachments** on incidents or comments.
+- **Attachments live in the database.** That keeps one backup for everything and needs no file storage, but it fills a small (free) database faster, so the default limits are modest. There is **no virus scanning** and no picture preview, only downloads. They are switched off on the live demo.
 - **Single organisation**, English only.
 - **Tokens live in the browser's storage**, the usual trade-off for a single-page app. The short access-token life, rotating refresh tokens and the strict browser headers limit the damage if one is ever stolen.
 

@@ -14,6 +14,8 @@ import { catchError, of } from 'rxjs';
 import { fieldErrors } from '../../../core/api-error';
 import { HasUnsavedChanges, warnBeforeClosingTab } from '../../../core/unsaved-changes';
 import { notBlank } from '../../../core/validators';
+import { AttachmentPicker } from '../attachments/attachment-picker';
+import { AttachmentService } from '../attachments/attachment.service';
 import { Category, IncidentPriority, MAX_DESCRIPTION_LENGTH, MAX_TITLE_LENGTH } from '../incident.models';
 import { IncidentService } from '../incident.service';
 
@@ -27,12 +29,14 @@ import { IncidentService } from '../incident.service';
     MatInputModule,
     MatSelectModule,
     MatButtonModule,
+    AttachmentPicker,
   ],
   templateUrl: './incident-create.html',
   styleUrl: './incident-create.css',
 })
 export class IncidentCreate implements HasUnsavedChanges {
   private readonly incidents = inject(IncidentService);
+  private readonly attachmentService = inject(AttachmentService);
   private readonly router = inject(Router);
   private readonly snackBar = inject(MatSnackBar);
   private readonly formBuilder = inject(NonNullableFormBuilder);
@@ -54,12 +58,15 @@ export class IncidentCreate implements HasUnsavedChanges {
   protected readonly submitting = signal(false);
   protected readonly errorMessage = signal<string | null>(null);
 
+  /** Files chosen to go with the incident. They are sent once the incident itself is saved. */
+  protected readonly pendingFiles = signal<File[]>([]);
+
   // Set once the incident is saved, so leaving afterwards is not treated as losing something.
   private saved = false;
 
-  /** True while the person has typed something that has not been sent. */
+  /** True while the person has typed something, or chosen files, that has not been sent. */
   hasUnsavedChanges(): boolean {
-    return this.form.dirty && !this.saved;
+    return (this.form.dirty || this.pendingFiles().length > 0) && !this.saved;
   }
 
   @HostListener('window:beforeunload', ['$event'])
@@ -96,15 +103,33 @@ export class IncidentCreate implements HasUnsavedChanges {
       .createIncident(title.trim(), description.trim(), categoryId || undefined, (urgency as IncidentPriority) || undefined)
       .subscribe({
       next: (created) => {
+        // The incident is saved from here on, whatever happens to its files.
         this.saved = true;
-        this.snackBar.open(`Incident ${created.incidentNumber} created`, 'Dismiss', { duration: 6000 });
-        this.router.navigate(['/incidents', created.id]);
+        const files = this.pendingFiles();
+
+        if (files.length === 0) {
+          this.finish(created.id, `Incident ${created.incidentNumber} created`);
+          return;
+        }
+
+        this.attachmentService.uploadAll(created.id, files).subscribe((summary) => {
+          const note =
+            summary.failures.length === 0
+              ? ''
+              : `, but ${summary.failures.length} of ${files.length} files could not be attached. You can add them on the incident page.`;
+          this.finish(created.id, `Incident ${created.incidentNumber} created${note}`);
+        });
       },
       error: (error: unknown) => {
         this.submitting.set(false);
         this.showError(error);
       },
     });
+  }
+
+  private finish(id: string, message: string): void {
+    this.snackBar.open(message, 'Dismiss', { duration: 8000 });
+    this.router.navigate(['/incidents', id]);
   }
 
   /** Puts the API's complaint next to the field it is about; anything else goes in a general message. */

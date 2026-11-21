@@ -34,6 +34,11 @@ namespace ResolveIQ.Tests.Api
             ("PUT", $"/api/incidents/{SomeId}/priority", ManagersAndAdmins),
             ("GET", $"/api/incidents/{SomeId}/history", Everyone),
             ("GET", $"/api/incidents/{SomeId}/comments", Everyone),
+            ("GET", "/api/attachments/settings", Everyone),
+            ("GET", $"/api/incidents/{SomeId}/attachments", Everyone),
+            ("POST", $"/api/incidents/{SomeId}/attachments", Everyone),
+            ("GET", $"/api/attachments/{SomeId}/download", Everyone),
+            ("DELETE", $"/api/attachments/{SomeId}", Everyone),
             ("POST", $"/api/incidents/{SomeId}/comments", Everyone),
             ("GET", "/api/incidents/export", Everyone),
             ("GET", "/api/audit", AdminsOnly),
@@ -64,7 +69,12 @@ namespace ResolveIQ.Tests.Api
 
         private static HttpRequestMessage Request(string method, string path) => new(new HttpMethod(method), path)
         {
-            Content = method == "GET" ? null : new StringContent("{}", Encoding.UTF8, "application/json")
+            Content = method == "GET"
+                ? null
+                : path.EndsWith("/attachments")
+                    // The file-upload route only takes a form (ASP.NET answers 415 to anything else, before it checks the login).
+                    ? new MultipartFormDataContent()
+                    : new StringContent("{}", Encoding.UTF8, "application/json")
         };
 
         [Theory]

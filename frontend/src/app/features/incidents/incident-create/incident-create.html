@@ -63,6 +63,8 @@
         <mat-hint>Only a hint for the manager, who decides the final priority.</mat-hint>
       </mat-form-field>
 
+      <app-attachment-picker kind="incident" [(files)]="pendingFiles" [disabled]="submitting()" />
+
       @if (errorMessage(); as message) {
         <p class="form-error" role="alert">{{ message }}</p>
       }

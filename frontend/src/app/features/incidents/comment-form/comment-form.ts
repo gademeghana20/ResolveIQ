@@ -6,6 +6,8 @@ import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatInputModule } from '@angular/material/input';
 
 import { notBlank } from '../../../core/validators';
+import { AttachmentPicker } from '../attachments/attachment-picker';
+import { AttachmentService } from '../attachments/attachment.service';
 import { IncidentComment } from '../incident.models';
 import { IncidentService } from '../incident.service';
 
@@ -14,12 +16,13 @@ export const MAX_COMMENT_LENGTH = 2000;
 
 @Component({
   selector: 'app-comment-form',
-  imports: [ReactiveFormsModule, MatFormFieldModule, MatInputModule, MatButtonModule],
+  imports: [ReactiveFormsModule, MatFormFieldModule, MatInputModule, MatButtonModule, AttachmentPicker],
   templateUrl: './comment-form.html',
   styleUrl: './comment-form.css',
 })
 export class CommentForm {
   private readonly incidents = inject(IncidentService);
+  private readonly attachmentService = inject(AttachmentService);
   private readonly formBuilder = inject(NonNullableFormBuilder);
 
   readonly incidentId = input.required<string>();
@@ -37,9 +40,12 @@ export class CommentForm {
   protected readonly submitting = signal(false);
   protected readonly errorMessage = signal<string | null>(null);
 
-  /** True while a comment has been typed but not posted. */
+  /** Files chosen to go with the comment. They are sent once the comment itself is saved. */
+  protected readonly pendingFiles = signal<File[]>([]);
+
+  /** True while a comment has been typed, or files chosen, but nothing has been posted. */
   hasDraft(): boolean {
-    return this.text.value.trim().length > 0;
+    return this.text.value.trim().length > 0 || this.pendingFiles().length > 0;
   }
 
   protected submit(): void {
@@ -54,17 +60,36 @@ export class CommentForm {
 
     this.incidents.addComment(this.incidentId(), this.text.value.trim()).subscribe({
       next: (comment) => {
-        this.submitting.set(false);
-        // Reset through the form directive, which also forgets "this form was submitted".
-        // Resetting only the control would leave the empty box showing a red error.
-        this.formDirective()?.resetForm({ text: '' });
-        this.added.emit(comment);
+        const files = this.pendingFiles();
+        if (files.length === 0) {
+          this.finish(comment);
+          return;
+        }
+
+        // The comment is saved. Now its files, one after another; a file that fails does not undo the comment.
+        this.attachmentService.uploadAll(this.incidentId(), files, comment.id).subscribe((summary) => {
+          this.finish(comment);
+          if (summary.failures.length > 0) {
+            this.errorMessage.set(
+              'Your comment was posted, but not every file could be attached:\n' + summary.failures.join('\n'),
+            );
+          }
+        });
       },
       error: (error: unknown) => {
         this.submitting.set(false);
         this.errorMessage.set(this.messageFor(error));
       },
     });
+  }
+
+  private finish(comment: IncidentComment): void {
+    this.submitting.set(false);
+    this.pendingFiles.set([]);
+    // Reset through the form directive, which also forgets "this form was submitted".
+    // Resetting only the control would leave the empty box showing a red error.
+    this.formDirective()?.resetForm({ text: '' });
+    this.added.emit(comment);
   }
 
   private messageFor(error: unknown): string {

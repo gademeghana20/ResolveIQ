@@ -73,6 +73,10 @@ export function describeChange(entry: HistoryEntry): string {
       return `How it was fixed: ${to}`;
     case 'AutoClosed':
       return to ?? 'Closed automatically';
+    case 'AttachmentAdded':
+      return `Attached the file "${to ?? ''}"`;
+    case 'AttachmentRemoved':
+      return `Removed the file "${from ?? ''}"`;
     case 'Title':
       return `Title changed from "${from}" to "${to}"`;
     case 'Description':

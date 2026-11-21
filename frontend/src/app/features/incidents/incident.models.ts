@@ -130,3 +130,28 @@ export interface IncidentQuery {
 
 // Categories are described in core (the Admin screens use them too); re-exported here so incident code keeps working.
 export type { Category } from '../../core/category.models';
+
+/** A file attached to an incident, or to one of its comments. The file's bytes are fetched only when it is downloaded. */
+export interface Attachment {
+  id: string;
+  incidentId: string;
+  /** Empty when the file was attached to the incident itself rather than to a comment. */
+  commentId: string | null;
+  fileName: string;
+  contentType: string;
+  sizeBytes: number;
+  uploadedByUserId: string;
+  uploadedByEmail: string | null;
+  createdAtUtc: string;
+  /** Whether the person looking may remove it (they attached it, or are a Manager or Admin, and the incident is open). */
+  canRemove: boolean;
+}
+
+/** What the server allows. `enabled: false` means attaching is switched off on this site. */
+export interface AttachmentSettings {
+  enabled: boolean;
+  maxFileBytes: number;
+  maxFilesPerIncident: number;
+  maxFilesPerComment: number;
+  allowedExtensions: string[];
+}

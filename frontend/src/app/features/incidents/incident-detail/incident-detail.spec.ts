@@ -1,5 +1,6 @@
 import { provideHttpClient } from '@angular/common/http';
 import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
+import { WritableSignal } from '@angular/core';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { MatDialog } from '@angular/material/dialog';
 import { of } from 'rxjs';
@@ -8,7 +9,7 @@ import { provideRouter } from '@angular/router';
 
 import { API_URL } from '../../../core/api-config';
 import { AuthService } from '../../../core/auth/auth.service';
-import { HistoryEntry, IncidentComment, IncidentDetail as IncidentDetailModel } from '../incident.models';
+import { Attachment, HistoryEntry, IncidentComment, IncidentDetail as IncidentDetailModel } from '../incident.models';
 import { IncidentDetail } from './incident-detail';
 
 const ID = 'abc-123';
@@ -464,4 +465,161 @@ describe('IncidentDetail', () => {
     http.expectOne(`${API_URL}/incidents/other-id/history`);
     http.expectOne(`${API_URL}/incidents/other-id/comments`);
   });
+
+  describe('files', () => {
+    const attachmentsUrl = `${API_URL}/incidents/${ID}/attachments`;
+    const settingsUrl = `${API_URL}/attachments/settings`;
+
+    const onIncident: Attachment = {
+      id: 'f1', incidentId: ID, commentId: null, fileName: 'screenshot.png', contentType: 'image/png',
+      sizeBytes: 2048, uploadedByUserId: 'u1', uploadedByEmail: 'reporter@example.com',
+      createdAtUtc: '2026-11-16T18:10:00Z', canRemove: true,
+    };
+    const onComment: Attachment = {
+      ...onIncident, id: 'f2', commentId: 'k1', fileName: 'router-log.txt', contentType: 'text/plain',
+    };
+
+    const pending = () => (fixture.componentInstance as unknown as { pendingFiles: WritableSignal<File[]> }).pendingFiles;
+    const button = (label: RegExp) =>
+      Array.from((fixture.nativeElement as HTMLElement).querySelectorAll('button')).find((b) => label.test(b.textContent ?? ''));
+
+    /** The incident, its history and comments load as usual; the files and the site's settings are answered as given. */
+    async function open(options: { files?: Attachment[] | 'fail'; settings?: 'on' | 'off'; incident?: Partial<IncidentDetailModel> } = {}) {
+      answerDetail(detail(options.incident));
+      answerHistory(history);
+      answerComments(comments);
+
+      const files = http.expectOne(attachmentsUrl);
+      if (options.files === 'fail') {
+        files.flush({}, { status: 500, statusText: 'Server Error' });
+      } else {
+        files.flush(options.files ?? []);
+      }
+      http.expectOne(settingsUrl).flush({
+        enabled: (options.settings ?? 'on') === 'on',
+        maxFileBytes: 5 * 1024 * 1024,
+        maxFilesPerIncident: 20,
+        maxFilesPerComment: 5,
+        allowedExtensions: ['.png', '.txt', '.pdf'],
+      });
+      await settle();
+    }
+
+    it('shows the incident straight away, without waiting for its files', async () => {
+      answerDetail(detail());
+      answerHistory(history);
+      answerComments(comments);
+      await settle();
+
+      expect(text()).toContain('VPN keeps dropping');
+      expect(text()).not.toContain('could not be loaded'); // still loading is not a failure
+      http.expectOne(attachmentsUrl); // asked for, not yet answered
+    });
+
+    it('shows the incident\'s own files in an Attachments card, and each comment\'s files under that comment', async () => {
+      await open({ files: [onIncident, onComment] });
+
+      const page = fixture.nativeElement as HTMLElement;
+      const card = Array.from(page.querySelectorAll('mat-card')).find((c) => c.textContent?.includes('Attachments'))!;
+      expect(card.textContent).toContain('screenshot.png');
+      expect(card.textContent).not.toContain('router-log.txt');
+
+      const comment = page.querySelector('article.comment')!;
+      expect(comment.textContent).toContain('router-log.txt');
+      expect(comment.textContent).not.toContain('screenshot.png');
+    });
+
+    it('offers to attach files while uploads are on and the incident is open', async () => {
+      await open();
+
+      expect(text()).toContain('Attachments');
+      expect(text()).toContain('No files attached yet.');
+      expect(button(/Attach files/)).toBeDefined();
+      expect(button(/^\s*Upload/)).toBeUndefined(); // nothing chosen yet
+    });
+
+    it('offers nothing to attach when uploads are switched off, but still shows the files that are there', async () => {
+      await open({ files: [onIncident], settings: 'off' });
+
+      expect(text()).toContain('screenshot.png');
+      expect(button(/Attach files/)).toBeUndefined();
+    });
+
+    it('shows no Attachments card at all when uploads are off and there are none', async () => {
+      await open({ files: [], settings: 'off' });
+
+      expect(text()).not.toContain('Attachments');
+    });
+
+    it('does not offer to attach to a closed incident, whose files stay readable', async () => {
+      await open({ files: [onIncident], incident: { status: 'Closed' } });
+
+      expect(text()).toContain('screenshot.png');
+      expect(button(/Attach files/)).toBeUndefined();
+    });
+
+    it('says so when the files could not be loaded, without hiding the incident', async () => {
+      await open({ files: 'fail' });
+
+      expect(text()).toContain('Attachments could not be loaded.');
+      expect(text()).toContain('VPN keeps dropping');
+    });
+
+    it('uploads the chosen files, then fetches the files and the history again', async () => {
+      await open();
+      pending().set([new File(['x'], 'new.png')]);
+      await settle();
+
+      expect(button(/Upload 1 file/)).toBeDefined();
+      button(/Upload 1 file/)!.click();
+      await settle();
+
+      const upload = http.expectOne(attachmentsUrl);
+      expect(upload.request.method).toBe('POST');
+      expect(((upload.request.body as FormData).get('file') as File).name).toBe('new.png');
+      upload.flush({ ...onIncident, id: 'f9', fileName: 'new.png' });
+      await settle();
+
+      // The list and the history are fetched again, because the history has a new line.
+      http.expectOne((r) => r.method === 'GET' && r.url === attachmentsUrl).flush([{ ...onIncident, id: 'f9', fileName: 'new.png' }]);
+      waiting(`${API_URL}/incidents/${ID}/history`).flush([
+        ...history,
+        { fieldChanged: 'AttachmentAdded', oldValue: null, newValue: 'new.png', changedBy: 'reporter@example.com', changedAtUtc: '2026-11-16T20:00:00Z' },
+      ]);
+      await settle();
+
+      expect(pending().length).toBe(0);
+      expect(text()).toContain('new.png');
+      expect(text()).toContain('Attached the file "new.png"');
+    });
+
+    it('says which files could not be attached', async () => {
+      await open();
+      pending().set([new File(['x'], 'bad.png')]);
+      await settle();
+
+      button(/Upload 1 file/)!.click();
+      await settle();
+      http
+        .expectOne(attachmentsUrl)
+        .flush({ errors: { file: ['The file\'s contents do not match its ".png" name, so it was not accepted.'] } }, { status: 400, statusText: 'Bad Request' });
+      await settle();
+      http.expectOne((r) => r.method === 'GET' && r.url === attachmentsUrl).flush([]);
+      waiting(`${API_URL}/incidents/${ID}/history`).flush(history);
+      await settle();
+
+      expect(text()).toContain('Not every file could be attached');
+      expect(text()).toContain('bad.png: The file');
+    });
+
+    it('counts chosen but unsent files as unsaved work', async () => {
+      await open();
+      expect(fixture.componentInstance.hasUnsavedChanges()).toBe(false);
+
+      pending().set([new File(['x'], 'a.png')]);
+
+      expect(fixture.componentInstance.hasUnsavedChanges()).toBe(true);
+    });
+  });
+
 });

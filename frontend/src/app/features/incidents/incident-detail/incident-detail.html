@@ -67,6 +67,36 @@
             </mat-card>
           }
 
+          @if (incidentFiles().length > 0 || canAttach()) {
+            <mat-card>
+              <mat-card-header><mat-card-title>Attachments</mat-card-title></mat-card-header>
+              <mat-card-content>
+                @if (attachments() === null) {
+                  <p class="error">Attachments could not be loaded.</p>
+                } @else if (attachments() !== undefined) {
+                  <app-attachment-list label="Files on this incident" [attachments]="incidentFiles()" (removed)="onFilesChanged()" />
+                  @if (incidentFiles().length === 0) {
+                    <p class="muted">No files attached yet.</p>
+                  }
+                }
+
+                @if (canAttach()) {
+                  <app-attachment-picker kind="incident" [(files)]="pendingFiles" [disabled]="uploading()" />
+
+                  @if (pendingFiles().length > 0) {
+                    <button mat-flat-button type="button" [disabled]="uploading()" (click)="uploadFiles()">
+                      {{ uploading() ? 'Uploading…' : pendingFiles().length === 1 ? 'Upload 1 file' : 'Upload ' + pendingFiles().length + ' files' }}
+                    </button>
+                  }
+
+                  @if (uploadMessage(); as message) {
+                    <p class="error upload-message" role="alert">{{ message }}</p>
+                  }
+                }
+              </mat-card-content>
+            </mat-card>
+          }
+
           <mat-card>
             <mat-card-header><mat-card-title>Comments</mat-card-title></mat-card-header>
             <mat-card-content>
@@ -78,6 +108,11 @@
                       · {{ comment.createdAtUtc | date: 'medium' }}
                     </div>
                     <p class="text">{{ comment.text }}</p>
+                    <app-attachment-list
+                      label="Files on this comment"
+                      [attachments]="filesByComment().get(comment.id) ?? noFiles"
+                      (removed)="onFilesChanged()"
+                    />
                   </article>
                 } @empty {
                   <p class="muted">No comments yet.</p>

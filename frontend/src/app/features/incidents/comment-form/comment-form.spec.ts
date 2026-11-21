@@ -1,5 +1,6 @@
 import { provideHttpClient } from '@angular/common/http';
 import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
+import { WritableSignal } from '@angular/core';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 
 import { API_URL } from '../../../core/api-config';
@@ -159,4 +160,66 @@ describe('CommentForm', () => {
 
     expect(page().textContent).toContain('no longer available');
   });
+
+  describe('with files', () => {
+    const attachUrl = `${API_URL}/incidents/inc-1/attachments`;
+    const photo = () => new File(['x'], 'shot.png');
+    const chosen = () => (fixture.componentInstance as unknown as { pendingFiles: WritableSignal<File[]> }).pendingFiles;
+    const attachment = { id: 'f1', commentId: 'k1', fileName: 'shot.png' };
+
+    it('counts chosen files as an unposted draft, even with no words typed', () => {
+      expect(fixture.componentInstance.hasDraft()).toBe(false);
+
+      chosen().set([photo()]);
+
+      expect(fixture.componentInstance.hasDraft()).toBe(true);
+    });
+
+    it('posts the comment first, then attaches the files to that comment', async () => {
+      chosen().set([photo()]);
+      await write('See the picture');
+      await post();
+
+      http.expectOne(URL).flush(saved);
+      await settle();
+      expect(added).toEqual([]); // the files are still on their way
+
+      const upload = http.expectOne(attachUrl);
+      expect((upload.request.body as FormData).get('commentId')).toBe('k1');
+      upload.flush(attachment);
+      await settle();
+
+      expect(added).toEqual([saved]);
+      expect(fixture.componentInstance.hasDraft()).toBe(false);
+      expect(page().querySelector('textarea')!.value).toBe('');
+    });
+
+    it('keeps the comment when a file cannot be attached, and says which one', async () => {
+      chosen().set([photo()]);
+      await write('See the picture');
+      await post();
+      http.expectOne(URL).flush(saved);
+      await settle();
+
+      http
+        .expectOne(attachUrl)
+        .flush({ errors: { file: ['That type of file is not allowed.'] } }, { status: 400, statusText: 'Bad Request' });
+      await settle();
+
+      expect(added).toEqual([saved]); // the comment is there regardless
+      expect(page().querySelector('[role="alert"]')!.textContent).toContain('Your comment was posted');
+      expect(page().querySelector('[role="alert"]')!.textContent).toContain('shot.png: That type of file is not allowed.');
+    });
+
+    it('makes no upload request when there are no files', async () => {
+      await write('Just words');
+      await post();
+      http.expectOne(URL).flush(saved);
+      await settle();
+
+      http.expectNone(attachUrl);
+      expect(added).toEqual([saved]);
+    });
+  });
+
 });

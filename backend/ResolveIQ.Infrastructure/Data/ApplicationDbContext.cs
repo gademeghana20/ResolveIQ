@@ -31,6 +31,8 @@ namespace ResolveIQ.Infrastructure.Data
 
         public DbSet<AuditLog> AuditLogs { get; set; } = null!;
 
+        public DbSet<Attachment> Attachments { get; set; } = null!;
+
         protected override void ConfigureConventions(ModelConfigurationBuilder configurationBuilder)
         {
             base.ConfigureConventions(configurationBuilder);

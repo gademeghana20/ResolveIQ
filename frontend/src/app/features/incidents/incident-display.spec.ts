@@ -81,4 +81,23 @@ describe('incident display helpers', () => {
     expect(statusTone('Resolved')).toBe('success');
     expect(statusTone('Closed')).toBe('neutral');
   });
+
+  describe('describeChange for files', () => {
+    const row = (fieldChanged: string, oldValue: string | null, newValue: string | null) => ({
+      fieldChanged,
+      oldValue,
+      newValue,
+      changedBy: 'dana@example.com',
+      changedAtUtc: '2026-11-21T10:00:00Z',
+    });
+
+    it('says which file was attached', () => {
+      expect(describeChange(row('AttachmentAdded', null, 'shot.png'))).toBe('Attached the file "shot.png"');
+    });
+
+    it('says which file was removed', () => {
+      expect(describeChange(row('AttachmentRemoved', 'shot.png', null))).toBe('Removed the file "shot.png"');
+    });
+  });
+
 });

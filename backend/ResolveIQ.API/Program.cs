@@ -46,6 +46,8 @@ builder.Services.Configure<DataProtectionTokenProviderOptions>(options => option
 
 builder.Services.Configure<AppSettings>(builder.Configuration.GetSection(AppSettings.SectionName));
 builder.Services.Configure<DemoSettings>(builder.Configuration.GetSection(DemoSettings.SectionName));
+builder.Services.Configure<AttachmentSettings>(builder.Configuration.GetSection(AttachmentSettings.SectionName));
+builder.Services.AddScoped<IAttachmentService, AttachmentService>();
 
 // Behind a hosting service's proxy every request seems to come from the proxy's own address, which would make the
 // per-address rate limits shared by the whole world. With Hosting:TrustProxyHeaders=true the real address (and

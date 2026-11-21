@@ -45,6 +45,11 @@ const NAMES = {
   'GET /api/incidents/{id}/history': 'Incident history',
   'GET /api/incidents/{incidentId}/comments': 'List comments',
   'POST /api/incidents/{incidentId}/comments': 'Add a comment',
+  'GET /api/attachments/settings': 'Attachments: limits and allowed kinds of file',
+  'GET /api/incidents/{incidentId}/attachments': 'List the files on an incident',
+  'POST /api/incidents/{incidentId}/attachments': 'Attach a file (choose it in the "file" field; optional commentId)',
+  'GET /api/attachments/{attachmentId}/download': 'Download a file',
+  'DELETE /api/attachments/{attachmentId}': 'Remove a file',
   'GET /api/categories': 'List categories',
   'POST /api/categories': 'Create a category (Admin)',
   'PUT /api/categories/{id}': 'Edit or hide a category (Admin)',
@@ -69,7 +74,7 @@ const OPEN = new Set([
   'POST /api/auth/reset-password',
 ]);
 
-const FOLDER_ORDER = ['Auth', 'Incidents', 'Comments', 'Categories', 'Users', 'Sla', 'Dashboard'];
+const FOLDER_ORDER = ['Auth', 'Incidents', 'Comments', 'Attachments', 'Categories', 'Users', 'Sla', 'Dashboard'];
 const FOLDER_TITLES = { Sla: 'SLA' };
 
 // What to put in each field of an example request. Anything not listed gets a sensible default from its type.
@@ -97,6 +102,7 @@ const SAMPLES = {
 const PATH_VARIABLES = {
   id: (p) => (p.includes('/users/') ? '{{userId}}' : p.includes('/categories/') ? '{{categoryId}}' : '{{incidentId}}'),
   incidentId: () => '{{incidentId}}',
+  attachmentId: () => '{{attachmentId}}',
   priority: () => 'High',
 };
 
@@ -166,6 +172,12 @@ function testScript(key, method) {
   if (key === 'POST /api/incidents') {
     lines.push("if (pm.response.code === 201) pm.collectionVariables.set('incidentId', pm.response.json().id);");
   }
+  if (key === 'POST /api/incidents/{incidentId}/attachments') {
+    lines.push("if (pm.response.code === 201) pm.collectionVariables.set('attachmentId', pm.response.json().id);");
+  }
+  if (key === 'GET /api/incidents/{incidentId}/attachments') {
+    lines.push("const files = pm.response.json();", "if (files.length) pm.collectionVariables.set('attachmentId', files[0].id);");
+  }
   if (key === 'POST /api/categories') {
     lines.push("if (pm.response.code === 201) pm.collectionVariables.set('categoryId', pm.response.json().id);");
   }
@@ -221,6 +233,18 @@ function buildRequest(method, urlPath, op) {
       mode: 'raw',
       raw: JSON.stringify(exampleObject(jsonBody), null, 2),
       options: { raw: { language: 'json' } },
+    };
+  }
+
+  // A file upload is a form, not JSON: Postman shows a "file" row to choose a file in, and an optional comment id.
+  const formBody = op.requestBody?.content?.['multipart/form-data']?.schema;
+  if (formBody) {
+    request.body = {
+      mode: 'formdata',
+      formdata: [
+        { key: 'file', type: 'file', src: [] },
+        { key: 'commentId', type: 'text', value: '', disabled: true },
+      ],
     };
   }
 
@@ -298,6 +322,7 @@ const collection = {
     { key: 'incidentId', value: '' },
     { key: 'userId', value: '' },
     { key: 'categoryId', value: '' },
+    { key: 'attachmentId', value: '' },
   ],
   item: [tour, ...folders],
 };

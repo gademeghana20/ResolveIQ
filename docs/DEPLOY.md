@@ -112,6 +112,29 @@ You do each step yourself in your own accounts. Nothing here needs a password or
 If visitors fill the demo with junk, empty the database in the host's panel (or delete and re-create it) and restart
 the website. It builds the tables again and re-adds the demo accounts and incidents.
 
+## Updating the live site later
+
+When the app has new features:
+
+1. **API:** build it the same portable way (Part 1, step 4), upload the zip to `wwwroot`, **Unzip** over the old files, and
+   upload your `web.config` once more (that is what makes the host restart the app). Do **not** include or overwrite
+   `appsettings.Production.json`: it holds your private settings and is not in the zip.
+2. **Database:** nothing to do. Because `Database:MigrateOnStartup` is on, the app adds any new tables by itself the first
+   time it starts (for example the `Attachments` table). The existing data stays.
+3. **Website:** push to GitHub. Vercel rebuilds it by itself.
+
+## File attachments on the live site
+
+Attaching files is **switched off by default on a public demo** (it follows `Demo:ProtectAccounts`), so strangers cannot put
+files on your site. Visitors can still see the feature in the README screenshots, and you can try it by running the project
+on your own computer. To switch it on anyway, add this to the server's `appsettings.Production.json`:
+
+```json
+"Attachments": { "Enabled": true }
+```
+
+Files are stored inside the database, and the free database is only 1 GB, so keep the limits small if you do.
+
 ## What this setup does NOT do
 
 - **No real email.** "Forgot password" is switched off for the demo accounts, and the app only writes emails to its log.
