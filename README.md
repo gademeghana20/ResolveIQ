@@ -16,6 +16,17 @@ Open it and click **Employee**, **Manager** or **Admin** on the sign-in page. No
 
 ![The ResolveIQ sign-in page, with the three demo buttons](docs/screenshots/01-sign-in.png)
 
+**About this project:** I'm Meghana Gade, and I built ResolveIQ on my own as a full-stack portfolio project: an issue and incident management system with role-based access, SLA tracking and file attachments. It is an independent project. It uses no employer code, data or credentials, and everything in the demo is made up.
+
+**Built with**
+
+- **Front end:** Angular 21 (standalone components, signals), Angular Material, AG Grid, TypeScript, RxJS
+- **Back end:** ASP.NET Core on .NET 10, C#, a layered design (API, Application, Domain, Infrastructure), REST with OpenAPI
+- **Data:** Entity Framework Core 10, SQL Server, code-first migrations
+- **Security:** JWT sign-in with refresh tokens, role-based permissions (Employee, Manager, Admin), rate limiting, security headers, an audit log, file uploads checked by extension and contents
+- **Testing:** 600+ xUnit tests (including a role-by-endpoint permission matrix), 700+ Vitest tests, Playwright browser tests, axe accessibility scans (WCAG 2.1 A and AA)
+- **DevOps:** GitHub Actions CI, free hosting (Vercel for the website, MonsterASP.NET for the API and database), Postman collection, Mermaid diagrams
+
 ---
 
 ## Contents
